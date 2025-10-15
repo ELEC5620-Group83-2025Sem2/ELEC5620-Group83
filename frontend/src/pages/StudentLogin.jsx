@@ -36,10 +36,9 @@ function StudentLogin() {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000))
       
-      // For now, just show success message
+      // For now, just navigate to dashboard
       console.log('Student login:', formData)
-      // navigate('/student/dashboard')
-      alert('Login functionality will be connected to backend')
+      navigate('/student/dashboard')
       
     } catch (err) {
       setError('Invalid email or password')
