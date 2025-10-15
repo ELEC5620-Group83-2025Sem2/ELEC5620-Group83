@@ -4,6 +4,7 @@ import StudentLogin from './pages/StudentLogin'
 import StudentRegister from './pages/StudentRegister'
 import TeacherLogin from './pages/TeacherLogin'
 import AccountRecovery from './pages/AccountRecovery'
+import StudentDashboard from './pages/StudentDashboard'
 import './App.css'
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Route path="/login/teacher" element={<TeacherLogin />} />
         <Route path="/register/student" element={<StudentRegister />} />
         <Route path="/recover" element={<AccountRecovery />} />
+        <Route path="/student/dashboard" element={<StudentDashboard />} />
       </Routes>
     </Router>
   )
