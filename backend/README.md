@@ -111,11 +111,15 @@ Create a `.env` file in the backend directory:
 ```env
 PORT=3000
 NODE_ENV=development
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 Available variables:
 - `PORT` - Server port (default: 3000)
 - `NODE_ENV` - Environment mode (development/production)
+- `SUPABASE_URL` - Supabase project URL (e.g. https://xyzcompany.supabase.co)
+- `SUPABASE_ANON_KEY` - Supabase anon/public key
 
 **Note:** Port 5000 is often used by macOS AirPlay Receiver, so we use port 3000 by default.
 
@@ -214,6 +218,7 @@ router.get('/users', getUsers);
 - `express` - Web framework
 - `cors` - CORS middleware
 - `dotenv` - Environment variables
+- `@supabase/supabase-js` - Supabase client SDK
 
 ### Development
 - `nodemon` - Auto-reload on file changes
@@ -241,6 +246,34 @@ This project uses ES6 modules. Make sure:
 - `"type": "module"` is in package.json
 - Import statements include `.js` extensions
 - Use `import/export` instead of `require/module.exports`
+
+## 🔗 Supabase Client Usage
+
+### Singleton Client
+
+Use the shared client anywhere in the codebase:
+
+```javascript
+// In any file, e.g. controllers/exampleController.js
+import { getSupabaseClient } from '../lib/supabaseClient.js';
+
+export const listItems = async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('items')
+      .select('*')
+      .limit(10);
+
+    if (error) throw error;
+    res.json({ items: data });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+```
+
+The client is initialized once using `SUPABASE_URL` and `SUPABASE_ANON_KEY` from `.env`.
 
 ### CORS Errors
 
