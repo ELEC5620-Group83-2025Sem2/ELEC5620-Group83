@@ -5,7 +5,7 @@ dotenv.config();
 
 let supabaseClientInstance; 
 
-export function getSupabaseClient() {
+function getSupabaseClient() {
   if (!supabaseClientInstance) {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseKey = process.env.SUPABASE_KEY;
@@ -17,9 +17,8 @@ export function getSupabaseClient() {
   return supabaseClientInstance;
 }
 
-module.exports = {
-    getSupabaseClient,
-    supabase: getSupabaseClient(),
+export {
+    getSupabaseClient
 };
 
 
