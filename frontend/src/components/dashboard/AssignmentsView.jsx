@@ -1,6 +1,6 @@
 import { getDaysUntilDue } from './mockData'
 
-function AssignmentsView({ upcomingAssignments }) {
+function AssignmentsView({ upcomingAssignments, onAssignmentClick }) {
   return (
     <div className="assignments-detailed">
       {upcomingAssignments.map(assignment => (
@@ -28,7 +28,12 @@ function AssignmentsView({ upcomingAssignments }) {
               <span>Status: {assignment.status}</span>
             </div>
           </div>
-          <button className="btn-assignment-action">View Assignment</button>
+          <button 
+            className="btn-assignment-action"
+            onClick={() => onAssignmentClick(assignment.id)}
+          >
+            View Assignment
+          </button>
         </div>
       ))}
     </div>

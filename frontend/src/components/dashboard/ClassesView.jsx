@@ -1,4 +1,4 @@
-function ClassesView({ enrolledClasses }) {
+function ClassesView({ enrolledClasses, onClassClick }) {
   return (
     <div className="classes-grid">
       {enrolledClasses.map(course => (
@@ -33,7 +33,11 @@ function ClassesView({ enrolledClasses }) {
               <span className="stat-value">{course.assignments} pending</span>
             </div>
           </div>
-          <button className="btn-class-action" style={{ background: course.color }}>
+          <button 
+            className="btn-class-action" 
+            style={{ background: course.color }}
+            onClick={() => onClassClick(course.id)}
+          >
             Go to Class
           </button>
         </div>

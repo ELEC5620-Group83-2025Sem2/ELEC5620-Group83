@@ -7,6 +7,8 @@ import AssignmentsView from '../components/dashboard/AssignmentsView'
 import StudyPlannerView from '../components/dashboard/StudyPlannerView'
 import CareerView from '../components/dashboard/CareerView'
 import SettingsView from '../components/dashboard/SettingsView'
+import ClassDetailPage from '../components/dashboard/ClassDetailPage'
+import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
 import {
   studentData,
   enrolledClasses,
@@ -21,13 +23,53 @@ function StudentDashboard() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('dashboard')
   const [showUserMenu, setShowUserMenu] = useState(false)
+  const [selectedClassId, setSelectedClassId] = useState(null)
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
 
   const handleLogout = () => {
     // TODO: Implement logout logic
     navigate('/login/student')
   }
 
+  const handleClassClick = (classId) => {
+    setSelectedClassId(classId)
+    setSelectedAssignmentId(null)
+  }
+
+  const handleAssignmentClick = (assignmentId) => {
+    setSelectedAssignmentId(assignmentId)
+    setSelectedClassId(null)
+  }
+
+  const handleBackToClasses = () => {
+    setSelectedClassId(null)
+  }
+
+  const handleBackToAssignments = () => {
+    setSelectedAssignmentId(null)
+  }
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab)
+    // Clear selected class/assignment when changing tabs
+    setSelectedClassId(null)
+    setSelectedAssignmentId(null)
+  }
+
   const renderContent = () => {
+    // Show Class Detail Page if a class is selected
+    if (selectedClassId) {
+      const classData = enrolledClasses.find(c => c.id === selectedClassId)
+      return <ClassDetailPage classData={classData} onBack={handleBackToClasses} />
+    }
+
+    // Show Assignment Detail Page if an assignment is selected
+    if (selectedAssignmentId) {
+      const assignmentData = upcomingAssignments.find(a => a.id === selectedAssignmentId)
+      return <AssignmentDetailPage assignmentData={assignmentData} onBack={handleBackToAssignments} />
+    }
+
+    // Otherwise show the normal tab content
     switch (activeTab) {
       case 'dashboard':
         return (
@@ -36,15 +78,15 @@ function StudentDashboard() {
             enrolledClasses={enrolledClasses}
             upcomingAssignments={upcomingAssignments}
             recentGrades={recentGrades}
-            onTabChange={setActiveTab}
+            onTabChange={handleTabChange}
           />
         )
       case 'classes':
-        return <ClassesView enrolledClasses={enrolledClasses} />
+        return <ClassesView enrolledClasses={enrolledClasses} onClassClick={handleClassClick} />
       case 'grades':
         return <GradesView enrolledClasses={enrolledClasses} recentGrades={recentGrades} />
       case 'assignments':
-        return <AssignmentsView upcomingAssignments={upcomingAssignments} />
+        return <AssignmentsView upcomingAssignments={upcomingAssignments} onAssignmentClick={handleAssignmentClick} />
       case 'study-planner':
         return <StudyPlannerView studyPlanSuggestions={studyPlanSuggestions} />
       case 'career':
@@ -57,6 +99,14 @@ function StudentDashboard() {
   }
 
   const getPageTitle = () => {
+    if (selectedClassId) {
+      const classData = enrolledClasses.find(c => c.id === selectedClassId)
+      return classData ? classData.name : 'Class Details'
+    }
+    if (selectedAssignmentId) {
+      const assignmentData = upcomingAssignments.find(a => a.id === selectedAssignmentId)
+      return assignmentData ? assignmentData.title : 'Assignment Details'
+    }
     const titles = {
       dashboard: 'Dashboard',
       classes: 'My Classes',
@@ -83,42 +133,42 @@ function StudentDashboard() {
         <nav className="sidebar-nav">
           <button 
             className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => handleTabChange('dashboard')}
           >
             <span className="nav-icon">📊</span>
             <span className="nav-label">Dashboard</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'classes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('classes')}
+            onClick={() => handleTabChange('classes')}
           >
             <span className="nav-icon">📚</span>
             <span className="nav-label">My Classes</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'grades' ? 'active' : ''}`}
-            onClick={() => setActiveTab('grades')}
+            onClick={() => handleTabChange('grades')}
           >
             <span className="nav-icon">📈</span>
             <span className="nav-label">Grades</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'assignments' ? 'active' : ''}`}
-            onClick={() => setActiveTab('assignments')}
+            onClick={() => handleTabChange('assignments')}
           >
             <span className="nav-icon">📝</span>
             <span className="nav-label">Assignments</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'study-planner' ? 'active' : ''}`}
-            onClick={() => setActiveTab('study-planner')}
+            onClick={() => handleTabChange('study-planner')}
           >
             <span className="nav-icon">🤖</span>
             <span className="nav-label">AI Study Planner</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'career' ? 'active' : ''}`}
-            onClick={() => setActiveTab('career')}
+            onClick={() => handleTabChange('career')}
           >
             <span className="nav-icon">🎯</span>
             <span className="nav-label">Career Path</span>
@@ -126,7 +176,7 @@ function StudentDashboard() {
         </nav>
 
         <div className="sidebar-footer">
-          <button className="nav-item" onClick={() => setActiveTab('settings')}>
+          <button className="nav-item" onClick={() => handleTabChange('settings')}>
             <span className="nav-icon">⚙️</span>
             <span className="nav-label">Settings</span>
           </button>
