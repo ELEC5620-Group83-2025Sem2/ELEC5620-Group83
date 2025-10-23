@@ -700,3 +700,103 @@ create policy "guardianships_admin_manage"
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
+
+-- =============================================
+-- Minimal Auth Setup: auto-profile + default student role
+-- =============================================
+-- This section is idempotent and safe to run multiple times.
+
+-- 1) Ensure required tables exist
+-- Assumes existing public.profiles with (id uuid PK → auth.users.id), name, email, avatar, created_at
+
+-- 2) Helper function: is_admin (optional, used by RLS policies)
+create or replace function public.is_admin()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce((auth.jwt()->>'role') = 'service_role', false)
+$$;
+grant execute on function public.is_admin() to authenticated;
+
+-- 3) Auto-create profile on auth.users insert (uses raw_user_meta_data)
+create or replace function public.handle_new_user_profile()
+returns trigger as $$
+begin
+  insert into public.profiles (id, email, name, avatar)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'name', ''),
+    coalesce(new.raw_user_meta_data->>'avatar', '')
+  )
+  on conflict (id) do update set
+    email = excluded.email,
+    name = coalesce(nullif(excluded.name, ''), public.profiles.name),
+    avatar = coalesce(nullif(excluded.avatar, ''), public.profiles.avatar);
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists trg_on_auth_user_created_profile on auth.users;
+create trigger trg_on_auth_user_created_profile
+  after insert on auth.users
+  for each row execute function public.handle_new_user_profile();
+
+-- 4) Default role assignment: create profile_roles and set default 'student' on user creation
+-- Table (if you don't already have it)
+create table if not exists public.profile_roles (
+  profile_id uuid not null references public.profiles(id) on delete cascade,
+  role text not null check (role in ('student','teacher','admin')),
+  created_at timestamptz default now(),
+  primary key (profile_id, role)
+);
+
+-- Trigger function to assign default role
+create or replace function public.assign_default_student_role()
+returns trigger as $$
+begin
+  -- Insert default role only if none exists
+  if not exists (select 1 from public.profile_roles where profile_id = new.id) then
+    insert into public.profile_roles (profile_id, role) values (new.id, 'student');
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists trg_on_auth_user_created_default_role on auth.users;
+create trigger trg_on_auth_user_created_default_role
+  after insert on auth.users
+  for each row execute function public.assign_default_student_role();
+
+-- 5) RLS: enable and set minimal policies
+alter table public.profile_roles enable row level security;
+
+-- Drop existing policies with known names if present
+drop policy if exists profile_roles_read_self on public.profile_roles;
+drop policy if exists profile_roles_manage_admin on public.profile_roles;
+
+-- Allow users to read their own roles
+create policy profile_roles_read_self on public.profile_roles
+  for select to authenticated
+  using (profile_id = auth.uid() or public.is_admin());
+
+-- Allow only admins (or service role via JWT) to manage roles
+create policy profile_roles_manage_admin on public.profile_roles
+  for all to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+-- 6) Optional: RLS for profiles (read own)
+alter table public.profiles enable row level security;
+
+drop policy if exists profiles_read_self on public.profiles;
+create policy profiles_read_self on public.profiles
+  for select to authenticated
+  using (id = auth.uid() or public.is_admin());
+
+-- Note:
+-- - Backend NO LONGER needs to insert into profile_roles.
+-- - Role defaults to 'student'. Admins can elevate to 'teacher'/'admin' manually.
+-- - This avoids RLS violations during signup entirely.
