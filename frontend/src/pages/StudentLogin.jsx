@@ -31,17 +31,18 @@ function StudentLogin() {
       return
     }
 
-    // TODO: Implement actual authentication API call
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Import auth service dynamically
+      const authService = (await import('../services/authService.js')).default
       
-      // For now, just navigate to dashboard
-      console.log('Student login:', formData)
+      // Call login API with student role
+      await authService.login(formData.email, formData.password, 'student')
+      
+      // Navigate to student dashboard on success
       navigate('/student/dashboard')
       
     } catch (err) {
-      setError('Invalid email or password')
+      setError(err.message || 'Invalid email or password')
     } finally {
       setLoading(false)
     }

@@ -54,17 +54,26 @@ function StudentRegister() {
       return
     }
 
-    // TODO: Implement actual registration API call
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Import auth service dynamically
+      const authService = (await import('../services/authService.js')).default
       
-      console.log('Student registration:', formData)
-      // navigate('/login/student')
-      alert('Registration functionality will be connected to backend. You will be assigned to your class based on the class code.')
+      // Call signup API with student role
+      await authService.signup({
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        role: 'student',
+        classCode: formData.classCode
+      })
+      
+      // Show success message and navigate to login
+      alert('Registration successful! You have been enrolled in your class. Please login to continue.')
+      navigate('/login/student')
       
     } catch (err) {
-      setError('Registration failed. Please try again.')
+      setError(err.message || 'Registration failed. Please try again.')
     } finally {
       setLoading(false)
     }
