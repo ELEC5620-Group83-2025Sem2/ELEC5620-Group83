@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import apiRoutes from './routes/api.js';
 import { authRoutes } from './routes/auth.js';
-import { aiRoutes } from './routes/agent.js';
+import { aiRoutes } from './routes/aiAgent.js';
 import { logger } from './middleware/logger.js';
 
 dotenv.config();
