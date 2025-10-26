@@ -120,6 +120,7 @@ Available variables:
 - `NODE_ENV` - Environment mode (development/production)
 - `SUPABASE_URL` - Supabase project URL (e.g. https://xyzcompany.supabase.co)
 - `SUPABASE_ANON_KEY` - Supabase anon/public key
+- `OPENAI_API_KEY` - OpenAI API key for AI features
 
 **Note:** Port 5000 is often used by macOS AirPlay Receiver, so we use port 3000 by default.
 
@@ -219,6 +220,7 @@ router.get('/users', getUsers);
 - `cors` - CORS middleware
 - `dotenv` - Environment variables
 - `@supabase/supabase-js` - Supabase client SDK
+- `openai` - OpenAI API client
 
 ### Development
 - `nodemon` - Auto-reload on file changes

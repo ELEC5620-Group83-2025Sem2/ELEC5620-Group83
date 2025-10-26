@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import apiRoutes from './routes/api.js';
 import { authRoutes } from './routes/auth.js';
+import { aiRoutes } from './routes/aiAgent.js';
 import { logger } from './middleware/logger.js';
 
 dotenv.config();
@@ -45,6 +46,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/ai-agent', aiRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
