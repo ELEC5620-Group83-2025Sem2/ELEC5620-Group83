@@ -7,6 +7,8 @@ import AssignmentsView from '../components/dashboard/AssignmentsView'
 import StudyPlannerView from '../components/dashboard/StudyPlannerView'
 import CareerView from '../components/dashboard/CareerView'
 import SettingsView from '../components/dashboard/SettingsView'
+import HSCSubjectsView from '../components/dashboard/HSCSubjectsView'
+import WeeklyReportView from '../components/dashboard/WeeklyReportView'
 import ClassDetailPage from '../components/dashboard/ClassDetailPage'
 import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
 import {
@@ -91,6 +93,10 @@ function StudentDashboard() {
         return <StudyPlannerView studyPlanSuggestions={studyPlanSuggestions} />
       case 'career':
         return <CareerView careerRecommendations={careerRecommendations} />
+      case 'hsc-subjects':
+        return <HSCSubjectsView />
+      case 'weekly-report':
+        return <WeeklyReportView />
       case 'settings':
         return <SettingsView studentData={studentData} />
       default:
@@ -114,6 +120,8 @@ function StudentDashboard() {
       assignments: 'Assignments',
       'study-planner': 'AI Study Planner',
       career: 'Career Recommendations',
+      'hsc-subjects': 'Browse HSC Subjects',
+      'weekly-report': 'Weekly Report',
       settings: 'Settings'
     }
     return titles[activeTab] || 'Dashboard'
@@ -172,6 +180,20 @@ function StudentDashboard() {
           >
             <span className="nav-icon">🎯</span>
             <span className="nav-label">Career Path</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'hsc-subjects' ? 'active' : ''}`}
+            onClick={() => handleTabChange('hsc-subjects')}
+          >
+            <span className="nav-icon">📖</span>
+            <span className="nav-label">HSC Subjects</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'weekly-report' ? 'active' : ''}`}
+            onClick={() => handleTabChange('weekly-report')}
+          >
+            <span className="nav-icon">📊</span>
+            <span className="nav-label">Weekly Report</span>
           </button>
         </nav>
 
