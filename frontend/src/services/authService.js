@@ -207,6 +207,66 @@ class AuthService {
       body: JSON.stringify(payload)
     });
   }
+
+  /**
+   * Request password reset email
+   * @param {string} email - User email
+   * @returns {Promise<Object>} Response message
+   */
+  async requestPasswordReset(email) {
+    const response = await fetch(`${API_BASE_URL}/auth/reset/request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to request password reset');
+    }
+
+    return data;
+  }
+
+  /**
+   * Confirm password reset with token
+   * @param {string} token - Reset token from email
+   * @param {string} password - New password
+   * @returns {Promise<Object>} Response message
+   */
+  async confirmPasswordReset(token, password) {
+    const response = await fetch(`${API_BASE_URL}/auth/reset/confirm`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, password }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to reset password');
+    }
+
+    return data;
+  }
+
+  /**
+   * Change password when logged in
+   * @param {string} currentPassword - Current password
+   * @param {string} newPassword - New password
+   * @returns {Promise<Object>} Response message
+   */
+  async changePassword(currentPassword, newPassword) {
+    return this.authenticatedRequest('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+  }
   
 }
 

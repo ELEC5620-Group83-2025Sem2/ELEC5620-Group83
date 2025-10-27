@@ -8,6 +8,16 @@ function SettingsView({ studentData, userProfile, onProfileUpdate }) {
   })
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
+  
+  // Password change state
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [passwordLoading, setPasswordLoading] = useState(false)
+  const [passwordMessage, setPasswordMessage] = useState({ type: '', text: '' })
 
   useEffect(() => {
     if (userProfile) {
@@ -57,6 +67,66 @@ function SettingsView({ studentData, userProfile, onProfileUpdate }) {
       setMessage({ type: 'error', text: error.message || 'Failed to update profile' })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePasswordChange = (e) => {
+    setPasswordData({
+      ...passwordData,
+      [e.target.name]: e.target.value
+    })
+  }
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault()
+    setPasswordLoading(true)
+    setPasswordMessage({ type: '', text: '' })
+
+    // Validation
+    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'All fields are required' })
+      setPasswordLoading(false)
+      return
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordMessage({ type: 'error', text: 'New password must be at least 6 characters' })
+      setPasswordLoading(false)
+      return
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'New passwords do not match' })
+      setPasswordLoading(false)
+      return
+    }
+
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      setPasswordMessage({ type: 'error', text: 'New password must be different from current password' })
+      setPasswordLoading(false)
+      return
+    }
+
+    try {
+      await authService.changePassword(passwordData.currentPassword, passwordData.newPassword)
+      
+      setPasswordMessage({ type: 'success', text: 'Password changed successfully!' })
+      
+      // Clear form after 2 seconds
+      setTimeout(() => {
+        setShowPasswordModal(false)
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        })
+        setPasswordMessage({ type: '', text: '' })
+      }, 2000)
+    } catch (error) {
+      console.error('Password change error:', error)
+      setPasswordMessage({ type: 'error', text: error.message || 'Failed to change password' })
+    } finally {
+      setPasswordLoading(false)
     }
   }
 
@@ -136,8 +206,82 @@ function SettingsView({ studentData, userProfile, onProfileUpdate }) {
 
       <section className="settings-section">
         <h3>Security</h3>
-        <button className="btn-secondary-action">Change Password</button>
+        <button 
+          className="btn-secondary-action"
+          onClick={() => setShowPasswordModal(true)}
+        >
+          Change Password
+        </button>
       </section>
+
+      {/* Password Change Modal */}
+      {showPasswordModal && (
+        <div className="modal-overlay" onClick={() => setShowPasswordModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Change Password</h3>
+            {passwordMessage.text && (
+              <div className={`message ${passwordMessage.type}`}>
+                {passwordMessage.text}
+              </div>
+            )}
+            <form onSubmit={handlePasswordSubmit}>
+              <div className="form-group">
+                <label>Current Password</label>
+                <input 
+                  type="password" 
+                  name="currentPassword"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="Enter current password"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>New Password</label>
+                <input 
+                  type="password" 
+                  name="newPassword"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="Enter new password (min 6 characters)"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Confirm New Password</label>
+                <input 
+                  type="password" 
+                  name="confirmPassword"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  placeholder="Confirm new password"
+                  required
+                />
+              </div>
+              <div className="modal-actions">
+                <button 
+                  type="button" 
+                  className="btn-cancel"
+                  onClick={() => {
+                    setShowPasswordModal(false)
+                    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+                    setPasswordMessage({ type: '', text: '' })
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn-confirm"
+                  disabled={passwordLoading}
+                >
+                  {passwordLoading ? 'Changing...' : 'Change Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
