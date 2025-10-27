@@ -914,32 +914,225 @@ export const studyPlanSuggestions = [
   }
 ]
 
-export const careerRecommendations = [
-  {
-    id: 1,
-    career: 'Data Scientist',
-    match: 95,
-    reason: 'Excellent performance in Mathematics and strong analytical skills',
-    averageSalary: '$120,000 - $180,000',
-    growthRate: 'Very High'
+export const careerRecommendations = {
+  recommended_subjects: [
+    {
+      subject: 'Mathematics Advanced',
+      why: 'Essential for algorithmic thinking and problem-solving in software development.'
+    },
+    {
+      subject: 'Mathematics Extension 1',
+      why: 'Develops advanced analytical skills and mathematical logic needed for computer science.'
+    },
+    {
+      subject: 'Software Design and Development',
+      why: 'Directly teaches programming fundamentals, algorithms, and software engineering principles.'
+    },
+    {
+      subject: 'Physics',
+      why: 'Strengthens logical reasoning and understanding of computational principles.'
+    }
+  ],
+  career_pathways: [
+    {
+      title: 'Data Scientist',
+      example_roles: [
+        'Machine Learning Engineer',
+        'Data Analyst',
+        'AI Research Scientist',
+        'Business Intelligence Analyst'
+      ],
+      salary_range: ['$120,000 - $180,000'],
+      'job growth': 'very high',
+      entry_routes: [
+        {
+          route: 'University',
+          example_degrees: [
+            'Bachelor of Data Science',
+            'Bachelor of Computer Science',
+            'Bachelor of Mathematics and Statistics'
+          ],
+          prerequisites_or_assumed: [
+            'Mathematics Extension 1 or 2',
+            'Physics or Chemistry'
+          ],
+          notes: 'Strong mathematical foundation is critical. ATAR typically 90-95+.'
+        },
+        {
+          route: 'VET/TAFE',
+          example_certificates: [
+            'Diploma of Data Science',
+            'Advanced Diploma in Information Technology'
+          ],
+          pathway_to_uni: 'Credits can be transferred to relevant bachelor degrees.'
+        }
+      ],
+      skills_to_build: [
+        'Python programming (Pandas, NumPy, Scikit-learn)',
+        'Statistics and probability',
+        'Data visualization',
+        'Machine learning algorithms',
+        'SQL databases',
+        'R programming'
+      ],
+      suggested_experiences: [
+        'Kaggle competitions',
+        'Data analysis projects',
+        'Research internships',
+        'Building predictive models',
+        'Participating in hackathons'
+      ]
+    },
+    {
+      title: 'Software Engineer',
+      example_roles: [
+        'Full-Stack Developer',
+        'Backend Engineer',
+        'Frontend Developer',
+        'DevOps Engineer'
+      ],
+      salary_range: ['$100,000 - $160,000'],
+      'job growth': 'very high',
+      entry_routes: [
+        {
+          route: 'University',
+          example_degrees: [
+            'Bachelor of Computer Science',
+            'Bachelor of Software Engineering',
+            'Bachelor of Information Technology'
+          ],
+          prerequisites_or_assumed: [
+            'Mathematics Advanced',
+            'Mathematics Extension 1 (recommended)'
+          ],
+          notes: 'ATAR typically 85-95+. Strong performance in mathematics and logical reasoning is essential.'
+        },
+        {
+          route: 'Bootcamp/Short Course',
+          example_certificates: [
+            'Full-Stack Development Bootcamp',
+            'General Assembly',
+            'Le Wagon'
+          ],
+          pathway_to_uni: 'Graduates can apply for graduate certificates and diplomas to enter university pathways.'
+        },
+        {
+          route: 'Self-Taught/Portfolio',
+          notes: 'Build a strong GitHub portfolio. Many successful engineers are self-taught with dedication and consistent practice.'
+        }
+      ],
+      skills_to_build: [
+        'Programming (Python, JavaScript, Java, C++)',
+        'Data structures and algorithms',
+        'Version control (Git)',
+        'Problem-solving and debugging',
+        'Team collaboration',
+        'Software architecture design'
+      ],
+      suggested_experiences: [
+        'Personal coding projects on GitHub',
+        'Internships at tech startups',
+        'Contributing to open-source projects',
+        'Participating in coding competitions (HackerRank, LeetCode)',
+        'Building mobile apps or web applications'
+      ]
+    },
+    {
+      title: 'Research Scientist',
+      example_roles: [
+        'Research Physicist',
+        'Materials Scientist',
+        'Climate Scientist',
+        'Biomedical Researcher'
+      ],
+      salary_range: ['$90,000 - $140,000'],
+      'job growth': 'moderate',
+      entry_routes: [
+        {
+          route: 'University',
+          example_degrees: [
+            'Bachelor of Science (Physics/Chemistry)',
+            'Bachelor of Engineering (Research track)',
+            'Bachelor of Biomedical Science'
+          ],
+          prerequisites_or_assumed: [
+            'Physics',
+            'Chemistry',
+            'Mathematics Extension 1 or 2'
+          ],
+          notes: 'ATAR typically 90-95+. Research experience through honors/masters/PhD is common pathway.'
+        },
+        {
+          route: 'VET/TAFE',
+          example_certificates: [
+            'Diploma of Laboratory Technology',
+            'Advanced Diploma in Applied Science'
+          ],
+          pathway_to_uni: 'Credits can provide entry into bachelor degree programs.'
+        }
+      ],
+      skills_to_build: [
+        'Statistical analysis',
+        'Laboratory techniques',
+        'Research methodology',
+        'Scientific writing',
+        'Data analysis software (R, MATLAB, Python)',
+        'Presentation and communication'
+      ],
+      suggested_experiences: [
+        'University research internships',
+        'Science competitions (Science Talent Search)',
+        'Laboratory work experience',
+        'Attending science conferences',
+        'Publishing research findings'
+      ]
+    }
+  ],
+  action_plan: {
+    near_term_1_3_months: [
+      'Focus on achieving strong grades in Mathematics and Physics',
+      'Start exploring programming with online tutorials (Codecademy, freeCodeCamp)',
+      'Create a GitHub account and begin documenting projects',
+      'Research university courses and admission requirements'
+    ],
+    mid_term_this_year: [
+      'Enroll in Mathematics Extension 1 or 2',
+      'Build a portfolio website showcasing your coding projects',
+      'Participate in science fairs, hackathons, or coding competitions',
+      'Seek mentorship from professionals in your target field',
+      'Join relevant student clubs or online communities'
+    ],
+    long_term_post_school: [
+      'Apply for computer science or data science degrees at top universities',
+      'Secure summer internships or graduate programs in tech companies',
+      'Earn industry certifications (AWS, Google Cloud, Microsoft Azure)',
+      'Build a strong professional network through LinkedIn',
+      'Consider postgraduate studies for research careers'
+    ]
   },
-  {
-    id: 2,
-    career: 'Software Engineer',
-    match: 92,
-    reason: 'Strong problem-solving abilities and technical aptitude',
-    averageSalary: '$100,000 - $160,000',
-    growthRate: 'High'
-  },
-  {
-    id: 3,
-    career: 'Research Scientist',
-    match: 88,
-    reason: 'Outstanding performance in Physics and Chemistry',
-    averageSalary: '$90,000 - $140,000',
-    growthRate: 'Moderate'
-  }
-]
+  resources: [
+    {
+      name: 'Australian Computer Society (ACS)',
+      purpose: 'Professional body providing networking, certifications, and career guidance for IT professionals.'
+    },
+    {
+      name: 'GitHub Student Pack',
+      purpose: 'Free developer tools and resources for students, including cloud credits and software licenses.'
+    },
+    {
+      name: 'Code.org and Khan Academy',
+      purpose: 'Free online courses in programming fundamentals and computer science concepts.'
+    },
+    {
+      name: 'LeetCode and HackerRank',
+      purpose: 'Practice coding problems and prepare for technical interviews at top tech companies.'
+    },
+    {
+      name: 'Australian Academy of Science',
+      purpose: 'Resources and programs for aspiring scientists including mentorship and research opportunities.'
+    }
+  ]
+}
 
 // HSC Subjects data
 export const hscSubjects = [
