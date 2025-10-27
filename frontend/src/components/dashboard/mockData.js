@@ -839,7 +839,26 @@ export const studyPlanSuggestions = [
     topic: 'Integration Techniques',
     reason: 'Based on your recent quiz performance',
     duration: '2 hours',
-    priority: 'high'
+    priority: 'high',
+    profileEvidence: [
+      'Your last Calculus quiz score was 72% - below your usual standard of 85%+',
+      'Integration appeared in 4 of the 6 questions you got wrong',
+      'Your study time for Mathematics has decreased by 30% this month',
+      'You marked "Calculus" as a challenging topic in your profile'
+    ],
+    curriculumRules: [
+      'HSC Mathematics Advanced requires mastery of integration for Section II',
+      'Integration represents 25% of the final exam content',
+      'This topic is a prerequisite for upcoming Differential Equations unit',
+      'NESA curriculum standard MA-C3.1 requires fluency in integration methods'
+    ],
+    performanceData: [
+      { label: 'Last Quiz', value: '72%', color: '#ed8936' },
+      { label: 'Topic Average', value: '68%', color: '#f56565' },
+      { label: 'Class Average', value: '78%', color: '#718096' },
+      { label: 'Target Score', value: '85%', color: '#48bb78' }
+    ],
+    expectedOutcome: 'With 2 hours of focused practice on integration techniques, we expect your understanding to improve by approximately 15-20 percentage points. This will bring you back to your target performance level and prepare you for the upcoming assessment.'
   },
   {
     id: 2,
@@ -847,7 +866,25 @@ export const studyPlanSuggestions = [
     topic: 'Literary Devices Review',
     reason: 'Upcoming essay due soon',
     duration: '1.5 hours',
-    priority: 'medium'
+    priority: 'medium',
+    profileEvidence: [
+      'Essay "Analysis of Modernist Poetry" is due in 3 days',
+      'Your essay drafts typically score 2-3 marks higher after literary device refinement',
+      'You spent 45 minutes on this topic last week, but marked it as "needs more work"',
+      'Your teacher\'s feedback emphasized "deeper analysis of literary techniques"'
+    ],
+    curriculumRules: [
+      'HSC English Advanced outcome EA11-3 requires analysis of complex texts using literary terms',
+      'Module B assessment criteria allocates 40% weighting to textual analysis',
+      'NESA syllabus requires demonstration of understanding of authorial choices',
+      'Literary devices are essential for Band 6 achievement in critical essays'
+    ],
+    performanceData: [
+      { label: 'Last Essay', value: 'B+', color: '#48bb78' },
+      { label: 'Literary Analysis', value: '18/25', color: '#ed8936' },
+      { label: 'Target', value: 'A', color: '#667eea' }
+    ],
+    expectedOutcome: 'Reviewing literary devices before your essay submission will help you achieve stronger textual analysis. Based on your writing patterns, this revision typically results in 2-3 additional marks, potentially lifting your grade from B+ to A range.'
   },
   {
     id: 3,
@@ -855,7 +892,25 @@ export const studyPlanSuggestions = [
     topic: 'Practice Problems - Momentum',
     reason: 'Strengthen your strongest subject',
     duration: '1 hour',
-    priority: 'low'
+    priority: 'low',
+    profileEvidence: [
+      'Physics is your highest-performing subject with 94% average',
+      'You consistently excel in mechanics problems',
+      'Last momentum test: 47/50 - only missed advanced application questions',
+      'Your study goal includes "achieve 95%+ in Physics to boost ATAR"'
+    ],
+    curriculumRules: [
+      'HSC Physics Module 4 - Momentum represents 15% of final exam',
+      'Advanced momentum problems appear in Section II (complex scenarios)',
+      'Mastery of momentum is required for university physics courses',
+      'NESA outcome PH11/12-6 requires application of conservation laws to complex systems'
+    ],
+    performanceData: [
+      { label: 'Current Average', value: '94%', color: '#48bb78' },
+      { label: 'Last Test', value: '47/50', color: '#48bb78' },
+      { label: 'Target', value: '95%+', color: '#667eea' }
+    ],
+    expectedOutcome: 'One hour of advanced momentum practice problems will help you master the complex application questions that currently challenge you. This focused practice can secure those final marks needed to consistently achieve 95%+, significantly boosting your ATAR contribution from Physics.'
   }
 ]
 
@@ -885,6 +940,1095 @@ export const careerRecommendations = [
     growthRate: 'Moderate'
   }
 ]
+
+// HSC Subjects data
+export const hscSubjects = [
+  {
+    id: 1,
+    code: 'MATH-ADV',
+    name: 'Mathematics Advanced',
+    category: 'Mathematics',
+    units: 2,
+    prerequisites: ['Mathematics Standard 2', 'Mathematics Extension 1'],
+    description: 'Advanced mathematics covering calculus, algebra, and mathematical reasoning. This course prepares students for tertiary mathematics and develops critical thinking skills.',
+    difficulty: 'High',
+    popularity: 85,
+    careerPaths: ['Engineering', 'Data Science', 'Actuarial Studies', 'Physics'],
+    atarContribution: 'High',
+    examType: 'Written',
+    practicalWork: 'Minimal',
+    recommendedFor: ['Students strong in algebra and problem-solving', 'Future STEM careers', 'University mathematics prerequisites']
+  },
+  {
+    id: 2,
+    code: 'MATH-EXT1',
+    name: 'Mathematics Extension 1',
+    category: 'Mathematics',
+    units: 1,
+    prerequisites: ['Mathematics Advanced'],
+    description: 'Extension mathematics building on Advanced Mathematics. Covers advanced calculus, complex numbers, and mathematical proof techniques.',
+    difficulty: 'Very High',
+    popularity: 45,
+    careerPaths: ['Engineering', 'Mathematics', 'Physics', 'Computer Science'],
+    atarContribution: 'Very High',
+    examType: 'Written',
+    practicalWork: 'None',
+    recommendedFor: ['Exceptional mathematics students', 'Future engineering/STEM careers', 'Students aiming for top universities']
+  },
+  {
+    id: 3,
+    code: 'MATH-EXT2',
+    name: 'Mathematics Extension 2',
+    category: 'Mathematics',
+    units: 1,
+    prerequisites: ['Mathematics Extension 1'],
+    description: 'The highest level of HSC mathematics. Covers advanced topics including complex analysis, mechanics, and advanced calculus.',
+    difficulty: 'Extreme',
+    popularity: 15,
+    careerPaths: ['Mathematics', 'Physics', 'Engineering', 'Actuarial Studies'],
+    atarContribution: 'Very High',
+    examType: 'Written',
+    practicalWork: 'None',
+    recommendedFor: ['Elite mathematics students', 'Future mathematicians/physicists', 'Students seeking maximum ATAR boost']
+  },
+  {
+    id: 4,
+    code: 'ENG-ADV',
+    name: 'English Advanced',
+    category: 'English',
+    units: 2,
+    prerequisites: ['English Standard'],
+    description: 'Advanced study of literature, critical analysis, and sophisticated writing techniques. Focus on complex texts and analytical skills.',
+    difficulty: 'High',
+    popularity: 70,
+    careerPaths: ['Law', 'Journalism', 'Literature', 'Communications'],
+    atarContribution: 'High',
+    examType: 'Written',
+    practicalWork: 'None',
+    recommendedFor: ['Strong readers and writers', 'Future humanities careers', 'Students with analytical thinking skills']
+  },
+  {
+    id: 5,
+    code: 'ENG-EXT1',
+    name: 'English Extension 1',
+    category: 'English',
+    units: 1,
+    prerequisites: ['English Advanced'],
+    description: 'Extension English focusing on critical and creative responses to literature. Develops sophisticated analytical and creative writing skills.',
+    difficulty: 'Very High',
+    popularity: 25,
+    careerPaths: ['Literature', 'Creative Writing', 'Journalism', 'Law'],
+    atarContribution: 'Very High',
+    examType: 'Written',
+    practicalWork: 'None',
+    recommendedFor: ['Exceptional English students', 'Future writers/editors', 'Students with strong creative abilities']
+  },
+  {
+    id: 6,
+    code: 'PHYS',
+    name: 'Physics',
+    category: 'Sciences',
+    units: 2,
+    prerequisites: ['Mathematics Advanced'],
+    description: 'Study of matter, energy, and their interactions. Covers mechanics, thermodynamics, waves, and electromagnetism with practical laboratory work.',
+    difficulty: 'High',
+    popularity: 60,
+    careerPaths: ['Engineering', 'Physics', 'Medicine', 'Research'],
+    atarContribution: 'High',
+    examType: 'Written + Practical',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Students strong in mathematics', 'Future STEM careers', 'Students interested in how things work']
+  },
+  {
+    id: 7,
+    code: 'CHEM',
+    name: 'Chemistry',
+    category: 'Sciences',
+    units: 2,
+    prerequisites: ['Mathematics Standard 2'],
+    description: 'Study of matter, chemical reactions, and molecular structures. Includes organic chemistry, thermodynamics, and laboratory work.',
+    difficulty: 'High',
+    popularity: 55,
+    careerPaths: ['Medicine', 'Pharmacy', 'Chemical Engineering', 'Research'],
+    atarContribution: 'High',
+    examType: 'Written + Practical',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Students interested in medicine', 'Future science careers', 'Students with good mathematical skills']
+  },
+  {
+    id: 8,
+    code: 'BIO',
+    name: 'Biology',
+    category: 'Sciences',
+    units: 2,
+    prerequisites: ['Chemistry recommended'],
+    description: 'Study of living organisms, genetics, evolution, and ecology. Includes practical work and field studies.',
+    difficulty: 'Medium',
+    popularity: 65,
+    careerPaths: ['Medicine', 'Veterinary Science', 'Biotechnology', 'Environmental Science'],
+    atarContribution: 'Medium',
+    examType: 'Written + Practical',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students interested in living things', 'Future medical careers', 'Students with good memory skills']
+  },
+  {
+    id: 9,
+    code: 'HIST-MOD',
+    name: 'Modern History',
+    category: 'Humanities',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of major events and developments from 1750 to present. Focus on historical analysis, research skills, and critical thinking.',
+    difficulty: 'Medium',
+    popularity: 40,
+    careerPaths: ['Law', 'Politics', 'Journalism', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written',
+    practicalWork: 'None',
+    recommendedFor: ['Students interested in current events', 'Future humanities careers', 'Students with analytical thinking']
+  },
+  {
+    id: 10,
+    code: 'GEO',
+    name: 'Geography',
+    category: 'Humanities',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of Earth\'s physical and human environments. Includes fieldwork, data analysis, and environmental issues.',
+    difficulty: 'Medium',
+    popularity: 35,
+    careerPaths: ['Environmental Science', 'Urban Planning', 'International Relations', 'Tourism'],
+    atarContribution: 'Medium',
+    examType: 'Written + Fieldwork',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students interested in the environment', 'Future planning careers', 'Students who enjoy fieldwork']
+  },
+  {
+    id: 11,
+    code: 'ECON',
+    name: 'Economics',
+    category: 'Business',
+    units: 2,
+    prerequisites: ['Mathematics Standard 2 recommended'],
+    description: 'Study of how societies use resources. Covers microeconomics, macroeconomics, and economic policy analysis.',
+    difficulty: 'Medium',
+    popularity: 30,
+    careerPaths: ['Business', 'Finance', 'Government', 'International Relations'],
+    atarContribution: 'Medium',
+    examType: 'Written',
+    practicalWork: 'Minimal',
+    recommendedFor: ['Students interested in business', 'Future economics careers', 'Students with analytical skills']
+  },
+  {
+    id: 12,
+    code: 'BUS-STUD',
+    name: 'Business Studies',
+    category: 'Business',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of business operations, management, marketing, and finance. Includes case studies and practical business scenarios.',
+    difficulty: 'Low',
+    popularity: 50,
+    careerPaths: ['Business Management', 'Marketing', 'Entrepreneurship', 'Finance'],
+    atarContribution: 'Low',
+    examType: 'Written',
+    practicalWork: 'Minimal',
+    recommendedFor: ['Students interested in business', 'Future entrepreneurs', 'Students with practical thinking']
+  },
+  {
+    id: 13,
+    code: 'PDHPE',
+    name: 'PDHPE',
+    category: 'Health',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of health, physical activity, and personal development. Covers anatomy, physiology, and health promotion.',
+    difficulty: 'Low',
+    popularity: 45,
+    careerPaths: ['Physiotherapy', 'Sports Science', 'Health Promotion', 'Education'],
+    atarContribution: 'Low',
+    examType: 'Written + Practical',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students interested in health', 'Future health careers', 'Students who enjoy physical activity']
+  },
+  {
+    id: 14,
+    code: 'VIS-ART',
+    name: 'Visual Arts',
+    category: 'Creative Arts',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of art history, theory, and practice. Includes creating artworks and analyzing artistic movements.',
+    difficulty: 'Medium',
+    popularity: 25,
+    careerPaths: ['Fine Arts', 'Design', 'Art Education', 'Museum Studies'],
+    atarContribution: 'Low',
+    examType: 'Written + Practical',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Creative students', 'Future artists/designers', 'Students with artistic ability']
+  },
+  {
+    id: 15,
+    code: 'MUS',
+    name: 'Music',
+    category: 'Creative Arts',
+    units: 2,
+    prerequisites: ['Music experience recommended'],
+    description: 'Study of music theory, history, and performance. Includes composition, analysis, and performance skills.',
+    difficulty: 'Medium',
+    popularity: 20,
+    careerPaths: ['Music Performance', 'Music Education', 'Sound Engineering', 'Music Therapy'],
+    atarContribution: 'Low',
+    examType: 'Written + Performance',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Musical students', 'Future musicians', 'Students with performance skills']
+  },
+  {
+    id: 16,
+    code: 'LANG-FR',
+    name: 'French',
+    category: 'Languages',
+    units: 2,
+    prerequisites: ['French Continuers or equivalent'],
+    description: 'Advanced study of French language and culture. Focus on communication, literature, and cultural understanding.',
+    difficulty: 'High',
+    popularity: 15,
+    careerPaths: ['International Relations', 'Translation', 'Tourism', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written + Oral',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students with French background', 'Future international careers', 'Students interested in languages']
+  },
+  {
+    id: 17,
+    code: 'LANG-JP',
+    name: 'Japanese',
+    category: 'Languages',
+    units: 2,
+    prerequisites: ['Japanese Continuers or equivalent'],
+    description: 'Advanced study of Japanese language and culture. Includes kanji, grammar, and cultural studies.',
+    difficulty: 'High',
+    popularity: 20,
+    careerPaths: ['International Business', 'Translation', 'Tourism', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written + Oral',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students with Japanese background', 'Future Asia-focused careers', 'Students interested in Japanese culture']
+  },
+  {
+    id: 18,
+    code: 'COMP-SCI',
+    name: 'Software Design and Development',
+    category: 'Technology',
+    units: 2,
+    prerequisites: ['Mathematics Standard 2 recommended'],
+    description: 'Study of software development, programming, and computer systems. Includes practical programming projects.',
+    difficulty: 'High',
+    popularity: 40,
+    careerPaths: ['Software Engineering', 'Computer Science', 'Information Technology', 'Game Development'],
+    atarContribution: 'Medium',
+    examType: 'Written + Practical',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Students interested in technology', 'Future IT careers', 'Students with logical thinking']
+  },
+  {
+    id: 19,
+    code: 'ENG-STUD',
+    name: 'Engineering Studies',
+    category: 'Technology',
+    units: 2,
+    prerequisites: ['Mathematics Advanced', 'Physics recommended'],
+    description: 'Study of engineering principles, materials, and systems. Includes practical engineering projects and analysis.',
+    difficulty: 'Very High',
+    popularity: 25,
+    careerPaths: ['Engineering', 'Architecture', 'Manufacturing', 'Research'],
+    atarContribution: 'High',
+    examType: 'Written + Practical',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Future engineers', 'Students strong in mathematics and physics', 'Students interested in problem-solving']
+  },
+  {
+    id: 20,
+    code: 'LEG-STUD',
+    name: 'Legal Studies',
+    category: 'Humanities',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of law, legal systems, and justice. Covers criminal law, civil law, and legal processes.',
+    difficulty: 'Medium',
+    popularity: 35,
+    careerPaths: ['Law', 'Politics', 'Criminology', 'Social Work'],
+    atarContribution: 'Medium',
+    examType: 'Written',
+    practicalWork: 'Minimal',
+    recommendedFor: ['Future lawyers', 'Students interested in justice', 'Students with analytical skills']
+  }
+]
+
+// Study Plan data model
+export const studyPlan = {
+  id: 1,
+  studentId: 'STU2025001',
+  name: 'My HSC Study Plan',
+  totalUnits: 0,
+  maxUnits: 10,
+  subjects: [],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
+}
+
+// Helper functions for study plan
+export const addSubjectToPlan = (plan, subject) => {
+  const newTotalUnits = plan.totalUnits + subject.units
+  
+  // Check unit limit
+  if (newTotalUnits > plan.maxUnits) {
+    return {
+      success: false,
+      error: `Adding this subject would exceed the maximum ${plan.maxUnits} units limit. Current: ${plan.totalUnits} units, Subject: ${subject.units} units, Total would be: ${newTotalUnits} units`
+    }
+  }
+  
+  // Check if subject already exists
+  if (plan.subjects.some(s => s.id === subject.id)) {
+    return {
+      success: false,
+      error: 'This subject is already in your study plan'
+    }
+  }
+  
+  // Check for conflicts (prerequisites)
+  const conflicts = checkPrerequisiteConflicts(plan, subject)
+  if (conflicts.length > 0) {
+    return {
+      success: false,
+      error: `Prerequisite conflicts: ${conflicts.join(', ')}`
+    }
+  }
+  
+  const updatedPlan = {
+    ...plan,
+    subjects: [...plan.subjects, subject],
+    totalUnits: newTotalUnits,
+    updatedAt: new Date().toISOString()
+  }
+  
+  return {
+    success: true,
+    plan: updatedPlan
+  }
+}
+
+export const removeSubjectFromPlan = (plan, subjectId) => {
+  const subject = plan.subjects.find(s => s.id === subjectId)
+  if (!subject) {
+    return {
+      success: false,
+      error: 'Subject not found in study plan'
+    }
+  }
+  
+  const updatedPlan = {
+    ...plan,
+    subjects: plan.subjects.filter(s => s.id !== subjectId),
+    totalUnits: plan.totalUnits - subject.units,
+    updatedAt: new Date().toISOString()
+  }
+  
+  return {
+    success: true,
+    plan: updatedPlan
+  }
+}
+
+export const checkPrerequisiteConflicts = (plan, subject) => {
+  const conflicts = []
+  
+  // Check if any existing subjects in the plan are prerequisites for the new subject
+  subject.prerequisites.forEach(prereq => {
+    if (prereq !== 'None' && !plan.subjects.some(s => s.name === prereq)) {
+      conflicts.push(`${subject.name} requires ${prereq} but it's not in your plan`)
+    }
+  })
+  
+  // Check if the new subject is a prerequisite for any existing subjects
+  plan.subjects.forEach(existingSubject => {
+    if (existingSubject.prerequisites.includes(subject.name)) {
+      conflicts.push(`${existingSubject.name} requires ${subject.name} as a prerequisite`)
+    }
+  })
+  
+  return conflicts
+}
+
+export const getPlanWarnings = (plan) => {
+  const warnings = []
+  
+  // Check if plan is empty
+  if (plan.subjects.length === 0) {
+    warnings.push('Your study plan is empty. Consider adding subjects to build your HSC lineup.')
+  }
+  
+  // Check if approaching unit limit
+  if (plan.totalUnits >= plan.maxUnits * 0.8) {
+    warnings.push(`You're using ${plan.totalUnits}/${plan.maxUnits} units. Consider your remaining unit allocation carefully.`)
+  }
+  
+  // Check for missing prerequisites
+  plan.subjects.forEach(subject => {
+    subject.prerequisites.forEach(prereq => {
+      if (prereq !== 'None' && !plan.subjects.some(s => s.name === prereq)) {
+        warnings.push(`${subject.name} requires ${prereq} as a prerequisite`)
+      }
+    })
+  })
+  
+  // Check for subject category balance
+  const categories = {}
+  plan.subjects.forEach(subject => {
+    categories[subject.category] = (categories[subject.category] || 0) + 1
+  })
+  
+  if (Object.keys(categories).length < 2) {
+    warnings.push('Consider diversifying your subject selection across different categories')
+  }
+  
+  return warnings
+}
+
+// Weekly Report data and functions
+export const weeklyStudyData = {
+  week: 'Week 8 (Oct 15-21, 2025)',
+  totalStudyTime: 28.5, // hours
+  studySessions: 12,
+  averageSessionLength: 2.4, // hours
+  subjects: [
+    {
+      name: 'Mathematics Advanced',
+      studyTime: 8.5,
+      sessions: 4,
+      lastStudied: '2025-10-20',
+      topics: ['Integration', 'Trigonometry', 'Calculus'],
+      difficulty: 'High',
+      progress: 75
+    },
+    {
+      name: 'English Advanced',
+      studyTime: 6.0,
+      sessions: 3,
+      lastStudied: '2025-10-19',
+      topics: ['Shakespeare Analysis', 'Essay Writing', 'Literary Devices'],
+      difficulty: 'Medium',
+      progress: 68
+    },
+    {
+      name: 'Physics',
+      studyTime: 7.0,
+      sessions: 3,
+      lastStudied: '2025-10-21',
+      topics: ['Mechanics', 'Thermodynamics', 'Waves'],
+      difficulty: 'High',
+      progress: 82
+    },
+    {
+      name: 'Chemistry',
+      studyTime: 4.5,
+      sessions: 2,
+      lastStudied: '2025-10-18',
+      topics: ['Organic Chemistry', 'Chemical Equilibrium'],
+      difficulty: 'High',
+      progress: 71
+    },
+    {
+      name: 'Biology',
+      studyTime: 2.5,
+      sessions: 1,
+      lastStudied: '2025-10-17',
+      topics: ['Genetics', 'Evolution'],
+      difficulty: 'Medium',
+      progress: 65
+    }
+  ],
+  assignments: [
+    {
+      subject: 'Mathematics Advanced',
+      title: 'Calculus Problem Set 5',
+      dueDate: '2025-10-18',
+      timeSpent: 3.5,
+      status: 'completed',
+      grade: 'A'
+    },
+    {
+      subject: 'English Advanced',
+      title: 'Essay: Shakespeare Analysis',
+      dueDate: '2025-10-20',
+      timeSpent: 4.0,
+      status: 'completed',
+      grade: 'B+'
+    },
+    {
+      subject: 'Physics',
+      title: 'Lab Report: Thermodynamics',
+      dueDate: '2025-10-22',
+      timeSpent: 2.0,
+      status: 'in-progress',
+      grade: null
+    }
+  ],
+  upcomingDeadlines: [
+    {
+      subject: 'Chemistry',
+      title: 'Organic Chemistry Quiz',
+      dueDate: '2025-10-26',
+      priority: 'high'
+    },
+    {
+      subject: 'Mathematics Advanced',
+      title: 'Algebra Quiz 4',
+      dueDate: '2025-10-25',
+      priority: 'medium'
+    },
+    {
+      subject: 'English Advanced',
+      title: 'Poetry Creative Writing Project',
+      dueDate: '2025-10-28',
+      priority: 'medium'
+    }
+  ]
+}
+
+// Helper functions for weekly report
+export const getTopFocusAreas = (studyData) => {
+  // Sort subjects by study time and identify areas needing attention
+  const sortedSubjects = studyData.subjects
+    .sort((a, b) => a.studyTime - b.studyTime) // Least studied first
+    .slice(0, 3)
+  
+  return sortedSubjects.map(subject => ({
+    subject: subject.name,
+    reason: `Only ${subject.studyTime} hours studied this week`,
+    recommendation: `Increase study time to at least 6 hours per week`,
+    priority: subject.studyTime < 3 ? 'High' : subject.studyTime < 5 ? 'Medium' : 'Low'
+  }))
+}
+
+export const getStudyTimeSummary = (studyData) => {
+  const totalTime = studyData.totalStudyTime
+  const targetTime = 30 // hours per week
+  const efficiency = (totalTime / studyData.studySessions).toFixed(1)
+  
+  return {
+    totalHours: totalTime,
+    targetHours: targetTime,
+    completionRate: Math.round((totalTime / targetTime) * 100),
+    averageSession: efficiency,
+    recommendation: totalTime < targetTime * 0.8 
+      ? 'Consider increasing your study time to meet weekly targets'
+      : totalTime > targetTime * 1.2
+      ? 'Great job! You\'re exceeding your study targets'
+      : 'Good study balance! Keep up the consistent effort'
+  }
+}
+
+export const getWeeklyInsights = (studyData) => {
+  const insights = []
+  
+  // Study consistency
+  const dailyAverage = studyData.totalStudyTime / 7
+  if (dailyAverage < 3) {
+    insights.push({
+      type: 'warning',
+      title: 'Study Consistency',
+      message: 'Consider spreading your study time more evenly across the week'
+    })
+  }
+  
+  // Subject balance
+  const subjectTimes = studyData.subjects.map(s => s.studyTime)
+  const maxTime = Math.max(...subjectTimes)
+  const minTime = Math.min(...subjectTimes)
+  
+  if (maxTime - minTime > 5) {
+    insights.push({
+      type: 'info',
+      title: 'Subject Balance',
+      message: 'Some subjects are getting significantly more attention than others'
+    })
+  }
+  
+  // Upcoming deadlines
+  const urgentDeadlines = studyData.upcomingDeadlines.filter(d => d.priority === 'high')
+  if (urgentDeadlines.length > 0) {
+    insights.push({
+      type: 'urgent',
+      title: 'Upcoming Deadlines',
+      message: `${urgentDeadlines.length} high-priority assignments due soon`
+    })
+  }
+  
+  return insights
+}
+
+export const generateWeeklyReport = (studyData) => {
+  const topFocusAreas = getTopFocusAreas(studyData)
+  const studySummary = getStudyTimeSummary(studyData)
+  const insights = getWeeklyInsights(studyData)
+  
+  return {
+    week: studyData.week,
+    topFocusAreas,
+    studySummary,
+    insights,
+    subjects: studyData.subjects,
+    assignments: studyData.assignments,
+    upcomingDeadlines: studyData.upcomingDeadlines,
+    generatedAt: new Date().toISOString()
+  }
+}
+
+// Incorrect Questions Data and Functions
+export const incorrectQuestions = [
+  {
+    id: 1,
+    question: "Solve for x: 2x + 5 = 13",
+    correctAnswer: "x = 4",
+    studentAnswer: "x = 3",
+    explanation: "To solve this equation, subtract 5 from both sides: 2x = 8, then divide by 2: x = 4",
+    topic: "Linear Equations",
+    subject: "Mathematics Advanced",
+    difficulty: "Easy",
+    dateAnswered: "2025-10-15",
+    assignment: "Algebra Quiz 3",
+    reviewCount: 0,
+    lastReviewed: null,
+    nextReviewDate: null,
+    masteryLevel: "Needs Review"
+  },
+  {
+    id: 2,
+    question: "What is the derivative of x² + 3x + 2?",
+    correctAnswer: "2x + 3",
+    studentAnswer: "x + 3",
+    explanation: "The derivative of x² is 2x, and the derivative of 3x is 3. The derivative of a constant (2) is 0.",
+    topic: "Calculus",
+    subject: "Mathematics Advanced",
+    difficulty: "Medium",
+    dateAnswered: "2025-10-12",
+    assignment: "Calculus Problem Set 2",
+    reviewCount: 1,
+    lastReviewed: "2025-10-18",
+    nextReviewDate: "2025-10-25",
+    masteryLevel: "Learning"
+  },
+  {
+    id: 3,
+    question: "Identify the literary device in: 'The stars danced playfully in the moonlit sky.'",
+    correctAnswer: "Personification",
+    studentAnswer: "Metaphor",
+    explanation: "Personification gives human characteristics to non-human things. Stars cannot literally dance, so this is personification.",
+    topic: "Literary Devices",
+    subject: "English Advanced",
+    difficulty: "Medium",
+    dateAnswered: "2025-10-10",
+    assignment: "Literary Analysis Quiz",
+    reviewCount: 2,
+    lastReviewed: "2025-10-20",
+    nextReviewDate: "2025-10-27",
+    masteryLevel: "Practicing"
+  },
+  {
+    id: 4,
+    question: "Calculate the force required to accelerate a 5kg object at 3 m/s²",
+    correctAnswer: "15 N",
+    studentAnswer: "8 N",
+    explanation: "Using F = ma, F = 5kg × 3 m/s² = 15 N",
+    topic: "Newton's Laws",
+    subject: "Physics",
+    difficulty: "Easy",
+    dateAnswered: "2025-10-08",
+    assignment: "Physics Quiz 4",
+    reviewCount: 0,
+    lastReviewed: null,
+    nextReviewDate: null,
+    masteryLevel: "Needs Review"
+  },
+  {
+    id: 5,
+    question: "What is the pH of a 0.1 M HCl solution?",
+    correctAnswer: "1",
+    studentAnswer: "2",
+    explanation: "HCl is a strong acid that completely dissociates. pH = -log[H⁺] = -log(0.1) = 1",
+    topic: "Acids and Bases",
+    subject: "Chemistry",
+    difficulty: "Medium",
+    dateAnswered: "2025-10-05",
+    assignment: "Chemistry Test 2",
+    reviewCount: 1,
+    lastReviewed: "2025-10-19",
+    nextReviewDate: "2025-10-26",
+    masteryLevel: "Learning"
+  },
+  {
+    id: 6,
+    question: "What is the probability of rolling a 6 on a fair die?",
+    correctAnswer: "1/6",
+    studentAnswer: "1/3",
+    explanation: "A fair die has 6 faces, only one shows 6. Probability = 1/6",
+    topic: "Probability",
+    subject: "Mathematics Advanced",
+    difficulty: "Easy",
+    dateAnswered: "2025-10-03",
+    assignment: "Statistics Quiz",
+    reviewCount: 3,
+    lastReviewed: "2025-10-21",
+    nextReviewDate: "2025-11-04",
+    masteryLevel: "Mastered"
+  }
+]
+
+// Helper functions for incorrect questions
+export const getQuestionsByTopic = (topic) => {
+  return incorrectQuestions.filter(q => q.topic === topic)
+}
+
+export const getQuestionsBySubject = (subject) => {
+  return incorrectQuestions.filter(q => q.subject === subject)
+}
+
+export const getQuestionsByMasteryLevel = (level) => {
+  return incorrectQuestions.filter(q => q.masteryLevel === level)
+}
+
+export const getQuestionsForReview = () => {
+  const today = new Date()
+  return incorrectQuestions.filter(q => {
+    if (!q.nextReviewDate) return q.masteryLevel === "Needs Review"
+    return new Date(q.nextReviewDate) <= today
+  })
+}
+
+export const updateQuestionReview = (questionId, isCorrect) => {
+  const question = incorrectQuestions.find(q => q.id === questionId)
+  if (!question) return null
+
+  const today = new Date()
+  question.reviewCount += 1
+  question.lastReviewed = today.toISOString().split('T')[0]
+
+  // Spaced repetition algorithm
+  let daysToAdd = 1
+  if (isCorrect) {
+    if (question.reviewCount === 1) daysToAdd = 1
+    else if (question.reviewCount === 2) daysToAdd = 3
+    else if (question.reviewCount === 3) daysToAdd = 7
+    else if (question.reviewCount === 4) daysToAdd = 14
+    else daysToAdd = 30
+
+    // Update mastery level
+    if (question.reviewCount >= 5) question.masteryLevel = "Mastered"
+    else if (question.reviewCount >= 3) question.masteryLevel = "Practicing"
+    else question.masteryLevel = "Learning"
+  } else {
+    // Reset if incorrect
+    question.masteryLevel = "Needs Review"
+    daysToAdd = 1
+  }
+
+  const nextReview = new Date(today)
+  nextReview.setDate(today.getDate() + daysToAdd)
+  question.nextReviewDate = nextReview.toISOString().split('T')[0]
+
+  return question
+}
+
+export const getReviewStats = () => {
+  const total = incorrectQuestions.length
+  const needsReview = incorrectQuestions.filter(q => q.masteryLevel === "Needs Review").length
+  const learning = incorrectQuestions.filter(q => q.masteryLevel === "Learning").length
+  const practicing = incorrectQuestions.filter(q => q.masteryLevel === "Practicing").length
+  const mastered = incorrectQuestions.filter(q => q.masteryLevel === "Mastered").length
+  const dueForReview = getQuestionsForReview().length
+
+  return {
+    total,
+    needsReview,
+    learning,
+    practicing,
+    mastered,
+    dueForReview,
+    masteryRate: Math.round((mastered / total) * 100)
+  }
+}
+
+// Study Plans Data for Comparison
+export const studyPlans = [
+  {
+    id: 1,
+    name: "Balanced Plan",
+    description: "A well-rounded approach covering all subjects evenly",
+    totalHours: 25,
+    weeklyHours: 25,
+    difficulty: "Medium",
+    riskLevel: "Low",
+    subjects: [
+      { name: "Mathematics Advanced", hours: 6, difficulty: "High", priority: "High" },
+      { name: "English Advanced", hours: 5, difficulty: "Medium", priority: "High" },
+      { name: "Physics", hours: 5, difficulty: "High", priority: "Medium" },
+      { name: "Chemistry", hours: 5, difficulty: "High", priority: "Medium" },
+      { name: "Biology", hours: 4, difficulty: "Medium", priority: "Low" }
+    ],
+    strengths: [
+      "Even distribution of study time",
+      "Manageable workload",
+      "Low risk of burnout",
+      "Good work-life balance"
+    ],
+    weaknesses: [
+      "May not focus enough on weak areas",
+      "Slower progress in challenging subjects"
+    ],
+    recommendedFor: "Students who prefer steady, consistent progress",
+    successRate: 85,
+    stress: "Low",
+    flexibility: "High"
+  },
+  {
+    id: 2,
+    name: "Intensive Plan",
+    description: "Aggressive study schedule for maximum results",
+    totalHours: 40,
+    weeklyHours: 40,
+    difficulty: "High",
+    riskLevel: "High",
+    subjects: [
+      { name: "Mathematics Advanced", hours: 10, difficulty: "High", priority: "High" },
+      { name: "English Advanced", hours: 8, difficulty: "Medium", priority: "High" },
+      { name: "Physics", hours: 8, difficulty: "High", priority: "High" },
+      { name: "Chemistry", hours: 8, difficulty: "High", priority: "Medium" },
+      { name: "Biology", hours: 6, difficulty: "Medium", priority: "Medium" }
+    ],
+    strengths: [
+      "Rapid skill development",
+      "Deep understanding of concepts",
+      "High potential for top grades",
+      "Comprehensive coverage"
+    ],
+    weaknesses: [
+      "High risk of burnout",
+      "Limited free time",
+      "Requires strong discipline",
+      "May be overwhelming"
+    ],
+    recommendedFor: "Highly motivated students aiming for top ATAR scores",
+    successRate: 70,
+    stress: "High",
+    flexibility: "Low"
+  },
+  {
+    id: 3,
+    name: "Focus on Weak Areas",
+    description: "Targeted approach prioritizing subjects that need improvement",
+    totalHours: 28,
+    weeklyHours: 28,
+    difficulty: "Medium",
+    riskLevel: "Medium",
+    subjects: [
+      { name: "Mathematics Advanced", hours: 10, difficulty: "High", priority: "High" },
+      { name: "Physics", hours: 8, difficulty: "High", priority: "High" },
+      { name: "Chemistry", hours: 6, difficulty: "High", priority: "Medium" },
+      { name: "English Advanced", hours: 3, difficulty: "Medium", priority: "Low" },
+      { name: "Biology", hours: 1, difficulty: "Medium", priority: "Low" }
+    ],
+    strengths: [
+      "Addresses weak points directly",
+      "Efficient use of study time",
+      "Potential for significant improvement",
+      "Strategic approach"
+    ],
+    weaknesses: [
+      "May neglect strong subjects",
+      "Uneven workload distribution",
+      "Risk of losing edge in easier subjects"
+    ],
+    recommendedFor: "Students with clear areas needing improvement",
+    successRate: 78,
+    stress: "Medium",
+    flexibility: "Medium"
+  },
+  {
+    id: 4,
+    name: "Exam-Focused Plan",
+    description: "Strategic plan optimized for exam preparation",
+    totalHours: 30,
+    weeklyHours: 30,
+    difficulty: "Medium",
+    riskLevel: "Low",
+    subjects: [
+      { name: "Mathematics Advanced", hours: 7, difficulty: "High", priority: "High" },
+      { name: "English Advanced", hours: 6, difficulty: "Medium", priority: "High" },
+      { name: "Physics", hours: 6, difficulty: "High", priority: "High" },
+      { name: "Chemistry", hours: 6, difficulty: "High", priority: "Medium" },
+      { name: "Biology", hours: 5, difficulty: "Medium", priority: "Medium" }
+    ],
+    strengths: [
+      "Optimized for exam success",
+      "Practice-focused approach",
+      "Proven strategies",
+      "Balanced coverage"
+    ],
+    weaknesses: [
+      "Less emphasis on deep learning",
+      "May feel repetitive",
+      "Requires consistent practice"
+    ],
+    recommendedFor: "Students preparing for upcoming HSC exams",
+    successRate: 88,
+    stress: "Medium",
+    flexibility: "Medium"
+  }
+]
+
+// Helper functions for plan comparison
+export const comparePlans = (planIds) => {
+  return studyPlans.filter(plan => planIds.includes(plan.id))
+}
+
+export const calculatePlanMetrics = (plan) => {
+  const avgDifficulty = plan.subjects.reduce((acc, subject) => {
+    const difficultyScore = subject.difficulty === 'High' ? 3 : subject.difficulty === 'Medium' ? 2 : 1
+    return acc + difficultyScore
+  }, 0) / plan.subjects.length
+
+  const workloadScore = (plan.weeklyHours / 40) * 100 // Normalized to 40 hours max
+  const riskScore = plan.riskLevel === 'High' ? 80 : plan.riskLevel === 'Medium' ? 50 : 20
+
+  return {
+    workload: Math.round(workloadScore),
+    difficulty: Math.round((avgDifficulty / 3) * 100),
+    risk: riskScore,
+    successRate: plan.successRate
+  }
+}
+
+export const getPlanDifferences = (plan1, plan2) => {
+  const metrics1 = calculatePlanMetrics(plan1)
+  const metrics2 = calculatePlanMetrics(plan2)
+
+  return {
+    workload: metrics2.workload - metrics1.workload,
+    difficulty: metrics2.difficulty - metrics1.difficulty,
+    risk: metrics2.risk - metrics1.risk,
+    hours: plan2.weeklyHours - plan1.weeklyHours
+  }
+}
+
+// University Course Mapping Data
+export const universityCourses = [
+  {
+    id: 1,
+    courseName: "Bachelor of Engineering (Software)",
+    university: "University of Sydney",
+    requiredSubjects: ["Mathematics Advanced", "Physics"],
+    coreSubjects: ["Mathematics Extension 1"],
+    desirableSubjects: ["Mathematics Extension 2", "Chemistry"],
+    atarRequirement: 95,
+    description: "Comprehensive software engineering program covering algorithms, systems design, and software development.",
+    careerOutcomes: ["Software Engineer", "Systems Architect", "Tech Lead"]
+  },
+  {
+    id: 2,
+    courseName: "Bachelor of Science (Computer Science)",
+    university: "UNSW Sydney",
+    requiredSubjects: ["Mathematics Advanced"],
+    coreSubjects: ["Mathematics Extension 1", "Physics"],
+    desirableSubjects: ["Mathematics Extension 2", "Chemistry"],
+    atarRequirement: 90,
+    description: "Focus on computational theory, programming, and data structures.",
+    careerOutcomes: ["Software Developer", "Data Scientist", "AI Researcher"]
+  },
+  {
+    id: 3,
+    courseName: "Bachelor of Medicine",
+    university: "University of Sydney",
+    requiredSubjects: ["Chemistry", "Biology"],
+    coreSubjects: ["Physics", "Mathematics Advanced"],
+    desirableSubjects: ["English Advanced"],
+    atarRequirement: 99.5,
+    description: "Medical degree preparing students for clinical practice.",
+    careerOutcomes: ["Doctor", "Surgeon", "Medical Researcher"]
+  },
+  {
+    id: 4,
+    courseName: "Bachelor of Arts (English Literature)",
+    university: "Macquarie University",
+    requiredSubjects: ["English Advanced"],
+    coreSubjects: [],
+    desirableSubjects: ["History", "Legal Studies"],
+    atarRequirement: 80,
+    description: "Study of literature, critical analysis, and creative writing.",
+    careerOutcomes: ["Writer", "Editor", "Teacher", "Journalist"]
+  },
+  {
+    id: 5,
+    courseName: "Bachelor of Engineering (Electrical)",
+    university: "UTS",
+    requiredSubjects: ["Mathematics Advanced", "Physics"],
+    coreSubjects: ["Mathematics Extension 1"],
+    desirableSubjects: ["Mathematics Extension 2", "Chemistry"],
+    atarRequirement: 88,
+    description: "Electrical systems, power engineering, and electronics.",
+    careerOutcomes: ["Electrical Engineer", "Power Systems Engineer", "Electronics Designer"]
+  },
+  {
+    id: 6,
+    courseName: "Bachelor of Science (Chemistry)",
+    university: "University of Sydney",
+    requiredSubjects: ["Chemistry", "Mathematics Advanced"],
+    coreSubjects: ["Physics"],
+    desirableSubjects: ["Biology", "Mathematics Extension 1"],
+    atarRequirement: 85,
+    description: "Advanced study of chemical principles and laboratory techniques.",
+    careerOutcomes: ["Chemist", "Research Scientist", "Quality Control Analyst"]
+  },
+  {
+    id: 7,
+    courseName: "Bachelor of Laws",
+    university: "UNSW Sydney",
+    requiredSubjects: ["English Advanced"],
+    coreSubjects: ["Legal Studies"],
+    desirableSubjects: ["History", "Economics"],
+    atarRequirement: 97,
+    description: "Comprehensive legal education covering various areas of law.",
+    careerOutcomes: ["Lawyer", "Barrister", "Legal Advisor"]
+  },
+  {
+    id: 8,
+    courseName: "Bachelor of Science (Physics)",
+    university: "ANU",
+    requiredSubjects: ["Physics", "Mathematics Advanced"],
+    coreSubjects: ["Mathematics Extension 1"],
+    desirableSubjects: ["Mathematics Extension 2", "Chemistry"],
+    atarRequirement: 90,
+    description: "Study of fundamental physical principles and quantum mechanics.",
+    careerOutcomes: ["Physicist", "Research Scientist", "Data Analyst"]
+  }
+]
+
+// Helper function to get courses by HSC subject
+export const getCoursesBySubject = (subjectName) => {
+  return universityCourses.filter(course => 
+    course.requiredSubjects.includes(subjectName) ||
+    course.coreSubjects.includes(subjectName) ||
+    course.desirableSubjects.includes(subjectName)
+  )
+}
+
+export const getSubjectRequirementType = (course, subjectName) => {
+  if (course.requiredSubjects.includes(subjectName)) return 'Required'
+  if (course.coreSubjects.includes(subjectName)) return 'Core'
+  if (course.desirableSubjects.includes(subjectName)) return 'Desirable'
+  return null
+}
 
 // Helper function
 export const getDaysUntilDue = (dueDate) => {
