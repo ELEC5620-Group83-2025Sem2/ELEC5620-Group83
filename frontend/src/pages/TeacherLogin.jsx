@@ -38,9 +38,8 @@ function TeacherLogin() {
       // Call login API with teacher role
       await authService.login(formData.email, formData.password, 'teacher')
       
-      // For now, show success message (teacher dashboard not implemented yet)
-      alert('Login successful! Teacher dashboard coming soon.')
-      // navigate('/teacher/dashboard') - uncomment when teacher dashboard is ready
+      // Navigate to teacher dashboard on success
+      navigate('/teacher/dashboard')
       
     } catch (err) {
       setError(err.message || 'Invalid email or password')
