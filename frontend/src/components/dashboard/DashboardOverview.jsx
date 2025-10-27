@@ -1,10 +1,14 @@
 import { getDaysUntilDue } from './mockData'
 
-function DashboardOverview({ studentData, enrolledClasses, upcomingAssignments, recentGrades, onTabChange }) {
+function DashboardOverview({ studentData, userProfile, enrolledClasses, upcomingAssignments, recentGrades, onTabChange }) {
+  const displayName = userProfile?.first_name && userProfile?.last_name 
+    ? `${userProfile.first_name} ${userProfile.last_name}` 
+    : userProfile?.name || ''
+
   return (
     <>
       <div className="welcome-section">
-        <h2>Welcome back, {studentData.name}! 👋</h2>
+        <h2>Welcome back, {displayName}! 👋</h2>
         <p>Here's what's happening with your studies today.</p>
       </div>
 

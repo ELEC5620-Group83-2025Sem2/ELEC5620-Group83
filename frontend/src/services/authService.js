@@ -185,6 +185,29 @@ class AuthService {
 
     return data;
   }
+
+  /**
+   * Get current user profile
+   * @returns {Promise<Object>} User profile data
+   */
+  async getProfile() {
+    return this.authenticatedRequest('/profile', {
+      method: 'GET'
+    });
+  }
+
+  /**
+   * Update current user profile
+   * @param {Object} payload - fields to update: { first_name, last_name, avatar }
+   * @returns {Promise<Object>} Updated profile data
+   */
+  async updateProfile(payload) {
+    return this.authenticatedRequest('/profile', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+  }
+  
 }
 
 // Export a singleton instance

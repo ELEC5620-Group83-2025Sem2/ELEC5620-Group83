@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DashboardOverview from '../components/dashboard/DashboardOverview'
+import authService from '../services/authService'
 import ClassesView from '../components/dashboard/ClassesView'
 import GradesView from '../components/dashboard/GradesView'
 import AssignmentsView from '../components/dashboard/AssignmentsView'
@@ -27,11 +28,45 @@ function StudentDashboard() {
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
+  const [userProfile, setUserProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+  
+  // Get initial user data from localStorage
+  const getInitialUserData = () => {
+    const currentUser = authService.getCurrentUser()
+    if (currentUser) {
+      return currentUser
+    }
+    return null
+  }
+  
+  const [initialUserData] = useState(() => getInitialUserData())
 
-  const handleLogout = () => {
-    // TODO: Implement logout logic
+  const handleLogout = async () => {
+    await authService.logout()
     navigate('/login/student')
   }
+
+  useEffect(() => {
+    // Set initial user data from localStorage immediately
+    if (initialUserData) {
+      setUserProfile(initialUserData)
+    }
+    
+    const fetchUserProfile = async () => {
+      try {
+        const response = await authService.getProfile()
+        setUserProfile(response.profile)
+      } catch (error) {
+        console.error('Failed to fetch profile:', error)
+        // Keep the initial data if API fails
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserProfile()
+  }, [])
 
   const handleClassClick = (classId) => {
     setSelectedClassId(classId)
@@ -77,6 +112,7 @@ function StudentDashboard() {
         return (
           <DashboardOverview
             studentData={studentData}
+            userProfile={userProfile}
             enrolledClasses={enrolledClasses}
             upcomingAssignments={upcomingAssignments}
             recentGrades={recentGrades}
@@ -98,7 +134,7 @@ function StudentDashboard() {
       case 'weekly-report':
         return <WeeklyReportView />
       case 'settings':
-        return <SettingsView studentData={studentData} />
+        return <SettingsView studentData={studentData} userProfile={userProfile} onProfileUpdate={setUserProfile} />
       default:
         return null
     }
@@ -222,15 +258,23 @@ function StudentDashboard() {
                 className="user-profile-btn"
                 onClick={() => setShowUserMenu(!showUserMenu)}
               >
-                <span className="user-avatar">{studentData.avatar}</span>
-                <span className="user-name">{studentData.name}</span>
+                <span className="user-avatar">{userProfile?.avatar || '👤'}</span>
+                <span className="user-name">
+                  {userProfile?.first_name && userProfile?.last_name 
+                    ? `${userProfile.first_name} ${userProfile.last_name}` 
+                    : userProfile?.name || (loading ? 'Loading...' : '')}
+                </span>
               </button>
               {showUserMenu && (
                 <div className="user-dropdown">
                   <div className="user-info">
-                    <p className="user-info-name">{studentData.name}</p>
-                    <p className="user-info-email">{studentData.email}</p>
-                    <p className="user-info-id">ID: {studentData.studentId}</p>
+                    <p className="user-info-name">
+                      {userProfile?.first_name && userProfile?.last_name 
+                        ? `${userProfile.first_name} ${userProfile.last_name}` 
+                        : userProfile?.name || ''}
+                    </p>
+                    <p className="user-info-email">{userProfile?.email || ''}</p>
+                    <p className="user-info-id">ID: {userProfile?.id ? userProfile.id.slice(0, 8) : 'N/A'}</p>
                   </div>
                   <div className="dropdown-divider"></div>
                   <button className="dropdown-item" onClick={() => setActiveTab('settings')}>
