@@ -1,5 +1,6 @@
 import express from 'express';
 import { verifyAuth, requireRole } from '../middleware/auth.js';
+import { getTertiaryCoursesSubjectsMapping } from '../controllers/tertiaryCoursesSubjectsMapping.js';
 const router = express.Router();
 
 // Example route
@@ -32,6 +33,9 @@ router.get('/teacher-data', verifyAuth, requireRole(['teacher']), (req, res) => 
     roles: req.userRoles
   });
 });
+
+// Public endpoint - Get tertiary courses subjects mapping
+router.get('/tertiary-courses-subjects-mapping', getTertiaryCoursesSubjectsMapping);
 
 export default router;
 
