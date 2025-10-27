@@ -5,6 +5,8 @@ import StudentRegister from './pages/StudentRegister'
 import TeacherLogin from './pages/TeacherLogin'
 import AccountRecovery from './pages/AccountRecovery'
 import StudentDashboard from './pages/StudentDashboard'
+import TeacherDashboard from './pages/TeacherDashboard'
+import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
 function App() {
@@ -17,6 +19,14 @@ function App() {
         <Route path="/register/student" element={<StudentRegister />} />
         <Route path="/recover" element={<AccountRecovery />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route 
+          path="/teacher/dashboard" 
+          element={
+            <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </Router>
   )
