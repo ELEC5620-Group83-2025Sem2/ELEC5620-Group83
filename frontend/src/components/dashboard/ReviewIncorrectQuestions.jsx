@@ -18,6 +18,7 @@ function ReviewIncorrectQuestions() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
   const [reviewStats, setReviewStats] = useState(getReviewStats())
+  const [selectedQuestion, setSelectedQuestion] = useState(null)
 
   // Get unique topics, subjects, and mastery levels for filters
   const topics = useMemo(() => {
@@ -93,6 +94,23 @@ function ReviewIncorrectQuestions() {
     }
   }
 
+  const handleQuestionClick = (question) => {
+    setSelectedQuestion(question)
+  }
+
+  const handleCloseQuestionDetail = () => {
+    setSelectedQuestion(null)
+  }
+
+  const handleAnswerSingleQuestion = (isCorrect) => {
+    if (selectedQuestion) {
+      updateQuestionReview(selectedQuestion.id, isCorrect)
+      setReviewStats(getReviewStats())
+      setSelectedQuestion(null)
+      alert(isCorrect ? 'Great! Keep it up!' : 'Keep practicing, you\'ll get it!')
+    }
+  }
+
   const getMasteryColor = (level) => {
     switch (level) {
       case 'Needs Review': return '#f56565'
@@ -110,6 +128,89 @@ function ReviewIncorrectQuestions() {
       case 'Hard': return '#f56565'
       default: return '#718096'
     }
+  }
+
+  // Single Question Detail View
+  if (selectedQuestion) {
+    return (
+      <div className="question-detail-modal">
+        <div className="modal-overlay" onClick={handleCloseQuestionDetail}></div>
+        <div className="modal-content">
+          <div className="modal-header">
+            <h2>Question Review</h2>
+            <button className="btn-close-modal" onClick={handleCloseQuestionDetail}>
+              ✕
+            </button>
+          </div>
+
+          <div className="question-detail-card">
+            <div className="question-header">
+              <div className="question-meta">
+                <span className="subject-tag">{selectedQuestion.subject}</span>
+                <span className="topic-tag">{selectedQuestion.topic}</span>
+                <span 
+                  className="difficulty-tag"
+                  style={{ backgroundColor: getDifficultyColor(selectedQuestion.difficulty) }}
+                >
+                  {selectedQuestion.difficulty}
+                </span>
+                <span 
+                  className="mastery-badge"
+                  style={{ backgroundColor: getMasteryColor(selectedQuestion.masteryLevel) }}
+                >
+                  {selectedQuestion.masteryLevel}
+                </span>
+              </div>
+              <div className="question-assignment">
+                From: {selectedQuestion.assignment} • {new Date(selectedQuestion.dateAnswered).toLocaleDateString()}
+              </div>
+            </div>
+
+            <div className="question-content">
+              <h3>{selectedQuestion.question}</h3>
+              
+              <div className="answer-comparison">
+                <div className="answer-item incorrect">
+                  <span className="answer-label">❌ Your Answer:</span>
+                  <span className="student-answer">{selectedQuestion.studentAnswer}</span>
+                </div>
+                <div className="answer-item correct">
+                  <span className="answer-label">✅ Correct Answer:</span>
+                  <span className="correct-answer">{selectedQuestion.correctAnswer}</span>
+                </div>
+              </div>
+              
+              <div className="explanation">
+                <h4>📖 Explanation:</h4>
+                <p>{selectedQuestion.explanation}</p>
+              </div>
+
+              <div className="review-info">
+                <p><strong>Review Count:</strong> {selectedQuestion.reviewCount} times</p>
+                {selectedQuestion.nextReviewDate && (
+                  <p><strong>Next Review:</strong> {new Date(selectedQuestion.nextReviewDate).toLocaleDateString()}</p>
+                )}
+              </div>
+
+              <div className="review-actions">
+                <button 
+                  className="btn-incorrect"
+                  onClick={() => handleAnswerSingleQuestion(false)}
+                >
+                  ❌ Still Don't Understand
+                </button>
+                <button 
+                  className="btn-correct"
+                  onClick={() => handleAnswerSingleQuestion(true)}
+                >
+                  ✅ Now I Understand
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (showReviewMode && filteredQuestions.length > 0) {
@@ -321,7 +422,11 @@ function ReviewIncorrectQuestions() {
         ) : (
           <div className="questions-list">
             {filteredQuestions.map((question, index) => (
-              <div key={question.id} className="question-item">
+              <div 
+                key={question.id} 
+                className="question-item clickable"
+                onClick={() => handleQuestionClick(question)}
+              >
                 <div className="question-info">
                   <div className="question-meta">
                     <span className="subject-tag">{question.subject}</span>
