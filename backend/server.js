@@ -34,6 +34,11 @@ app.get('/', (req, res) => {
         signup: '/api/auth/signup',
         logout: '/api/auth/logout'
       },
+      aiAgent: {
+        courseRecommendation: '/api/ai-agent/course-recommendation',
+        careerPathway: '/api/ai-agent/career-pathway'
+      },
+      tertiaryCoursesSubjectsMapping: '/api/tertiary-courses-subjects-mapping',
       examples: '/api/examples'
     }
   });
