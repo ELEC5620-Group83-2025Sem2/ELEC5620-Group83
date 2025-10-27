@@ -10,6 +10,7 @@ function HSCSubjectsView() {
   const [currentPlan, setCurrentPlan] = useState(studyPlan)
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [notification, setNotification] = useState(null)
+  const [selectedSubject, setSelectedSubject] = useState(null)
 
   // Get unique categories for filter
   const categories = ['All', ...new Set(hscSubjects.map(subject => subject.category))]
@@ -119,6 +120,171 @@ function HSCSubjectsView() {
     setSelectedUnits('All')
     setSelectedDifficulty('All')
     setSortBy('name')
+  }
+
+  const handleSubjectClick = (subject) => {
+    setSelectedSubject(subject)
+  }
+
+  const handleCloseSubjectDetail = () => {
+    setSelectedSubject(null)
+  }
+
+  // Subject Detail Modal
+  if (selectedSubject) {
+    return (
+      <div className="subject-detail-modal">
+        <div className="modal-overlay" onClick={handleCloseSubjectDetail}></div>
+        <div className="modal-content subject-modal">
+          <div className="modal-header">
+            <div>
+              <h2>{selectedSubject.name}</h2>
+              <span className="subject-code-large">{selectedSubject.code}</span>
+            </div>
+            <button className="btn-close-modal" onClick={handleCloseSubjectDetail}>
+              ✕
+            </button>
+          </div>
+
+          <div className="subject-detail-content">
+            {/* Header Info */}
+            <div className="subject-detail-header">
+              <div className="detail-badges">
+                <span 
+                  className="difficulty-badge"
+                  style={{ backgroundColor: getDifficultyColor(selectedSubject.difficulty) }}
+                >
+                  {selectedSubject.difficulty}
+                </span>
+                <span className="units-badge-large">{selectedSubject.units} units</span>
+                <span className="category-badge">{selectedSubject.category}</span>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="detail-section">
+              <h3>📚 Course Description</h3>
+              <p className="description-full">{selectedSubject.description}</p>
+            </div>
+
+            {/* Course Details Grid */}
+            <div className="detail-section">
+              <h3>📋 Course Details</h3>
+              <div className="details-grid">
+                <div className="detail-item">
+                  <span className="detail-icon">📌</span>
+                  <div>
+                    <span className="detail-label">Prerequisites</span>
+                    <span className="detail-value">
+                      {selectedSubject.prerequisites.length > 0 
+                        ? selectedSubject.prerequisites.join(', ') 
+                        : 'None'}
+                    </span>
+                  </div>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-icon">🎯</span>
+                  <div>
+                    <span className="detail-label">ATAR Contribution</span>
+                    <span 
+                      className="detail-value"
+                      style={{ color: getATARColor(selectedSubject.atarContribution), fontWeight: 'bold' }}
+                    >
+                      {selectedSubject.atarContribution}
+                    </span>
+                  </div>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-icon">📝</span>
+                  <div>
+                    <span className="detail-label">Exam Type</span>
+                    <span className="detail-value">{selectedSubject.examType}</span>
+                  </div>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-icon">🔬</span>
+                  <div>
+                    <span className="detail-label">Practical Work</span>
+                    <span className="detail-value">{selectedSubject.practicalWork}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Popularity */}
+            <div className="detail-section">
+              <h3>📊 Popularity</h3>
+              <div className="popularity-detail">
+                <div className="popularity-bar-large">
+                  <div 
+                    className="popularity-fill"
+                    style={{ width: `${selectedSubject.popularity}%` }}
+                  ></div>
+                </div>
+                <span className="popularity-percentage">{selectedSubject.popularity}% of students choose this subject</span>
+              </div>
+            </div>
+
+            {/* Career Paths */}
+            <div className="detail-section">
+              <h3>💼 Career Paths</h3>
+              <div className="career-paths-grid">
+                {selectedSubject.careerPaths.map((path, index) => (
+                  <div key={index} className="career-path-item">
+                    <span className="career-icon">🎓</span>
+                    <span>{path}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Recommended For */}
+            <div className="detail-section">
+              <h3>✨ Recommended For</h3>
+              <ul className="recommended-list-full">
+                {selectedSubject.recommendedFor.map((item, index) => (
+                  <li key={index}>
+                    <span className="check-icon">✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="subject-detail-actions">
+              {isSubjectInPlan(selectedSubject.id) ? (
+                <button 
+                  className="btn-remove-plan-large"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRemoveFromPlan(selectedSubject.id)
+                  }}
+                >
+                  ❌ Remove from Plan
+                </button>
+              ) : (
+                <button 
+                  className="btn-add-plan-large"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleAddToPlan(selectedSubject)
+                  }}
+                >
+                  ➕ Add to My Plan
+                </button>
+              )}
+              <button 
+                className="btn-close-detail"
+                onClick={handleCloseSubjectDetail}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -236,7 +402,11 @@ function HSCSubjectsView() {
       {/* Subjects Grid */}
       <div className="subjects-grid">
         {filteredSubjects.map(subject => (
-          <div key={subject.id} className="subject-card">
+          <div 
+            key={subject.id} 
+            className="subject-card clickable-card"
+            onClick={() => handleSubjectClick(subject)}
+          >
             <div className="subject-header">
               <div className="subject-title">
                 <h3>{subject.name}</h3>
@@ -326,14 +496,20 @@ function HSCSubjectsView() {
               {isSubjectInPlan(subject.id) ? (
                 <button 
                   className="btn-remove-plan"
-                  onClick={() => handleRemoveFromPlan(subject.id)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleRemoveFromPlan(subject.id)
+                  }}
                 >
                   ❌ Remove from Plan
                 </button>
               ) : (
                 <button 
                   className="btn-add-plan"
-                  onClick={() => handleAddToPlan(subject)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleAddToPlan(subject)
+                  }}
                 >
                   ➕ Add to Plan
                 </button>

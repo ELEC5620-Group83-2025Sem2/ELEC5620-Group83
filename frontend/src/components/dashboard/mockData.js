@@ -949,7 +949,7 @@ export const hscSubjects = [
     name: 'Mathematics Advanced',
     category: 'Mathematics',
     units: 2,
-    prerequisites: ['Mathematics Standard 2', 'Mathematics Extension 1'],
+    prerequisites: ['Mathematics Extension 1', 'Mathematics Extension 2'],
     description: 'Advanced mathematics covering calculus, algebra, and mathematical reasoning. This course prepares students for tertiary mathematics and develops critical thinking skills.',
     difficulty: 'High',
     popularity: 85,
@@ -1262,6 +1262,326 @@ export const hscSubjects = [
     examType: 'Written',
     practicalWork: 'Minimal',
     recommendedFor: ['Future lawyers', 'Students interested in justice', 'Students with analytical skills']
+  },
+  {
+    id: 21,
+    code: 'MATH-STD1',
+    name: 'Mathematics Standard 1',
+    category: 'Mathematics',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Foundation mathematics focusing on practical applications. Covers financial mathematics, data, measurement, and algebra.',
+    difficulty: 'Low',
+    popularity: 40,
+    careerPaths: ['Business', 'Trades', 'Retail', 'Service Industries'],
+    atarContribution: 'Low',
+    examType: 'Written',
+    practicalWork: 'Minimal',
+    recommendedFor: ['Students seeking practical mathematics', 'Future vocational careers', 'Students preferring applied mathematics']
+  },
+  {
+    id: 22,
+    code: 'MATH-STD2',
+    name: 'Mathematics Standard 2',
+    category: 'Mathematics',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'General mathematics with broader applications. Covers statistics, networks, financial mathematics, and calculus introduction.',
+    difficulty: 'Medium',
+    popularity: 60,
+    careerPaths: ['Business', 'Health Sciences', 'Social Sciences', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written',
+    practicalWork: 'Minimal',
+    recommendedFor: ['Students needing mathematics for university', 'Future business careers', 'Students with moderate mathematics ability']
+  },
+  {
+    id: 23,
+    code: 'ENG-STD',
+    name: 'English Standard',
+    category: 'English',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Foundation English focusing on communication and comprehension. Covers texts, writing, and language analysis.',
+    difficulty: 'Medium',
+    popularity: 75,
+    careerPaths: ['Business', 'Communications', 'Education', 'Service Industries'],
+    atarContribution: 'Medium',
+    examType: 'Written',
+    practicalWork: 'None',
+    recommendedFor: ['Students developing literacy skills', 'Future general careers', 'Students preferring practical English']
+  },
+  {
+    id: 24,
+    code: 'ENG-EXT2',
+    name: 'English Extension 2',
+    category: 'English',
+    units: 1,
+    prerequisites: ['English Extension 1'],
+    description: 'Highest level of English study focusing on independent major work. Students produce a substantial creative or critical piece.',
+    difficulty: 'Extreme',
+    popularity: 10,
+    careerPaths: ['Creative Writing', 'Literature', 'Publishing', 'Academia'],
+    atarContribution: 'Very High',
+    examType: 'Major Work + Reflection',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Elite English students', 'Future authors/critics', 'Students with exceptional creative abilities']
+  },
+  {
+    id: 25,
+    code: 'HIST-ANC',
+    name: 'Ancient History',
+    category: 'Humanities',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of ancient civilizations including Greece, Rome, Egypt, and Near East. Focus on archaeology, sources, and historical inquiry.',
+    difficulty: 'Medium',
+    popularity: 30,
+    careerPaths: ['Archaeology', 'Museum Studies', 'Education', 'History'],
+    atarContribution: 'Medium',
+    examType: 'Written',
+    practicalWork: 'None',
+    recommendedFor: ['Students interested in ancient cultures', 'Future historians', 'Students with analytical skills']
+  },
+  {
+    id: 26,
+    code: 'DRAMA',
+    name: 'Drama',
+    category: 'Creative Arts',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study and practice of dramatic performance and production. Includes acting, directing, design, and dramatic analysis.',
+    difficulty: 'Medium',
+    popularity: 20,
+    careerPaths: ['Acting', 'Theatre Production', 'Entertainment', 'Education'],
+    atarContribution: 'Low',
+    examType: 'Performance + Written',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Creative students', 'Future performers', 'Students with performance skills']
+  },
+  {
+    id: 27,
+    code: 'DES-TECH',
+    name: 'Design and Technology',
+    category: 'Technology',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Design, development, and construction of quality projects. Covers design theory, materials, and practical making skills.',
+    difficulty: 'Medium',
+    popularity: 25,
+    careerPaths: ['Industrial Design', 'Product Design', 'Architecture', 'Engineering'],
+    atarContribution: 'Medium',
+    examType: 'Major Project + Written',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Creative and technical students', 'Future designers', 'Students who enjoy making things']
+  },
+  {
+    id: 28,
+    code: 'IPT',
+    name: 'Information Processes and Technology',
+    category: 'Technology',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of information systems, databases, and technology. Covers system analysis, project management, and social/ethical issues.',
+    difficulty: 'Medium',
+    popularity: 30,
+    careerPaths: ['IT Management', 'Systems Analysis', 'Database Administration', 'Business Analysis'],
+    atarContribution: 'Medium',
+    examType: 'Written + Project',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students interested in IT', 'Future tech careers', 'Students with problem-solving skills']
+  },
+  {
+    id: 29,
+    code: 'SOC-CUL',
+    name: 'Society and Culture',
+    category: 'Humanities',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of social and cultural processes. Covers research methods, social theories, and contemporary issues. Includes Personal Interest Project (PIP).',
+    difficulty: 'Medium',
+    popularity: 35,
+    careerPaths: ['Social Work', 'Sociology', 'Community Services', 'Research'],
+    atarContribution: 'Medium',
+    examType: 'Written + Major Project',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students interested in society', 'Future social sciences', 'Students with research skills']
+  },
+  {
+    id: 30,
+    code: 'LANG-CH',
+    name: 'Chinese',
+    category: 'Languages',
+    units: 2,
+    prerequisites: ['Chinese Continuers or equivalent'],
+    description: 'Advanced study of Chinese language and culture. Focus on communication, literature, and cultural understanding.',
+    difficulty: 'High',
+    popularity: 35,
+    careerPaths: ['International Business', 'Translation', 'Diplomacy', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written + Oral',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students with Chinese background', 'Future Asia-focused careers', 'Students interested in languages']
+  },
+  {
+    id: 31,
+    code: 'LANG-ES',
+    name: 'Spanish',
+    category: 'Languages',
+    units: 2,
+    prerequisites: ['Spanish Continuers or equivalent'],
+    description: 'Advanced study of Spanish language and culture. Focus on communication, literature, and cultural understanding.',
+    difficulty: 'High',
+    popularity: 15,
+    careerPaths: ['International Relations', 'Translation', 'Tourism', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written + Oral',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students with Spanish background', 'Future international careers', 'Students interested in languages']
+  },
+  {
+    id: 32,
+    code: 'LANG-DE',
+    name: 'German',
+    category: 'Languages',
+    units: 2,
+    prerequisites: ['German Continuers or equivalent'],
+    description: 'Advanced study of German language and culture. Focus on communication, literature, and cultural understanding.',
+    difficulty: 'High',
+    popularity: 10,
+    careerPaths: ['International Business', 'Translation', 'European Relations', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written + Oral',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students with German background', 'Future European careers', 'Students interested in languages']
+  },
+  {
+    id: 33,
+    code: 'FOOD-TECH',
+    name: 'Food Technology',
+    category: 'Technology',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of food production, nutrition, and food science. Includes practical food preparation and product development.',
+    difficulty: 'Medium',
+    popularity: 30,
+    careerPaths: ['Food Science', 'Nutrition', 'Hospitality', 'Product Development'],
+    atarContribution: 'Low',
+    examType: 'Written + Practical',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Students interested in food', 'Future hospitality careers', 'Students with practical skills']
+  },
+  {
+    id: 34,
+    code: 'TEXTILES',
+    name: 'Textiles and Design',
+    category: 'Creative Arts',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of textile design, construction, and fashion. Includes major design project and historical/cultural study of textiles.',
+    difficulty: 'Medium',
+    popularity: 15,
+    careerPaths: ['Fashion Design', 'Textile Design', 'Costume Design', 'Product Design'],
+    atarContribution: 'Low',
+    examType: 'Major Project + Written',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Creative students', 'Future fashion designers', 'Students with design skills']
+  },
+  {
+    id: 35,
+    code: 'AGRI',
+    name: 'Agriculture',
+    category: 'Sciences',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of agricultural production, resource management, and sustainable farming. Includes practical farm work.',
+    difficulty: 'Medium',
+    popularity: 20,
+    careerPaths: ['Agriculture', 'Farm Management', 'Environmental Science', 'Rural Industries'],
+    atarContribution: 'Medium',
+    examType: 'Written + Practical',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Students interested in farming', 'Future agricultural careers', 'Students from rural backgrounds']
+  },
+  {
+    id: 36,
+    code: 'EARTH-ENV',
+    name: 'Earth and Environmental Science',
+    category: 'Sciences',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study of Earth\'s systems, geology, and environmental processes. Includes fieldwork and environmental analysis.',
+    difficulty: 'Medium',
+    popularity: 25,
+    careerPaths: ['Environmental Science', 'Geology', 'Mining', 'Conservation'],
+    atarContribution: 'Medium',
+    examType: 'Written + Practical',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students interested in environment', 'Future environmental careers', 'Students who enjoy fieldwork']
+  },
+  {
+    id: 37,
+    code: 'INVES-SCI',
+    name: 'Investigating Science',
+    category: 'Sciences',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Practical scientific investigation and research. Focus on scientific methods, inquiry, and independent research projects.',
+    difficulty: 'Medium',
+    popularity: 20,
+    careerPaths: ['Research', 'Science', 'Education', 'Laboratory Work'],
+    atarContribution: 'Medium',
+    examType: 'Written + Practical',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Students interested in research', 'Future scientists', 'Students with investigative skills']
+  },
+  {
+    id: 38,
+    code: 'LANG-IT',
+    name: 'Italian',
+    category: 'Languages',
+    units: 2,
+    prerequisites: ['Italian Continuers or equivalent'],
+    description: 'Advanced study of Italian language and culture. Focus on communication, literature, and cultural understanding.',
+    difficulty: 'High',
+    popularity: 10,
+    careerPaths: ['International Relations', 'Translation', 'Tourism', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written + Oral',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students with Italian background', 'Future European careers', 'Students interested in languages']
+  },
+  {
+    id: 39,
+    code: 'LANG-KO',
+    name: 'Korean',
+    category: 'Languages',
+    units: 2,
+    prerequisites: ['Korean Continuers or equivalent'],
+    description: 'Advanced study of Korean language and culture. Focus on communication, literature, and cultural understanding.',
+    difficulty: 'High',
+    popularity: 15,
+    careerPaths: ['International Business', 'Translation', 'K-Culture Industries', 'Education'],
+    atarContribution: 'Medium',
+    examType: 'Written + Oral',
+    practicalWork: 'Moderate',
+    recommendedFor: ['Students with Korean background', 'Future Asia-focused careers', 'Students interested in Korean culture']
+  },
+  {
+    id: 40,
+    code: 'DANCE',
+    name: 'Dance',
+    category: 'Creative Arts',
+    units: 2,
+    prerequisites: ['None'],
+    description: 'Study and practice of dance performance, composition, and appreciation. Includes various dance styles and choreography.',
+    difficulty: 'Medium',
+    popularity: 15,
+    careerPaths: ['Dance Performance', 'Choreography', 'Dance Education', 'Entertainment'],
+    atarContribution: 'Low',
+    examType: 'Performance + Written',
+    practicalWork: 'Extensive',
+    recommendedFor: ['Students with dance experience', 'Future performers', 'Students with physical aptitude']
   }
 ]
 
@@ -1345,11 +1665,23 @@ export const checkPrerequisiteConflicts = (plan, subject) => {
   const conflicts = []
   
   // Check if any existing subjects in the plan are prerequisites for the new subject
+  const missingPrereqs = []
   subject.prerequisites.forEach(prereq => {
     if (prereq !== 'None' && !plan.subjects.some(s => s.name === prereq)) {
-      conflicts.push(`${subject.name} requires ${prereq} but it's not in your plan`)
+      missingPrereqs.push(prereq)
     }
   })
+  
+  // If there are missing prerequisites, create a comprehensive error message
+  if (missingPrereqs.length > 0) {
+    if (missingPrereqs.length === 1) {
+      conflicts.push(`Prerequisite conflict: ${subject.name} requires ${missingPrereqs[0]} but it's not in your plan`)
+    } else if (missingPrereqs.length === 2) {
+      conflicts.push(`Prerequisite conflicts: ${subject.name} requires ${missingPrereqs[0]} and ${missingPrereqs[1]} but they're not in your plan`)
+    } else {
+      conflicts.push(`Prerequisite conflicts: ${subject.name} requires ${missingPrereqs.slice(0, -1).join(', ')}, and ${missingPrereqs[missingPrereqs.length - 1]} but they're not in your plan`)
+    }
+  }
   
   // Check if the new subject is a prerequisite for any existing subjects
   plan.subjects.forEach(existingSubject => {
@@ -1374,13 +1706,24 @@ export const getPlanWarnings = (plan) => {
     warnings.push(`You're using ${plan.totalUnits}/${plan.maxUnits} units. Consider your remaining unit allocation carefully.`)
   }
   
-  // Check for missing prerequisites
+  // Check for missing prerequisites - collect all missing prerequisites for each subject
   plan.subjects.forEach(subject => {
+    const missingPrereqs = []
     subject.prerequisites.forEach(prereq => {
       if (prereq !== 'None' && !plan.subjects.some(s => s.name === prereq)) {
-        warnings.push(`${subject.name} requires ${prereq} as a prerequisite`)
+        missingPrereqs.push(prereq)
       }
     })
+    
+    if (missingPrereqs.length > 0) {
+      if (missingPrereqs.length === 1) {
+        warnings.push(`${subject.name} requires ${missingPrereqs[0]} as a prerequisite`)
+      } else if (missingPrereqs.length === 2) {
+        warnings.push(`${subject.name} requires ${missingPrereqs[0]} and ${missingPrereqs[1]} as prerequisites`)
+      } else {
+        warnings.push(`${subject.name} requires ${missingPrereqs.slice(0, -1).join(', ')}, and ${missingPrereqs[missingPrereqs.length - 1]} as prerequisites`)
+      }
+    }
   })
   
   // Check for subject category balance
