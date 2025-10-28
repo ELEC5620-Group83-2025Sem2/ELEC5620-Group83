@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { teacherData } from '../components/teacher/teacherMockData'
+import authService from '../services/authService'
 import DashboardOverview from '../components/teacher/DashboardOverview'
 import MyClassesView from '../components/teacher/MyClassesView'
 import ClassDetailView from '../components/teacher/ClassDetailView'
@@ -21,10 +21,33 @@ function TeacherDashboard() {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false)
   const [isGradingAssignment, setIsGradingAssignment] = useState(false)
+  const [teacherProfile, setTeacherProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const handleLogout = () => {
-    // Clear authentication
-    localStorage.clear()
+  useEffect(() => {
+    const fetchTeacherProfile = async () => {
+      try {
+        const response = await authService.getProfile()
+        setTeacherProfile(response.data)
+      } catch (error) {
+        console.error('Failed to fetch teacher profile:', error)
+        if (error.response?.status === 401) {
+          navigate('/login/teacher')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTeacherProfile()
+  }, [navigate])
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout()
+    } catch (error) {
+      console.error('Logout failed:', error)
+    }
     navigate('/login/teacher')
   }
 
@@ -125,7 +148,7 @@ function TeacherDashboard() {
       case 'announcements':
         return <AnnouncementsView />
       case 'settings':
-        return <SettingsView teacherData={teacherData} />
+        return <SettingsView teacherProfile={teacherProfile} />
       default:
         return <DashboardOverview onTabChange={handleTabChange} />
     }
@@ -147,6 +170,23 @@ function TeacherDashboard() {
     }
     return titles[activeTab] || 'Dashboard'
   }
+
+  if (loading) {
+    return (
+      <div className="dashboard-container">
+        <div className="dashboard-main" style={{ marginLeft: 0, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
+            <p>Loading teacher data...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const displayName = teacherProfile 
+    ? `${teacherProfile.first_name || ''} ${teacherProfile.last_name || ''}`.trim() || teacherProfile.email
+    : 'Teacher'
 
   return (
     <div className="dashboard-container">
@@ -239,15 +279,15 @@ function TeacherDashboard() {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
               >
                 <span className="user-avatar">👨‍🏫</span>
-                <span className="user-name">{teacherData.name}</span>
+                <span className="user-name">{displayName}</span>
               </button>
 
               {userMenuOpen && (
                 <div className="user-dropdown">
                   <div className="user-info">
-                    <p className="user-info-name">{teacherData.name}</p>
-                    <p className="user-info-email">{teacherData.email}</p>
-                    <p className="user-info-id">ID: {teacherData.teacherId}</p>
+                    <p className="user-info-name">{displayName}</p>
+                    <p className="user-info-email">{teacherProfile?.email || ''}</p>
+                    <p className="user-info-id">ID: {teacherProfile?.id || ''}</p>
                   </div>
                   <div className="dropdown-divider"></div>
                   <button

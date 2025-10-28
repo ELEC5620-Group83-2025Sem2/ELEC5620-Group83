@@ -1,39 +1,67 @@
-import { useState } from 'react'
-import { allAssignments, getSubmissionStats } from './teacherMockData'
+import { useState, useEffect } from 'react'
+import teacherApi from '../../services/teacherApi'
 
 function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignment }) {
+  const [assignments, setAssignments] = useState([])
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterClass, setFilterClass] = useState('all')
+  const [classes, setClasses] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  // Get unique class names for filter
-  const uniqueClasses = [...new Set(allAssignments.map(a => a.className))]
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [assignmentsRes, classesRes] = await Promise.all([
+          teacherApi.getAssignments(),
+          teacherApi.getClasses()
+        ])
+        setAssignments(assignmentsRes.data || [])
+        setClasses(classesRes.data || [])
+      } catch (error) {
+        console.error('Failed to fetch assignments:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-  // Filter assignments
-  const filteredAssignments = allAssignments.filter(assignment => {
-    const statusMatch = filterStatus === 'all' || assignment.status === filterStatus
-    const classMatch = filterClass === 'all' || assignment.className === filterClass
-    return statusMatch && classMatch
-  })
+    fetchData()
+  }, [])
 
   const getStatusBadgeClass = (status) => {
-    const classes = {
-      'published': 'status-published',
-      'draft': 'status-draft',
-      'grading_needed': 'status-grading',
-      'graded': 'status-graded'
+    const statusMap = {
+      published: 'status-published',
+      draft: 'status-draft',
+      grading: 'status-grading',
+      graded: 'status-graded'
     }
-    return classes[status] || ''
+    return statusMap[status] || 'status-draft'
+  }
+
+  const filteredAssignments = assignments.filter(assignment => {
+    const matchesStatus = filterStatus === 'all' || assignment.status === filterStatus
+    const matchesClass = filterClass === 'all' || assignment.class_id === filterClass
+    return matchesStatus && matchesClass
+  })
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+        <p>Loading assignments...</p>
+      </div>
+    )
   }
 
   return (
-    <div className="assignments-view">
-      {/* Header with Filters */}
+    <>
+      {/* Header with Create Button */}
       <div className="assignments-header">
         <button className="btn-create-assignment" onClick={onCreateAssignment}>
-          + Create Assignment
+          ➕ Create Assignment
         </button>
       </div>
 
+      {/* Filters */}
       <div className="assignments-filters">
         <div className="filter-group">
           <label>Status:</label>
@@ -41,138 +69,90 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
             <option value="all">All</option>
             <option value="draft">Draft</option>
             <option value="published">Published</option>
-            <option value="grading_needed">Grading Needed</option>
+            <option value="grading">Needs Grading</option>
             <option value="graded">Graded</option>
           </select>
         </div>
+
         <div className="filter-group">
           <label>Class:</label>
           <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>
             <option value="all">All Classes</option>
-            {uniqueClasses.map(className => (
-              <option key={className} value={className}>{className}</option>
+            {classes.map(cls => (
+              <option key={cls.id} value={cls.id}>{cls.name}</option>
             ))}
           </select>
         </div>
+
         <div className="filter-results">
-          Showing {filteredAssignments.length} assignment{filteredAssignments.length !== 1 ? 's' : ''}
+          Showing {filteredAssignments.length} assignments
         </div>
       </div>
 
       {/* Assignments List */}
-      <div className="assignments-detailed">
-        {filteredAssignments.map(assignment => {
-          const stats = getSubmissionStats(assignment.id)
-          
-          return (
-            <div key={assignment.id} className="assignment-card">
-              <div className="assignment-header">
-                <div>
-                  <h3>{assignment.title}</h3>
-                  <p className="assignment-class-name" style={{ color: assignment.classColor }}>
-                    {assignment.className}
-                  </p>
-                </div>
-                <span className={`status-badge ${getStatusBadgeClass(assignment.status)}`}>
-                  {assignment.status.replace('_', ' ')}
-                </span>
-              </div>
-
-              <p className="assignment-description">{assignment.description}</p>
-
-              <div className="assignment-details">
-                <div className="detail-item">
-                  <span className="detail-icon">📅</span>
-                  <span>Due: {assignment.dueDate} at {assignment.dueTime}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-icon">📊</span>
-                  <span>Type: {assignment.type}</span>
-                </div>
-                <div className="detail-item">
-                  <span className="detail-icon">💯</span>
-                  <span>Points: {assignment.totalPoints}</span>
-                </div>
-              </div>
-
-              {assignment.published && (
-                <div className="submission-stats">
-                  <div className="stat-progress">
-                    <div className="progress-label">
-                      <span>Submissions: {stats.submitted}/{stats.total}</span>
-                      <span>{stats.percentage}%</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div
-                        className="progress-fill"
-                        style={{
-                          width: `${stats.percentage}%`,
-                          background: assignment.classColor
-                        }}
-                      ></div>
-                    </div>
+      <div className="assignments-list">
+        {filteredAssignments.length > 0 ? (
+          filteredAssignments.map(assignment => {
+            const assignmentClass = classes.find(c => c.id === assignment.class_id)
+            
+            return (
+              <div key={assignment.id} className="assignment-card">
+                <div className="assignment-header">
+                  <div>
+                    <h3>{assignment.title}</h3>
+                    <p className="assignment-class-name">
+                      {assignmentClass?.name || 'Unknown Class'}
+                    </p>
                   </div>
-                  <div className="stat-progress">
-                    <div className="progress-label">
-                      <span>Graded: {stats.graded}/{stats.submitted}</span>
-                      <span>{stats.submitted > 0 ? Math.round((stats.graded / stats.submitted) * 100) : 0}%</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div
-                        className="progress-fill"
-                        style={{
-                          width: `${stats.submitted > 0 ? (stats.graded / stats.submitted) * 100 : 0}%`,
-                          background: '#48bb78'
-                        }}
-                      ></div>
-                    </div>
+                  <span className={`status-badge ${getStatusBadgeClass(assignment.status)}`}>
+                    {assignment.status || 'draft'}
+                  </span>
+                </div>
+
+                <p className="assignment-description">{assignment.description || 'No description'}</p>
+
+                <div className="assignment-details">
+                  <div className="detail-item">
+                    <span className="detail-icon">📅</span>
+                    <span>Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'No due date'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-icon">📊</span>
+                    <span>Total Points: {assignment.total_points || 100}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-icon">📝</span>
+                    <span>Type: {assignment.assignment_type || 'homework'}</span>
                   </div>
                 </div>
-              )}
 
-              <div className="assignment-actions">
-                <button
-                  className="btn-assignment-action"
-                  onClick={() => onAssignmentClick(assignment.id)}
-                >
-                  View Details
-                </button>
-                {assignment.status === 'grading_needed' && stats.pending > 0 && (
-                  <button
+                <div className="assignment-actions">
+                  <button 
+                    className="btn-assignment-action btn-view"
+                    onClick={() => onAssignmentClick(assignment.id)}
+                  >
+                    View
+                  </button>
+                  <button 
                     className="btn-assignment-action btn-grade"
                     onClick={() => onGradeAssignment(assignment.id)}
                   >
-                    Grade Submissions ({stats.pending})
+                    Grade
                   </button>
-                )}
-                <button className="btn-assignment-action btn-secondary">
-                  Edit
-                </button>
-                {assignment.status === 'draft' && (
-                  <button
-                    className="btn-assignment-action btn-publish"
-                    style={{ background: assignment.classColor }}
-                  >
-                    Publish
-                  </button>
-                )}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })
+        ) : (
+          <div style={{ textAlign: 'center', padding: '3rem' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
+            <h3>No Assignments</h3>
+            <p>Click the button above to create your first assignment</p>
+          </div>
+        )}
       </div>
-
-      {filteredAssignments.length === 0 && (
-        <div className="empty-state">
-          <p>No assignments found</p>
-          <button className="btn-primary-action" onClick={onCreateAssignment}>
-            Create Your First Assignment
-          </button>
-        </div>
-      )}
-    </div>
+    </>
   )
 }
 
 export default AssignmentsView
-

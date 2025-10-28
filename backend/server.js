@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import apiRoutes from './routes/api.js';
 import { authRoutes } from './routes/auth.js';
 import { aiRoutes } from './routes/aiAgent.js';
+import { teacherRoutes } from './routes/teacher.js';
 import { logger } from './middleware/logger.js';
 
 dotenv.config();
@@ -34,6 +35,12 @@ app.get('/', (req, res) => {
         signup: '/api/auth/signup',
         logout: '/api/auth/logout'
       },
+      teacher: {
+        classes: '/api/teacher/classes',
+        assignments: '/api/teacher/assignments',
+        students: '/api/teacher/students',
+        announcements: '/api/teacher/announcements'
+      },
       aiAgent: {
         courseRecommendation: '/api/ai-agent/course-recommendation',
         careerPathway: '/api/ai-agent/career-pathway'
@@ -52,6 +59,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/ai-agent', aiRoutes);
+app.use('/api/teacher', teacherRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
