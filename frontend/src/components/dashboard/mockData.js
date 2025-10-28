@@ -917,27 +917,11 @@ export const studyPlanSuggestions = [
 export const careerRecommendations = [
   {
     id: 1,
-    career: 'Data Scientist',
-    match: 95,
-    reason: 'Excellent performance in Mathematics and strong analytical skills',
-    averageSalary: '$120,000 - $180,000',
+    career: 'Get your own career recommendations now!',
+    match: 100,
+    reason: 'you will get a career pathway that is tailored to your interests and strengths',
+    averageSalary: '∞',
     growthRate: 'Very High'
-  },
-  {
-    id: 2,
-    career: 'Software Engineer',
-    match: 92,
-    reason: 'Strong problem-solving abilities and technical aptitude',
-    averageSalary: '$100,000 - $160,000',
-    growthRate: 'High'
-  },
-  {
-    id: 3,
-    career: 'Research Scientist',
-    match: 88,
-    reason: 'Outstanding performance in Physics and Chemistry',
-    averageSalary: '$90,000 - $140,000',
-    growthRate: 'Moderate'
   }
 ]
 
