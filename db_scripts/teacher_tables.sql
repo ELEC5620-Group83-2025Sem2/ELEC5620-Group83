@@ -165,3 +165,4 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.class_announcements TO authentica
 -- WHERE tablename IN ('student_notes', 'class_announcements')
 -- ORDER BY tablename, policyname;
 
+
