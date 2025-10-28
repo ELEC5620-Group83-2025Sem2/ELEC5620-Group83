@@ -1,17 +1,131 @@
+import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { generateCareerPathway } from '../../services/careerService'
+
 function CareerView({ careerRecommendations }) {
+  const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [careerData, setCareerData] = useState(null)
+
+  // User prompt inputs
+  const [interests, setInterests] = useState('')
+  const [strengths, setStrengths] = useState('')
+  const [goals, setGoals] = useState('')
+
+  const prompt = useMemo(() => {
+    const i = interests?.trim() || 'software, data, design'
+    const s = strengths?.trim() || 'problem-solving, teamwork'
+    const g = goals?.trim() || 'enter a university degree and work in tech'
+    return (
+      `Student interests: ${i}\n` +
+      `Strengths: ${s}\n` +
+      `Goals: ${g}`
+    )
+  }, [interests, strengths, goals])
+
+  const handleGenerate = async () => {
+    setError('')
+    setLoading(true)
+    try {
+      const data = await generateCareerPathway({ prompt })
+      setCareerData(data)
+    } catch (e) {
+      setError(e?.message || 'Failed to generate career pathway')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cards = useMemo(() => {
+    if (careerData?.career_pathways?.length) {
+      return careerData.career_pathways.map((p, i) => ({
+        id: i + 1,
+        career: p.title,
+        match: 100,
+        reason: interests ? `Aligned with your interests: ${interests}` : 'Recommended by AI analysis',
+        averageSalary: p.salary_range?.[0] || '—',
+        growthRate: p['job growth'] || '—'
+      }))
+    }
+    return careerRecommendations || []
+  }, [careerData, careerRecommendations, interests])
+
   return (
     <>
       <div className="ai-header">
         <div className="ai-icon-large">🎯</div>
         <div>
           <h2>AI Career Recommendations</h2>
-          <p>Discover career paths that match your strengths and interests</p>
+          <p>Generate your own career paths based on your interests, strengths and goals</p>
         </div>
       </div>
 
+      <div className="filters-row" style={{ alignItems: 'flex-end', marginBottom: '1rem' }}>
+        <div className="filter-group" style={{ flex: 1 }}>
+          <label>Interests</label>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="e.g., software, health, design"
+            value={interests}
+            onChange={(e) => setInterests(e.target.value)}
+            onBlur={(e) => setInterests(e.target.value.trim())}
+            aria-label="Student interests"
+            autoComplete="off"
+          />
+        </div>
+        <div className="filter-group" style={{ flex: 1 }}>
+          <label>Strengths</label>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="e.g., problem-solving, creativity"
+            value={strengths}
+            onChange={(e) => setStrengths(e.target.value)}
+            onBlur={(e) => setStrengths(e.target.value.trim())}
+            aria-label="Student strengths"
+            autoComplete="off"
+          />
+        </div>
+        <div className="filter-group" style={{ flex: 1 }}>
+          <label>Goals</label>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="e.g., enter CS degree, start apprenticeship"
+            value={goals}
+            onChange={(e) => setGoals(e.target.value)}
+            onBlur={(e) => setGoals(e.target.value.trim())}
+            aria-label="Student goals"
+            autoComplete="off"
+          />
+        </div>
+        <div className="filter-group" style={{ width: '240px' }}>
+          <label style={{ visibility: 'hidden' }}>Generate</label>
+          <button
+            className="btn-primary"
+            onClick={handleGenerate}
+            disabled={loading}
+            style={{ width: '100%' }}
+          >
+            {loading ? (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                <span className="spinner"></span>
+                Generating…
+              </span>
+            ) : (
+              '✨ Generate Career Path'
+            )}
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="error-text">{error}</div>}
+
       <div className="career-recommendations">
-        {careerRecommendations.map(career => (
-          <div key={career.id} className="career-card">
+        {cards.map((career, idx) => (
+          <div key={career.id || idx} className="career-card">
             <div className="career-match">
               <div className="match-circle">
                 <svg className="match-progress" viewBox="0 0 100 100">
@@ -23,16 +137,16 @@ function CareerView({ careerRecommendations }) {
                     fill="none" 
                     stroke="#667eea" 
                     strokeWidth="10"
-                    strokeDasharray={`${career.match * 2.827} 282.7`}
+                    strokeDasharray={`${(career.match || 100) * 2.827} 282.7`}
                     transform="rotate(-90 50 50)"
                   />
                 </svg>
-                <div className="match-percentage">{career.match}%</div>
+                <div className="match-percentage">{career.match || 100}%</div>
               </div>
             </div>
             <div className="career-info">
               <h3>{career.career}</h3>
-              <p className="career-reason">✨ {career.reason}</p>
+              {career.reason && <p className="career-reason">✨ {career.reason}</p>}
               <div className="career-details">
                 <div className="career-detail-item">
                   <span className="detail-label">Salary Range</span>
@@ -43,7 +157,18 @@ function CareerView({ careerRecommendations }) {
                   <span className="detail-value growth">{career.growthRate}</span>
                 </div>
               </div>
-              <button className="btn-career-action">Learn More</button>
+              <button
+                className="btn-career-action"
+                onClick={() => {
+                  if (careerData) {
+                    navigate('/student/career-pathway', { state: { careerData, selectedPathwayIndex: idx } })
+                  }
+                }}
+                disabled={!careerData}
+                title={!careerData ? 'Generate to see full details' : 'View details'}
+              >
+                Learn More
+              </button>
             </div>
           </div>
         ))}
@@ -74,4 +199,5 @@ function CareerView({ careerRecommendations }) {
 }
 
 export default CareerView
+
 
