@@ -4,6 +4,7 @@ import { ErrorResponse } from '../../utils/errorResponse.js';
 /**
  * GET /api/teacher/assignments
  * Get all assignments created by the teacher
+ * Get all assignments for teacher's classes
  */
 export const getTeacherAssignments = async (req, res) => {
   try {
@@ -405,4 +406,5 @@ export const publishAssignment = async (req, res) => {
     return ErrorResponse.internalServerError('An error occurred while publishing assignment').send(res);
   }
 };
+
 

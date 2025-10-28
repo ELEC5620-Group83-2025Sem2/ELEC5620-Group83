@@ -45,6 +45,12 @@ app.get('/', (req, res) => {
         courseRecommendation: '/api/ai-agent/course-recommendation',
         careerPathway: '/api/ai-agent/career-pathway'
       },
+      teacher: {
+        classes: '/api/teacher/classes',
+        assignments: '/api/teacher/assignments',
+        students: '/api/teacher/students',
+        ai: '/api/teacher/ai/*'
+      },
       tertiaryCoursesSubjectsMapping: '/api/tertiary-courses-subjects-mapping',
       examples: '/api/examples'
     }

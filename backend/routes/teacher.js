@@ -101,3 +101,4 @@ router.delete('/announcements/:id', deleteAnnouncement);
 
 export { router as teacherRoutes };
 
+
