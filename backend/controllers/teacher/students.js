@@ -2,177 +2,155 @@ import { getSupabaseClient } from '../../clients/supabaseClient.js';
 import { ErrorResponse } from '../../utils/errorResponse.js';
 
 /**
- * UC08: Review Student Behavior Report
- * Get all students in teacher's classes
+ * GET /api/teacher/students
+ * Get all students across all classes taught by the teacher
  */
 export const getTeacherStudents = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { classId, search } = req.query;
     const supabase = getSupabaseClient();
 
-    // Get teacher's class IDs
-    const { data: classTeachers, error: ctError } = await supabase
+    // Get all classes taught by this teacher
+    const { data: classTeachers } = await supabase
       .from('class_teachers')
       .select('class_id')
       .eq('profile_id', teacherId);
 
-    if (ctError) throw ctError;
+    const classIds = classTeachers?.map(ct => ct.class_id) || [];
 
-    if (!classTeachers || classTeachers.length === 0) {
-      return res.json({ students: [], total: 0 });
+    if (classIds.length === 0) {
+      return res.status(200).json({ students: [] });
     }
 
-    let classIds = classTeachers.map(ct => ct.class_id);
-
-    // Filter by specific class if provided
-    if (classId) {
-      if (!classIds.includes(classId)) {
-        return ErrorResponse.forbidden('You do not have access to this class').send(res);
-      }
-      classIds = [classId];
-    }
-
-    // Get enrollments for these classes
+    // Get all students enrolled in these classes
     const { data: enrollments, error: enrollError } = await supabase
       .from('enrollments')
       .select(`
         student_id,
         class_id,
         enrolled_at,
-        classes:class_id (
-          id,
-          name,
-          class_code
-        ),
-        profiles:student_id (
+        profiles (
           id,
           first_name,
           last_name,
           email,
           avatar
+        ),
+        classes (
+          id,
+          name,
+          code
         )
       `)
       .in('class_id', classIds);
 
-    if (enrollError) throw enrollError;
+    if (enrollError) {
+      console.error('Error fetching enrollments:', enrollError);
+      return ErrorResponse.internalServerError('Failed to fetch students').send(res);
+    }
 
-    // Group by student and get their stats
+    // Group enrollments by student
     const studentMap = new Map();
-    
+
     for (const enrollment of enrollments) {
       const studentId = enrollment.student_id;
       const profile = enrollment.profiles;
 
       if (!studentMap.has(studentId)) {
-        // Search filter
-        if (search) {
-          const searchLower = search.toLowerCase();
-          const fullName = `${profile.first_name} ${profile.last_name}`.toLowerCase();
-          const email = profile.email?.toLowerCase() || '';
-          if (!fullName.includes(searchLower) && !email.includes(searchLower)) {
-            continue;
-          }
-        }
-
         studentMap.set(studentId, {
-          student_id: studentId,
-          first_name: profile.first_name,
-          last_name: profile.last_name,
+          id: profile.id,
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+          firstName: profile.first_name,
+          lastName: profile.last_name,
           email: profile.email,
           avatar: profile.avatar,
-          classes: []
+          classes: [],
         });
       }
 
-      studentMap.get(studentId).classes.push({
-        class_id: enrollment.class_id,
-        class_name: enrollment.classes.name,
-        class_code: enrollment.classes.class_code,
-        enrolled_at: enrollment.enrolled_at
+      const student = studentMap.get(studentId);
+      student.classes.push({
+        id: enrollment.classes.id,
+        name: enrollment.classes.name,
+        code: enrollment.classes.code,
+        enrolledAt: enrollment.enrolled_at,
       });
     }
 
-    // Get stats for each student
+    // Convert map to array and enrich with grade data
     const students = await Promise.all(
       Array.from(studentMap.values()).map(async (student) => {
-        // Count total assignments in their classes
-        const studentClassIds = student.classes.map(c => c.class_id);
+        // Get all assignment IDs from student's classes
+        const studentClassIds = student.classes.map(c => c.id);
         
-        const { count: totalAssignments } = await supabase
+        const { data: assignments } = await supabase
           .from('assignments')
-          .select('id', { count: 'exact', head: true })
-          .in('class_id', studentClassIds)
-          .eq('status', 'published');
-
-        // Count submissions
-        const { count: submittedCount } = await supabase
-          .from('assignment_submissions')
-          .select('id', { count: 'exact', head: true })
-          .eq('student_id', student.student_id)
+          .select('id')
           .in('class_id', studentClassIds);
 
-        // Get average grade
-        const { data: grades } = await supabase
-          .from('assignment_submissions')
-          .select('grade, points_possible')
-          .eq('student_id', student.student_id)
-          .in('class_id', studentClassIds)
-          .not('grade', 'is', null);
+        const assignmentIds = assignments?.map(a => a.id) || [];
 
+        if (assignmentIds.length === 0) {
+          return {
+            ...student,
+            avgGrade: 'N/A',
+            completedAssignments: 0,
+            totalAssignments: 0,
+          };
+        }
+
+        // Get student's submissions
+        const { data: submissions } = await supabase
+          .from('assignment_submissions')
+          .select('grade, assignment_id')
+          .eq('student_id', student.id)
+          .in('assignment_id', assignmentIds);
+
+        const gradedSubmissions = submissions?.filter(s => s.grade !== null) || [];
         let avgGrade = null;
-        if (grades && grades.length > 0) {
-          const totalPercentage = grades.reduce((sum, g) => {
-            return sum + (g.grade / g.points_possible) * 100;
-          }, 0);
-          avgGrade = Math.round(totalPercentage / grades.length);
+        if (gradedSubmissions.length > 0) {
+          const total = gradedSubmissions.reduce((sum, s) => sum + parseFloat(s.grade), 0);
+          avgGrade = Math.round(total / gradedSubmissions.length);
         }
 
         return {
           ...student,
-          total_assignments: totalAssignments || 0,
-          submitted_count: submittedCount || 0,
-          completion_rate: totalAssignments > 0 
-            ? Math.round((submittedCount / totalAssignments) * 100) 
-            : 0,
-          average_grade: avgGrade
+          avgGrade: avgGrade ? `${avgGrade}%` : 'N/A',
+          completedAssignments: submissions?.length || 0,
+          totalAssignments: assignmentIds.length,
         };
       })
     );
 
-    return res.json({
-      students,
-      total: students.length
-    });
-
+    res.status(200).json({ students });
   } catch (err) {
-    console.error('Get teacher students error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in getTeacherStudents:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching students').send(res);
   }
 };
 
 /**
+ * GET /api/teacher/students/:id
  * Get detailed information about a specific student
  */
-export const getStudentDetail = async (req, res) => {
+export const getStudentDetails = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { studentId } = req.params;
+    const { id: studentId } = req.params;
     const supabase = getSupabaseClient();
 
     // Get student profile
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('id, first_name, last_name, email, avatar, created_at')
+      .select('*')
       .eq('id', studentId)
       .single();
 
-    if (profileError) throw profileError;
-    if (!profile) {
+    if (profileError || !profile) {
       return ErrorResponse.notFound('Student not found').send(res);
     }
 
-    // Get teacher's class IDs
+    // Get all classes taught by this teacher that the student is enrolled in
     const { data: classTeachers } = await supabase
       .from('class_teachers')
       .select('class_id')
@@ -181,179 +159,196 @@ export const getStudentDetail = async (req, res) => {
     const teacherClassIds = classTeachers?.map(ct => ct.class_id) || [];
 
     // Get student's enrollments in teacher's classes
-    const { data: enrollments } = await supabase
+    const { data: enrollments, error: enrollError } = await supabase
       .from('enrollments')
       .select(`
         class_id,
         enrolled_at,
-        classes:class_id (
+        classes (
           id,
           name,
-          class_code,
-          subject
+          code,
+          color
         )
       `)
       .eq('student_id', studentId)
       .in('class_id', teacherClassIds);
 
-    if (!enrollments || enrollments.length === 0) {
-      return ErrorResponse.forbidden('This student is not in any of your classes').send(res);
+    if (enrollError) {
+      console.error('Error fetching enrollments:', enrollError);
+      return ErrorResponse.internalServerError('Failed to fetch student details').send(res);
     }
 
-    const studentClassIds = enrollments.map(e => e.class_id);
+    // Verify teacher has access to at least one of student's classes
+    if (!enrollments || enrollments.length === 0) {
+      return ErrorResponse.forbidden('You do not have access to this student').send(res);
+    }
 
-    // Get submission history
-    const { data: submissions } = await supabase
+    // Get student's performance in each class
+    const classesWithGrades = await Promise.all(
+      enrollments.map(async (enrollment) => {
+        const classId = enrollment.class_id;
+
+        // Get assignments for this class
+        const { data: assignments } = await supabase
+          .from('assignments')
+          .select('id')
+          .eq('class_id', classId);
+
+        const assignmentIds = assignments?.map(a => a.id) || [];
+
+        // Get student's submissions for this class
+        const { data: submissions } = await supabase
+          .from('assignment_submissions')
+          .select('grade')
+          .eq('student_id', studentId)
+          .in('assignment_id', assignmentIds);
+
+        const gradedSubmissions = submissions?.filter(s => s.grade !== null) || [];
+        let avgGrade = null;
+        if (gradedSubmissions.length > 0) {
+          const total = gradedSubmissions.reduce((sum, s) => sum + parseFloat(s.grade), 0);
+          avgGrade = Math.round(total / gradedSubmissions.length);
+        }
+
+        return {
+          classId: enrollment.classes.id,
+          className: enrollment.classes.name,
+          classCode: enrollment.classes.code,
+          color: enrollment.classes.color,
+          enrolledAt: enrollment.enrolled_at,
+          avgGrade: avgGrade ? `${avgGrade}%` : 'N/A',
+          completedAssignments: submissions?.length || 0,
+          totalAssignments: assignmentIds.length,
+        };
+      })
+    );
+
+    // Get recent activity (recent submissions)
+    const allClassIds = enrollments.map(e => e.class_id);
+    const { data: allAssignments } = await supabase
+      .from('assignments')
+      .select('id, title')
+      .in('class_id', allClassIds);
+
+    const allAssignmentIds = allAssignments?.map(a => a.id) || [];
+
+    const { data: recentSubmissions } = await supabase
       .from('assignment_submissions')
       .select(`
         id,
         submitted_at,
         grade,
-        points_possible,
-        status,
-        assignments:assignment_id (
-          id,
-          title,
-          due_date,
-          class_id,
-          classes:class_id (
-            name
-          )
+        assignment_id,
+        assignments (
+          title
         )
       `)
       .eq('student_id', studentId)
-      .in('class_id', studentClassIds)
+      .in('assignment_id', allAssignmentIds)
       .order('submitted_at', { ascending: false })
-      .limit(20);
+      .limit(10);
 
-    // Calculate overall stats
-    const { data: allGrades } = await supabase
-      .from('assignment_submissions')
-      .select('grade, points_possible')
+    const recentActivity = recentSubmissions?.map(sub => ({
+      id: sub.id,
+      assignmentTitle: sub.assignments?.title || 'Unknown',
+      submittedAt: sub.submitted_at,
+      grade: sub.grade,
+    })) || [];
+
+    // Get or create student notes
+    const { data: notes } = await supabase
+      .from('student_notes')
+      .select('notes')
       .eq('student_id', studentId)
-      .in('class_id', studentClassIds)
-      .not('grade', 'is', null);
+      .eq('teacher_id', teacherId)
+      .single();
 
-    let overallAvg = null;
-    if (allGrades && allGrades.length > 0) {
-      const totalPercentage = allGrades.reduce((sum, g) => {
-        return sum + (g.grade / g.points_possible) * 100;
-      }, 0);
-      overallAvg = Math.round(totalPercentage / allGrades.length);
-    }
-
-    // Get total assignments
-    const { count: totalAssignments } = await supabase
-      .from('assignments')
-      .select('id', { count: 'exact', head: true })
-      .in('class_id', studentClassIds)
-      .eq('status', 'published');
-
-    return res.json({
+    res.status(200).json({
       student: {
-        ...profile,
-        classes: enrollments.map(e => ({
-          class_id: e.class_id,
-          class_name: e.classes.name,
-          class_code: e.classes.class_code,
-          subject: e.classes.subject,
-          enrolled_at: e.enrolled_at
-        })),
-        stats: {
-          total_assignments: totalAssignments || 0,
-          total_submissions: submissions?.length || 0,
-          average_grade: overallAvg,
-          recent_submissions: submissions || []
-        }
+        id: profile.id,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+        firstName: profile.first_name,
+        lastName: profile.last_name,
+        email: profile.email,
+        avatar: profile.avatar,
+        classes: classesWithGrades,
+        recentActivity,
+        notes: notes?.notes || '',
       }
     });
-
   } catch (err) {
-    console.error('Get student detail error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in getStudentDetails:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching student details').send(res);
   }
 };
 
 /**
- * Get student performance in a specific class
+ * PUT /api/teacher/students/:id/notes
+ * Save or update notes for a student
  */
-export const getStudentClassPerformance = async (req, res) => {
+export const updateStudentNotes = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { studentId, classId } = req.params;
-    const supabase = getSupabaseClient();
+    const { id: studentId } = req.params;
+    const { notes } = req.body;
 
-    // Verify teacher has access to this class
-    const { data: access } = await supabase
-      .from('class_teachers')
-      .select('role_in_class')
-      .eq('profile_id', teacherId)
-      .eq('class_id', classId)
-      .single();
-
-    if (!access) {
-      return ErrorResponse.forbidden('You do not have access to this class').send(res);
+    if (typeof notes !== 'string') {
+      return ErrorResponse.badRequest('Notes must be a string').send(res);
     }
 
-    // Verify student is enrolled in this class
+    const supabase = getSupabaseClient();
+
+    // Verify teacher has access to this student
+    const { data: classTeachers } = await supabase
+      .from('class_teachers')
+      .select('class_id')
+      .eq('profile_id', teacherId);
+
+    const teacherClassIds = classTeachers?.map(ct => ct.class_id) || [];
+
     const { data: enrollment } = await supabase
       .from('enrollments')
-      .select('enrolled_at')
+      .select('class_id')
       .eq('student_id', studentId)
-      .eq('class_id', classId)
+      .in('class_id', teacherClassIds)
+      .limit(1)
       .single();
 
     if (!enrollment) {
-      return ErrorResponse.notFound('Student is not enrolled in this class').send(res);
+      return ErrorResponse.forbidden('You do not have access to this student').send(res);
     }
 
-    // Get all assignments for this class
-    const { data: assignments } = await supabase
-      .from('assignments')
-      .select('id, title, due_date, points_possible, status')
-      .eq('class_id', classId)
-      .eq('status', 'published')
-      .order('due_date', { ascending: false });
+    // Upsert notes
+    const { data: updatedNotes, error: upsertError } = await supabase
+      .from('student_notes')
+      .upsert(
+        {
+          student_id: studentId,
+          teacher_id: teacherId,
+          notes,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'student_id,teacher_id',
+        }
+      )
+      .select()
+      .single();
 
-    // Get submissions for these assignments
-    const assignmentIds = assignments?.map(a => a.id) || [];
-    
-    const { data: submissions } = await supabase
-      .from('assignment_submissions')
-      .select('*')
-      .eq('student_id', studentId)
-      .in('assignment_id', assignmentIds);
+    if (upsertError) {
+      console.error('Error updating notes:', upsertError);
+      return ErrorResponse.internalServerError('Failed to update notes').send(res);
+    }
 
-    // Combine data
-    const performance = assignments?.map(assignment => {
-      const submission = submissions?.find(s => s.assignment_id === assignment.id);
-      
-      return {
-        assignment_id: assignment.id,
-        assignment_title: assignment.title,
-        due_date: assignment.due_date,
-        points_possible: assignment.points_possible,
-        submission_status: submission ? submission.status : 'not_submitted',
-        submitted_at: submission?.submitted_at || null,
-        grade: submission?.grade || null,
-        feedback: submission?.feedback || null,
-        percentage: submission?.grade 
-          ? Math.round((submission.grade / assignment.points_possible) * 100)
-          : null
-      };
-    }) || [];
-
-    return res.json({
-      student_id: studentId,
-      class_id: classId,
-      performance
+    res.status(200).json({
+      message: 'Notes updated successfully',
+      notes: updatedNotes
     });
-
   } catch (err) {
-    console.error('Get student class performance error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in updateStudentNotes:', err);
+    return ErrorResponse.internalServerError('An error occurred while updating notes').send(res);
   }
 };
-
 
 

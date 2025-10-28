@@ -34,7 +34,7 @@ export async function updateProfile(req, res) {
 
     return res.status(200).json({
       message: "Profile updated successfully",
-      profile: data,
+      data,
     });
 
   } catch (err) {

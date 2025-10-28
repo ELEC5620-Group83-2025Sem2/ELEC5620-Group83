@@ -2,117 +2,116 @@ import { getSupabaseClient } from '../../clients/supabaseClient.js';
 import { ErrorResponse } from '../../utils/errorResponse.js';
 
 /**
- * UC07: Analyze Class Performance
- * Get all classes for the current teacher
+ * GET /api/teacher/classes
+ * Get all classes taught by the authenticated teacher
  */
 export const getTeacherClasses = async (req, res) => {
   try {
     const teacherId = req.user.id;
     const supabase = getSupabaseClient();
 
-    // Get classes where user is a teacher
+    // Get classes taught by this teacher
     const { data: classTeachers, error: ctError } = await supabase
       .from('class_teachers')
-      .select('class_id, role_in_class')
+      .select('class_id')
       .eq('profile_id', teacherId);
 
-    if (ctError) throw ctError;
-
-    if (!classTeachers || classTeachers.length === 0) {
-      return res.json({ classes: [] });
+    if (ctError) {
+      console.error('Error fetching class teachers:', ctError);
+      return ErrorResponse.internalServerError('Failed to fetch classes').send(res);
     }
 
     const classIds = classTeachers.map(ct => ct.class_id);
 
-    // Get class details with enrollment counts
-    const { data: classes, error: classError } = await supabase
+    if (classIds.length === 0) {
+      return res.status(200).json({ classes: [] });
+    }
+
+    // Get class details
+    const { data: classes, error: classesError } = await supabase
       .from('classes')
       .select(`
-        id,
-        name,
-        class_code,
-        subject,
-        year_level,
-        description,
-        created_at,
-        enrollments:enrollments(count)
+        *,
+        enrollments (
+          student_id
+        )
       `)
       .in('id', classIds);
 
-    if (classError) throw classError;
+    if (classesError) {
+      console.error('Error fetching classes:', classesError);
+      return ErrorResponse.internalServerError('Failed to fetch class details').send(res);
+    }
 
-    // Get assignment stats for each class
-    const classesWithStats = await Promise.all(
-      classes.map(async (classItem) => {
-        // Count assignments
-        const { count: assignmentCount } = await supabase
-          .from('assignments')
-          .select('id', { count: 'exact', head: true })
-          .eq('class_id', classItem.id);
+    // For each class, get assignment count and calculate average grade
+    const enrichedClasses = await Promise.all(classes.map(async (cls) => {
+      // Get assignment count
+      const { count: assignmentCount } = await supabase
+        .from('assignments')
+        .select('*', { count: 'exact', head: true })
+        .eq('class_id', cls.id);
 
-        // Count pending submissions (submitted but not graded)
-        const { count: pendingCount } = await supabase
-          .from('assignment_submissions')
-          .select('id', { count: 'exact', head: true })
-          .eq('class_id', classItem.id)
-          .eq('status', 'submitted')
-          .is('grade', null);
+      // Get student count
+      const studentCount = cls.enrollments?.length || 0;
 
-        // Get average grade for graded submissions
-        const { data: grades } = await supabase
-          .from('assignment_submissions')
-          .select('grade, points_possible')
-          .eq('class_id', classItem.id)
-          .not('grade', 'is', null);
+      // Get average grade (simplified - you may want more complex calculation)
+      const { data: submissions } = await supabase
+        .from('assignment_submissions')
+        .select('grade')
+        .not('grade', 'is', null)
+        .in('assignment_id', 
+          (await supabase
+            .from('assignments')
+            .select('id')
+            .eq('class_id', cls.id)
+          ).data?.map(a => a.id) || []
+        );
 
-        let avgGrade = null;
-        if (grades && grades.length > 0) {
-          const totalPercentage = grades.reduce((sum, g) => {
-            return sum + (g.grade / g.points_possible) * 100;
-          }, 0);
-          avgGrade = Math.round(totalPercentage / grades.length);
-        }
+      let avgGrade = null;
+      if (submissions && submissions.length > 0) {
+        const total = submissions.reduce((sum, s) => sum + (parseFloat(s.grade) || 0), 0);
+        avgGrade = Math.round(total / submissions.length);
+      }
 
-        return {
-          ...classItem,
-          student_count: classItem.enrollments?.[0]?.count || 0,
-          assignment_count: assignmentCount || 0,
-          pending_grading: pendingCount || 0,
-          average_grade: avgGrade,
-          role_in_class: classTeachers.find(ct => ct.class_id === classItem.id)?.role_in_class || 'teacher'
-        };
-      })
-    );
+      return {
+        id: cls.id,
+        code: cls.code,
+        name: cls.name,
+        description: cls.description,
+        color: cls.color || '#667eea',
+        studentCount,
+        assignmentCount: assignmentCount || 0,
+        avgGrade: avgGrade ? `${avgGrade}%` : 'N/A',
+        // Include any additional fields from your classes table
+      };
+    }));
 
-    return res.json({
-      classes: classesWithStats,
-      total: classesWithStats.length
-    });
-
+    res.status(200).json({ classes: enrichedClasses });
   } catch (err) {
-    console.error('Get teacher classes error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in getTeacherClasses:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching classes').send(res);
   }
 };
 
 /**
+ * GET /api/teacher/classes/:id
  * Get details for a specific class
  */
-export const getClassDetail = async (req, res) => {
+export const getClassDetails = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { classId } = req.params;
+    const { id: classId } = req.params;
     const supabase = getSupabaseClient();
 
     // Verify teacher has access to this class
-    const { data: access } = await supabase
+    const { data: access, error: accessError } = await supabase
       .from('class_teachers')
-      .select('role_in_class')
+      .select('*')
       .eq('profile_id', teacherId)
       .eq('class_id', classId)
       .single();
 
-    if (!access) {
+    if (accessError || !access) {
       return ErrorResponse.forbidden('You do not have access to this class').send(res);
     }
 
@@ -123,69 +122,81 @@ export const getClassDetail = async (req, res) => {
       .eq('id', classId)
       .single();
 
-    if (classError) throw classError;
-    if (!classData) {
-      return ErrorResponse.notFound('Class not found').send(res);
+    if (classError) {
+      console.error('Error fetching class details:', classError);
+      return ErrorResponse.internalServerError('Failed to fetch class details').send(res);
     }
 
-    // Get enrollment count
+    // Get enrollments count
     const { count: studentCount } = await supabase
       .from('enrollments')
-      .select('student_id', { count: 'exact', head: true })
+      .select('*', { count: 'exact', head: true })
       .eq('class_id', classId);
 
-    // Get schedule sessions
-    const { data: sessions } = await supabase
+    // Get assignments count
+    const { count: assignmentCount } = await supabase
+      .from('assignments')
+      .select('*', { count: 'exact', head: true })
+      .eq('class_id', classId);
+
+    // Get class materials
+    const { data: materials } = await supabase
+      .from('class_materials')
+      .select('*')
+      .eq('class_id', classId)
+      .order('created_at', { ascending: false });
+
+    // Get class schedule sessions
+    const { data: schedule } = await supabase
       .from('class_schedule_sessions')
       .select('*')
       .eq('class_id', classId)
-      .order('day_of_week', { ascending: true })
-      .order('start_time', { ascending: true });
+      .order('day_of_week');
 
-    return res.json({
-      class: {
-        ...classData,
-        student_count: studentCount || 0,
-        schedule: sessions || [],
-        role_in_class: access.role_in_class
-      }
-    });
+    const enrichedClass = {
+      ...classData,
+      studentCount: studentCount || 0,
+      assignmentCount: assignmentCount || 0,
+      materials: materials || [],
+      schedule: schedule || [],
+    };
 
+    res.status(200).json({ class: enrichedClass });
   } catch (err) {
-    console.error('Get class detail error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in getClassDetails:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching class details').send(res);
   }
 };
 
 /**
- * UC08: Review Student Behavior Report
- * Get roster (list of students) for a class
+ * GET /api/teacher/classes/:id/students
+ * Get roster (list of students) for a specific class
  */
-export const getClassRoster = async (req, res) => {
+export const getClassStudents = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { classId } = req.params;
+    const { id: classId } = req.params;
     const supabase = getSupabaseClient();
 
-    // Verify teacher has access
-    const { data: access } = await supabase
+    // Verify teacher has access to this class
+    const { data: access, error: accessError } = await supabase
       .from('class_teachers')
-      .select('role_in_class')
+      .select('*')
       .eq('profile_id', teacherId)
       .eq('class_id', classId)
       .single();
 
-    if (!access) {
+    if (accessError || !access) {
       return ErrorResponse.forbidden('You do not have access to this class').send(res);
     }
 
-    // Get enrolled students with their profile info
+    // Get enrolled students
     const { data: enrollments, error: enrollError } = await supabase
       .from('enrollments')
       .select(`
         student_id,
         enrolled_at,
-        profiles:student_id (
+        profiles (
           id,
           first_name,
           last_name,
@@ -195,183 +206,146 @@ export const getClassRoster = async (req, res) => {
       `)
       .eq('class_id', classId);
 
-    if (enrollError) throw enrollError;
+    if (enrollError) {
+      console.error('Error fetching enrollments:', enrollError);
+      return ErrorResponse.internalServerError('Failed to fetch class roster').send(res);
+    }
 
-    // Get submission stats for each student
-    const studentsWithStats = await Promise.all(
-      enrollments.map(async (enrollment) => {
-        const studentId = enrollment.student_id;
-        const profile = enrollment.profiles;
+    // Enrich student data with grade information
+    const students = await Promise.all(enrollments.map(async (enrollment) => {
+      const studentId = enrollment.student_id;
+      const profile = enrollment.profiles;
 
-        // Count total assignments for this class
-        const { count: totalAssignments } = await supabase
-          .from('assignments')
-          .select('id', { count: 'exact', head: true })
-          .eq('class_id', classId)
-          .eq('status', 'published');
+      // Get student's grades for this class
+      const { data: submissions } = await supabase
+        .from('assignment_submissions')
+        .select('grade')
+        .eq('student_id', studentId)
+        .not('grade', 'is', null)
+        .in('assignment_id',
+          (await supabase
+            .from('assignments')
+            .select('id')
+            .eq('class_id', classId)
+          ).data?.map(a => a.id) || []
+        );
 
-        // Count submitted assignments
-        const { count: submittedCount } = await supabase
-          .from('assignment_submissions')
-          .select('id', { count: 'exact', head: true })
-          .eq('student_id', studentId)
-          .eq('class_id', classId)
-          .in('status', ['submitted', 'graded']);
+      let avgGrade = null;
+      if (submissions && submissions.length > 0) {
+        const total = submissions.reduce((sum, s) => sum + (parseFloat(s.grade) || 0), 0);
+        avgGrade = Math.round(total / submissions.length);
+      }
 
-        // Get grades
-        const { data: grades } = await supabase
-          .from('assignment_submissions')
-          .select('grade, points_possible')
-          .eq('student_id', studentId)
-          .eq('class_id', classId)
-          .not('grade', 'is', null);
+      return {
+        id: profile.id,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
+        firstName: profile.first_name,
+        lastName: profile.last_name,
+        email: profile.email,
+        avatar: profile.avatar,
+        enrolledAt: enrollment.enrolled_at,
+        avgGrade: avgGrade ? `${avgGrade}%` : 'N/A',
+      };
+    }));
 
-        let avgGrade = null;
-        if (grades && grades.length > 0) {
-          const totalPercentage = grades.reduce((sum, g) => {
-            return sum + (g.grade / g.points_possible) * 100;
-          }, 0);
-          avgGrade = Math.round(totalPercentage / grades.length);
-        }
-
-        return {
-          student_id: studentId,
-          first_name: profile?.first_name || '',
-          last_name: profile?.last_name || '',
-          email: profile?.email || '',
-          avatar: profile?.avatar || '',
-          enrolled_at: enrollment.enrolled_at,
-          total_assignments: totalAssignments || 0,
-          submitted_count: submittedCount || 0,
-          completion_rate: totalAssignments > 0 
-            ? Math.round((submittedCount / totalAssignments) * 100) 
-            : 0,
-          average_grade: avgGrade
-        };
-      })
-    );
-
-    return res.json({
-      students: studentsWithStats,
-      total: studentsWithStats.length
-    });
-
+    res.status(200).json({ students });
   } catch (err) {
-    console.error('Get class roster error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in getClassStudents:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching class roster').send(res);
   }
 };
 
 /**
- * UC07: Analyze Class Performance
- * Get analytics for a specific class
+ * GET /api/teacher/classes/:id/analytics
+ * Get analytics data for a specific class
  */
 export const getClassAnalytics = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { classId } = req.params;
+    const { id: classId } = req.params;
     const supabase = getSupabaseClient();
 
-    // Verify teacher has access
-    const { data: access } = await supabase
+    // Verify teacher has access to this class
+    const { data: access, error: accessError } = await supabase
       .from('class_teachers')
-      .select('role_in_class')
+      .select('*')
       .eq('profile_id', teacherId)
       .eq('class_id', classId)
       .single();
 
-    if (!access) {
+    if (accessError || !access) {
       return ErrorResponse.forbidden('You do not have access to this class').send(res);
     }
 
-    // Get all graded submissions for this class
-    const { data: submissions, error: subError } = await supabase
+    // Get all assignments for this class
+    const { data: assignments } = await supabase
+      .from('assignments')
+      .select('id')
+      .eq('class_id', classId);
+
+    const assignmentIds = assignments?.map(a => a.id) || [];
+
+    if (assignmentIds.length === 0) {
+      return res.status(200).json({
+        analytics: {
+          averageGrade: null,
+          completionRate: 0,
+          gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
+          totalStudents: 0,
+          totalAssignments: 0,
+        }
+      });
+    }
+
+    // Get all submissions for these assignments
+    const { data: submissions } = await supabase
       .from('assignment_submissions')
-      .select(`
-        id,
-        grade,
-        points_possible,
-        submitted_at,
-        graded_at,
-        student_id,
-        assignment_id,
-        assignments:assignment_id (
-          title,
-          due_date
-        )
-      `)
-      .eq('class_id', classId)
-      .not('grade', 'is', null);
+      .select('grade, student_id')
+      .in('assignment_id', assignmentIds);
 
-    if (subError) throw subError;
+    // Calculate average grade
+    const gradedSubmissions = submissions?.filter(s => s.grade !== null) || [];
+    let averageGrade = null;
+    if (gradedSubmissions.length > 0) {
+      const total = gradedSubmissions.reduce((sum, s) => sum + parseFloat(s.grade), 0);
+      averageGrade = Math.round(total / gradedSubmissions.length);
+    }
 
-    // Calculate grade distribution
-    const gradeDistribution = {
-      'A (90-100)': 0,
-      'B (80-89)': 0,
-      'C (70-79)': 0,
-      'D (60-69)': 0,
-      'F (0-59)': 0
-    };
+    // Calculate completion rate
+    const { count: totalEnrollments } = await supabase
+      .from('enrollments')
+      .select('*', { count: 'exact', head: true })
+      .eq('class_id', classId);
 
-    const gradePercentages = submissions.map(sub => {
-      const percentage = (sub.grade / sub.points_possible) * 100;
-      
-      if (percentage >= 90) gradeDistribution['A (90-100)']++;
-      else if (percentage >= 80) gradeDistribution['B (80-89)']++;
-      else if (percentage >= 70) gradeDistribution['C (70-79)']++;
-      else if (percentage >= 60) gradeDistribution['D (60-69)']++;
-      else gradeDistribution['F (0-59)']++;
-      
-      return percentage;
-    });
-
-    // Calculate average
-    const avgGrade = gradePercentages.length > 0
-      ? gradePercentages.reduce((a, b) => a + b, 0) / gradePercentages.length
+    const expectedSubmissions = (totalEnrollments || 0) * assignmentIds.length;
+    const completionRate = expectedSubmissions > 0
+      ? Math.round(((submissions?.length || 0) / expectedSubmissions) * 100)
       : 0;
 
-    // Get student count
-    const { count: studentCount } = await supabase
-      .from('enrollments')
-      .select('student_id', { count: 'exact', head: true })
-      .eq('class_id', classId);
-
-    // Get assignment count
-    const { count: assignmentCount } = await supabase
-      .from('assignments')
-      .select('id', { count: 'exact', head: true })
-      .eq('class_id', classId);
-
-    // Performance trend (last 30 days)
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    const { data: recentSubs } = await supabase
-      .from('assignment_submissions')
-      .select('grade, points_possible, graded_at')
-      .eq('class_id', classId)
-      .not('grade', 'is', null)
-      .gte('graded_at', thirtyDaysAgo.toISOString())
-      .order('graded_at', { ascending: true });
-
-    return res.json({
-      analytics: {
-        class_id: classId,
-        student_count: studentCount || 0,
-        assignment_count: assignmentCount || 0,
-        total_submissions: submissions.length,
-        average_grade: Math.round(avgGrade * 10) / 10,
-        grade_distribution: gradeDistribution,
-        performance_trend: recentSubs || []
-      }
+    // Calculate grade distribution
+    const gradeDistribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    gradedSubmissions.forEach(s => {
+      const grade = parseFloat(s.grade);
+      if (grade >= 90) gradeDistribution.A++;
+      else if (grade >= 80) gradeDistribution.B++;
+      else if (grade >= 70) gradeDistribution.C++;
+      else if (grade >= 60) gradeDistribution.D++;
+      else gradeDistribution.F++;
     });
 
+    res.status(200).json({
+      analytics: {
+        averageGrade: averageGrade ? `${averageGrade}%` : 'N/A',
+        completionRate: `${completionRate}%`,
+        gradeDistribution,
+        totalStudents: totalEnrollments || 0,
+        totalAssignments: assignmentIds.length,
+      }
+    });
   } catch (err) {
-    console.error('Get class analytics error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in getClassAnalytics:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching class analytics').send(res);
   }
 };
-
 
 

@@ -35,6 +35,12 @@ app.get('/', (req, res) => {
         signup: '/api/auth/signup',
         logout: '/api/auth/logout'
       },
+      teacher: {
+        classes: '/api/teacher/classes',
+        assignments: '/api/teacher/assignments',
+        students: '/api/teacher/students',
+        announcements: '/api/teacher/announcements'
+      },
       aiAgent: {
         courseRecommendation: '/api/ai-agent/course-recommendation',
         careerPathway: '/api/ai-agent/career-pathway'

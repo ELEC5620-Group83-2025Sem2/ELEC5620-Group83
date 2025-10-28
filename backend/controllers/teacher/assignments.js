@@ -2,139 +2,121 @@ import { getSupabaseClient } from '../../clients/supabaseClient.js';
 import { ErrorResponse } from '../../utils/errorResponse.js';
 
 /**
+ * GET /api/teacher/assignments
+ * Get all assignments created by the teacher
  * Get all assignments for teacher's classes
  */
 export const getTeacherAssignments = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { status, classId } = req.query;
     const supabase = getSupabaseClient();
 
-    // Get teacher's class IDs
-    const { data: classTeachers, error: ctError } = await supabase
+    // Get all classes taught by this teacher
+    const { data: classTeachers } = await supabase
       .from('class_teachers')
       .select('class_id')
       .eq('profile_id', teacherId);
 
-    if (ctError) throw ctError;
+    const classIds = classTeachers?.map(ct => ct.class_id) || [];
 
-    if (!classTeachers || classTeachers.length === 0) {
-      return res.json({ assignments: [], total: 0 });
+    if (classIds.length === 0) {
+      return res.status(200).json({ assignments: [] });
     }
 
-    const classIds = classTeachers.map(ct => ct.class_id);
-
-    // Build query
-    let query = supabase
+    // Get assignments for these classes
+    const { data: assignments, error: assignError } = await supabase
       .from('assignments')
       .select(`
         *,
-        classes:class_id (
-          id,
+        classes (
           name,
-          class_code
+          code
         )
       `)
       .in('class_id', classIds)
       .order('created_at', { ascending: false });
 
-    // Filter by status if provided
-    if (status) {
-      query = query.eq('status', status);
+    if (assignError) {
+      console.error('Error fetching assignments:', assignError);
+      return ErrorResponse.internalServerError('Failed to fetch assignments').send(res);
     }
 
-    // Filter by class if provided
-    if (classId) {
-      query = query.eq('class_id', classId);
-    }
+    // Enrich each assignment with submission stats
+    const enrichedAssignments = await Promise.all(assignments.map(async (assignment) => {
+      // Get submission stats
+      const { data: submissions } = await supabase
+        .from('assignment_submissions')
+        .select('id, status, grade')
+        .eq('assignment_id', assignment.id);
 
-    const { data: assignments, error: assignError } = await query;
+      const totalSubmissions = submissions?.length || 0;
+      const gradedSubmissions = submissions?.filter(s => s.grade !== null).length || 0;
+      const pendingGrading = submissions?.filter(s => s.status === 'submitted' && s.grade === null).length || 0;
 
-    if (assignError) throw assignError;
+      // Get total enrolled students in the class
+      const { count: totalStudents } = await supabase
+        .from('enrollments')
+        .select('*', { count: 'exact', head: true })
+        .eq('class_id', assignment.class_id);
 
-    // Get submission stats for each assignment
-    const assignmentsWithStats = await Promise.all(
-      assignments.map(async (assignment) => {
-        // Count total submissions
-        const { count: totalSubmissions } = await supabase
-          .from('assignment_submissions')
-          .select('id', { count: 'exact', head: true })
-          .eq('assignment_id', assignment.id);
+      return {
+        id: assignment.id,
+        title: assignment.title,
+        description: assignment.description,
+        className: assignment.classes?.name || 'Unknown',
+        classCode: assignment.classes?.code || '',
+        dueDate: assignment.due_date,
+        totalPoints: assignment.total_points,
+        status: assignment.status || 'draft',
+        submissionStats: {
+          total: totalSubmissions,
+          graded: gradedSubmissions,
+          pending: pendingGrading,
+          totalStudents: totalStudents || 0,
+        },
+        createdAt: assignment.created_at,
+      };
+    }));
 
-        // Count graded submissions
-        const { count: gradedCount } = await supabase
-          .from('assignment_submissions')
-          .select('id', { count: 'exact', head: true })
-          .eq('assignment_id', assignment.id)
-          .not('grade', 'is', null);
-
-        // Count pending (submitted but not graded)
-        const { count: pendingCount } = await supabase
-          .from('assignment_submissions')
-          .select('id', { count: 'exact', head: true })
-          .eq('assignment_id', assignment.id)
-          .eq('status', 'submitted')
-          .is('grade', null);
-
-        // Get class enrollment count for total possible submissions
-        const { count: enrollmentCount } = await supabase
-          .from('enrollments')
-          .select('student_id', { count: 'exact', head: true })
-          .eq('class_id', assignment.class_id);
-
-        return {
-          ...assignment,
-          total_submissions: totalSubmissions || 0,
-          graded_count: gradedCount || 0,
-          pending_grading: pendingCount || 0,
-          total_students: enrollmentCount || 0
-        };
-      })
-    );
-
-    return res.json({
-      assignments: assignmentsWithStats,
-      total: assignmentsWithStats.length
-    });
-
+    res.status(200).json({ assignments: enrichedAssignments });
   } catch (err) {
-    console.error('Get teacher assignments error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in getTeacherAssignments:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching assignments').send(res);
   }
 };
 
 /**
- * Get assignment details
+ * GET /api/teacher/assignments/:id
+ * Get details for a specific assignment
  */
-export const getAssignmentDetail = async (req, res) => {
+export const getAssignmentDetails = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { assignmentId } = req.params;
+    const { id: assignmentId } = req.params;
     const supabase = getSupabaseClient();
 
-    // Get assignment
+    // Get assignment details
     const { data: assignment, error: assignError } = await supabase
       .from('assignments')
       .select(`
         *,
-        classes:class_id (
+        classes (
           id,
           name,
-          class_code
+          code
         )
       `)
       .eq('id', assignmentId)
       .single();
 
-    if (assignError) throw assignError;
-    if (!assignment) {
+    if (assignError || !assignment) {
       return ErrorResponse.notFound('Assignment not found').send(res);
     }
 
-    // Verify teacher has access to this class
+    // Verify teacher has access to this assignment's class
     const { data: access } = await supabase
       .from('class_teachers')
-      .select('role_in_class')
+      .select('*')
       .eq('profile_id', teacherId)
       .eq('class_id', assignment.class_id)
       .single();
@@ -143,53 +125,64 @@ export const getAssignmentDetail = async (req, res) => {
       return ErrorResponse.forbidden('You do not have access to this assignment').send(res);
     }
 
-    // Get related data
-    const [instructions, requirements, resources, rubricItems, questions] = await Promise.all([
-      supabase.from('assignment_instructions').select('*').eq('assignment_id', assignmentId),
-      supabase.from('assignment_requirements').select('*').eq('assignment_id', assignmentId),
-      supabase.from('assignment_resources').select('*').eq('assignment_id', assignmentId),
-      supabase.from('assignment_rubric_items').select('*').eq('assignment_id', assignmentId).order('points', { ascending: false }),
-      supabase.from('assignment_questions').select(`
+    // Get submissions
+    const { data: submissions } = await supabase
+      .from('assignment_submissions')
+      .select(`
         *,
-        options:assignment_question_options(*)
-      `).eq('assignment_id', assignmentId).order('order_num', { ascending: true })
-    ]);
+        profiles (
+          id,
+          first_name,
+          last_name,
+          email,
+          avatar
+        )
+      `)
+      .eq('assignment_id', assignmentId);
 
-    return res.json({
+    const enrichedSubmissions = submissions?.map(sub => ({
+      id: sub.id,
+      studentId: sub.student_id,
+      studentName: `${sub.profiles?.first_name || ''} ${sub.profiles?.last_name || ''}`.trim() || sub.profiles?.email,
+      studentAvatar: sub.profiles?.avatar,
+      submittedAt: sub.submitted_at,
+      status: sub.status,
+      grade: sub.grade,
+      feedback: sub.feedback,
+      content: sub.content,
+    })) || [];
+
+    res.status(200).json({
       assignment: {
         ...assignment,
-        instructions: instructions.data || [],
-        requirements: requirements.data || [],
-        resources: resources.data || [],
-        rubric_items: rubricItems.data || [],
-        questions: questions.data || []
+        className: assignment.classes?.name,
+        classCode: assignment.classes?.code,
+        submissions: enrichedSubmissions,
       }
     });
-
   } catch (err) {
-    console.error('Get assignment detail error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in getAssignmentDetails:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching assignment details').send(res);
   }
 };
 
 /**
- * Create new assignment
+ * POST /api/teacher/assignments
+ * Create a new assignment
  */
 export const createAssignment = async (req, res) => {
   try {
     const teacherId = req.user.id;
     const {
-      class_id,
+      classId,
       title,
       description,
-      assignment_type,
-      points_possible,
-      due_date,
       instructions,
-      requirements,
+      dueDate,
+      totalPoints,
+      rubric,
+      questions,
       resources,
-      rubric_items,
-      questions
     } = req.body;
 
     const supabase = getSupabaseClient();
@@ -197,142 +190,81 @@ export const createAssignment = async (req, res) => {
     // Verify teacher has access to this class
     const { data: access } = await supabase
       .from('class_teachers')
-      .select('role_in_class')
+      .select('*')
       .eq('profile_id', teacherId)
-      .eq('class_id', class_id)
+      .eq('class_id', classId)
       .single();
 
     if (!access) {
       return ErrorResponse.forbidden('You do not have access to this class').send(res);
     }
 
+    // Validate required fields
+    if (!title || !classId || !dueDate) {
+      return ErrorResponse.badRequest('Missing required fields: title, classId, dueDate').send(res);
+    }
+
     // Create assignment
-    const { data: assignment, error: assignError } = await supabase
+    const { data: assignment, error: createError } = await supabase
       .from('assignments')
-      .insert({
-        class_id,
+      .insert([{
+        class_id: classId,
         title,
         description,
-        assignment_type: assignment_type || 'homework',
-        points_possible: points_possible || 100,
-        due_date,
+        instructions: instructions || [],
+        due_date: dueDate,
+        total_points: totalPoints || 100,
+        rubric: rubric || [],
+        questions: questions || [],
+        resources: resources || [],
         status: 'draft',
-        created_by: teacherId
-      })
+        created_by: teacherId,
+      }])
       .select()
       .single();
 
-    if (assignError) throw assignError;
-
-    // Insert related data if provided
-    const assignmentId = assignment.id;
-
-    if (instructions && instructions.length > 0) {
-      await supabase.from('assignment_instructions').insert(
-        instructions.map((inst, idx) => ({
-          assignment_id: assignmentId,
-          step_number: idx + 1,
-          instruction_text: inst.instruction_text || inst
-        }))
-      );
+    if (createError) {
+      console.error('Error creating assignment:', createError);
+      return ErrorResponse.internalServerError('Failed to create assignment').send(res);
     }
 
-    if (requirements && requirements.length > 0) {
-      await supabase.from('assignment_requirements').insert(
-        requirements.map(req => ({
-          assignment_id: assignmentId,
-          requirement_text: req.requirement_text || req,
-          is_required: req.is_required !== false
-        }))
-      );
-    }
-
-    if (resources && resources.length > 0) {
-      await supabase.from('assignment_resources').insert(
-        resources.map(res => ({
-          assignment_id: assignmentId,
-          resource_type: res.resource_type || 'link',
-          resource_url: res.resource_url,
-          resource_title: res.resource_title
-        }))
-      );
-    }
-
-    if (rubric_items && rubric_items.length > 0) {
-      await supabase.from('assignment_rubric_items').insert(
-        rubric_items.map(item => ({
-          assignment_id: assignmentId,
-          criteria: item.criteria,
-          points: item.points,
-          description: item.description
-        }))
-      );
-    }
-
-    if (questions && questions.length > 0) {
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i];
-        const { data: question } = await supabase
-          .from('assignment_questions')
-          .insert({
-            assignment_id: assignmentId,
-            question_type: q.question_type || 'text',
-            question_text: q.question_text,
-            points: q.points || 0,
-            order_num: i + 1
-          })
-          .select()
-          .single();
-
-        // Insert options for multiple choice questions
-        if (question && q.options && q.options.length > 0) {
-          await supabase.from('assignment_question_options').insert(
-            q.options.map((opt, optIdx) => ({
-              question_id: question.id,
-              option_text: opt.option_text || opt,
-              is_correct: opt.is_correct || false,
-              order_num: optIdx + 1
-            }))
-          );
-        }
-      }
-    }
-
-    return res.status(201).json({
+    res.status(201).json({
       message: 'Assignment created successfully',
       assignment
     });
-
   } catch (err) {
-    console.error('Create assignment error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in createAssignment:', err);
+    return ErrorResponse.internalServerError('An error occurred while creating assignment').send(res);
   }
 };
 
 /**
- * Update assignment
+ * PUT /api/teacher/assignments/:id
+ * Update an existing assignment
  */
 export const updateAssignment = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { assignmentId } = req.params;
+    const { id: assignmentId } = req.params;
     const updateData = req.body;
+
     const supabase = getSupabaseClient();
 
-    // Get assignment and verify access
-    const { data: assignment } = await supabase
+    // Get assignment to verify ownership
+    const { data: assignment, error: fetchError } = await supabase
       .from('assignments')
       .select('class_id')
       .eq('id', assignmentId)
       .single();
 
-    if (!assignment) {
+    if (fetchError || !assignment) {
       return ErrorResponse.notFound('Assignment not found').send(res);
     }
 
+    // Verify teacher has access
     const { data: access } = await supabase
       .from('class_teachers')
-      .select('role_in_class')
+      .select('*')
       .eq('profile_id', teacherId)
       .eq('class_id', assignment.class_id)
       .single();
@@ -349,42 +281,101 @@ export const updateAssignment = async (req, res) => {
       .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Error updating assignment:', updateError);
+      return ErrorResponse.internalServerError('Failed to update assignment').send(res);
+    }
 
-    return res.json({
+    res.status(200).json({
       message: 'Assignment updated successfully',
       assignment: updated
     });
-
   } catch (err) {
-    console.error('Update assignment error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in updateAssignment:', err);
+    return ErrorResponse.internalServerError('An error occurred while updating assignment').send(res);
   }
 };
 
 /**
- * Publish assignment (make it visible to students)
+ * DELETE /api/teacher/assignments/:id
+ * Delete an assignment
+ */
+export const deleteAssignment = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const { id: assignmentId } = req.params;
+
+    const supabase = getSupabaseClient();
+
+    // Get assignment to verify ownership
+    const { data: assignment, error: fetchError } = await supabase
+      .from('assignments')
+      .select('class_id')
+      .eq('id', assignmentId)
+      .single();
+
+    if (fetchError || !assignment) {
+      return ErrorResponse.notFound('Assignment not found').send(res);
+    }
+
+    // Verify teacher has access
+    const { data: access } = await supabase
+      .from('class_teachers')
+      .select('*')
+      .eq('profile_id', teacherId)
+      .eq('class_id', assignment.class_id)
+      .single();
+
+    if (!access) {
+      return ErrorResponse.forbidden('You do not have access to this assignment').send(res);
+    }
+
+    // Delete assignment
+    const { error: deleteError } = await supabase
+      .from('assignments')
+      .delete()
+      .eq('id', assignmentId);
+
+    if (deleteError) {
+      console.error('Error deleting assignment:', deleteError);
+      return ErrorResponse.internalServerError('Failed to delete assignment').send(res);
+    }
+
+    res.status(200).json({
+      message: 'Assignment deleted successfully'
+    });
+  } catch (err) {
+    console.error('Error in deleteAssignment:', err);
+    return ErrorResponse.internalServerError('An error occurred while deleting assignment').send(res);
+  }
+};
+
+/**
+ * POST /api/teacher/assignments/:id/publish
+ * Publish an assignment (make it visible to students)
  */
 export const publishAssignment = async (req, res) => {
   try {
     const teacherId = req.user.id;
-    const { assignmentId } = req.params;
+    const { id: assignmentId } = req.params;
+
     const supabase = getSupabaseClient();
 
-    // Get assignment and verify access
-    const { data: assignment } = await supabase
+    // Get assignment to verify ownership
+    const { data: assignment, error: fetchError } = await supabase
       .from('assignments')
       .select('class_id, status')
       .eq('id', assignmentId)
       .single();
 
-    if (!assignment) {
+    if (fetchError || !assignment) {
       return ErrorResponse.notFound('Assignment not found').send(res);
     }
 
+    // Verify teacher has access
     const { data: access } = await supabase
       .from('class_teachers')
-      .select('role_in_class')
+      .select('*')
       .eq('profile_id', teacherId)
       .eq('class_id', assignment.class_id)
       .single();
@@ -396,75 +387,24 @@ export const publishAssignment = async (req, res) => {
     // Update status to published
     const { data: updated, error: updateError } = await supabase
       .from('assignments')
-      .update({ 
-        status: 'published',
-        published_at: new Date().toISOString()
-      })
+      .update({ status: 'published' })
       .eq('id', assignmentId)
       .select()
       .single();
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Error publishing assignment:', updateError);
+      return ErrorResponse.internalServerError('Failed to publish assignment').send(res);
+    }
 
-    return res.json({
+    res.status(200).json({
       message: 'Assignment published successfully',
       assignment: updated
     });
-
   } catch (err) {
-    console.error('Publish assignment error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
+    console.error('Error in publishAssignment:', err);
+    return ErrorResponse.internalServerError('An error occurred while publishing assignment').send(res);
   }
 };
-
-/**
- * Delete assignment
- */
-export const deleteAssignment = async (req, res) => {
-  try {
-    const teacherId = req.user.id;
-    const { assignmentId } = req.params;
-    const supabase = getSupabaseClient();
-
-    // Get assignment and verify access
-    const { data: assignment } = await supabase
-      .from('assignments')
-      .select('class_id')
-      .eq('id', assignmentId)
-      .single();
-
-    if (!assignment) {
-      return ErrorResponse.notFound('Assignment not found').send(res);
-    }
-
-    const { data: access } = await supabase
-      .from('class_teachers')
-      .select('role_in_class')
-      .eq('profile_id', teacherId)
-      .eq('class_id', assignment.class_id)
-      .single();
-
-    if (!access) {
-      return ErrorResponse.forbidden('You do not have access to this assignment').send(res);
-    }
-
-    // Delete assignment (cascade will delete related data)
-    const { error: deleteError } = await supabase
-      .from('assignments')
-      .delete()
-      .eq('id', assignmentId);
-
-    if (deleteError) throw deleteError;
-
-    return res.json({
-      message: 'Assignment deleted successfully'
-    });
-
-  } catch (err) {
-    console.error('Delete assignment error:', err);
-    return ErrorResponse.internalServerError(err.message).send(res);
-  }
-};
-
 
 

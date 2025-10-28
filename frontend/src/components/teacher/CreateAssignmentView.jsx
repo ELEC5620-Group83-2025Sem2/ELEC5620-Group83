@@ -1,197 +1,108 @@
-import { useState } from 'react'
-import { teacherClasses, generateAssignment, generateRubric, suggestQuestions } from './teacherMockData'
+import { useState, useEffect } from 'react'
+import teacherApi from '../../services/teacherApi'
 
 function CreateAssignmentView({ assignmentId, classId, onBack }) {
+  const [classes, setClasses] = useState([])
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    classId: classId || '',
-    type: 'homework',
-    dueDate: '',
-    dueTime: '23:59',
-    totalPoints: 100
+    class_id: classId || '',
+    due_date: '',
+    total_points: 100,
+    assignment_type: 'homework',
+    instructions: '',
+    requirements: '',
+    submission_type: 'online'
   })
+  const [loading, setLoading] = useState(false)
 
-  const [questions, setQuestions] = useState([])
-  const [rubric, setRubric] = useState(null)
-  const [aiLoading, setAiLoading] = useState(false)
-  const [showAiModal, setShowAiModal] = useState(false)
-  const [aiModalType, setAiModalType] = useState('')
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const response = await teacherApi.getClasses()
+        setClasses(response.data || [])
+      } catch (error) {
+        console.error('Failed to fetch classes:', error)
+      }
+    }
+
+    fetchClasses()
+  }, [])
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleAddQuestion = () => {
-    setQuestions([
-      ...questions,
-      {
-        id: `Q${questions.length + 1}`,
-        type: 'multiple-choice',
-        question: '',
-        points: 10,
-        options: [
-          { id: 'a', text: '' },
-          { id: 'b', text: '' },
-          { id: 'c', text: '' },
-          { id: 'd', text: '' }
-        ]
-      }
-    ])
-  }
-
-  const handleGenerateAssignment = async () => {
-    setAiLoading(true)
-    setAiModalType('generate')
-    setShowAiModal(true)
-
-    // Call AI generation skeleton
-    const result = await generateAssignment({
-      subject: 'Mathematics',
-      topic: 'Calculus',
-      difficulty: 'medium',
-      type: formData.type,
-      questionCount: 3
-    })
-
-    if (result.success) {
-      setFormData({
-        ...formData,
-        title: result.assignment.title,
-        description: result.assignment.description,
-        totalPoints: result.assignment.totalPoints
-      })
-      setQuestions(result.assignment.questions)
-    }
-
-    setAiLoading(false)
-  }
-
-  const handleGenerateRubric = async () => {
-    setAiLoading(true)
-    setAiModalType('rubric')
-    setShowAiModal(true)
-
-    // Call AI rubric generation skeleton
-    const result = await generateRubric({
-      title: formData.title,
-      description: formData.description,
-      type: formData.type
-    })
-
-    if (result.success) {
-      setRubric(result.rubric)
-    }
-
-    setAiLoading(false)
-  }
-
-  const handleSuggestQuestions = async () => {
-    setAiLoading(true)
-
-    // Call AI question suggestion skeleton
-    const result = await suggestQuestions({
-      topic: 'Calculus',
-      difficulty: 'medium',
-      existingQuestions: questions
-    })
-
-    if (result.success) {
-      const newQuestions = result.questions.map((q, idx) => ({
-        id: `Q${questions.length + idx + 1}`,
-        type: q.type,
-        question: q.question,
-        points: 10,
-        options: q.type === 'multiple-choice' ? [
-          { id: 'a', text: 'Option A' },
-          { id: 'b', text: 'Option B' },
-          { id: 'c', text: 'Option C' },
-          { id: 'd', text: 'Option D' }
-        ] : undefined
-      }))
-      setQuestions([...questions, ...newQuestions])
-    }
-
-    setAiLoading(false)
-  }
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    alert('Assignment created! (This would save to backend)')
-    onBack()
+    
+    if (!formData.title || !formData.class_id) {
+      alert('Please enter a title and select a class')
+      return
+    }
+
+    setLoading(true)
+    try {
+      await teacherApi.createAssignment(formData)
+      alert('Assignment created successfully!')
+      onBack()
+    } catch (error) {
+      console.error('Failed to create assignment:', error)
+      alert('Failed to create assignment. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <div className="create-assignment-view">
-      <button className="btn-back" onClick={onBack}>
-        ← Back to Assignments
-      </button>
-
       <div className="create-assignment-header">
-        <h2>{assignmentId ? 'Edit' : 'Create'} Assignment</h2>
-        <div className="ai-badge">
-          <span className="ai-icon">🤖</span>
-          <span>AI-Powered Tools Available</span>
-        </div>
+        <button className="btn-back" onClick={onBack}>
+          ← Back to Assignments
+        </button>
+        <h2>{assignmentId ? 'Edit Assignment' : 'Create New Assignment'}</h2>
       </div>
 
-      <form onSubmit={handleSubmit} className="assignment-form">
+      <form className="assignment-form" onSubmit={handleSubmit}>
         {/* Basic Information */}
         <div className="form-section">
           <h3>Basic Information</h3>
           
           <div className="form-group">
-            <label htmlFor="title">Assignment Title *</label>
+            <label>Assignment Title *</label>
             <input
               type="text"
-              id="title"
               name="title"
               value={formData.title}
               onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="description">Description *</label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows="4"
+              placeholder="Enter assignment title"
               required
             />
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="classId">Class *</label>
+              <label>Class *</label>
               <select
-                id="classId"
-                name="classId"
-                value={formData.classId}
+                name="class_id"
+                value={formData.class_id}
                 onChange={handleChange}
                 required
               >
                 <option value="">Select a class</option>
-                {teacherClasses.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                {classes.map(cls => (
+                  <option key={cls.id} value={cls.id}>{cls.name}</option>
                 ))}
               </select>
             </div>
 
             <div className="form-group">
-              <label htmlFor="type">Type *</label>
+              <label>Assignment Type</label>
               <select
-                id="type"
-                name="type"
-                value={formData.type}
+                name="assignment_type"
+                value={formData.assignment_type}
                 onChange={handleChange}
-                required
               >
                 <option value="homework">Homework</option>
                 <option value="quiz">Quiz</option>
@@ -203,224 +114,126 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="dueDate">Due Date *</label>
+              <label>Due Date</label>
               <input
-                type="date"
-                id="dueDate"
-                name="dueDate"
-                value={formData.dueDate}
+                type="datetime-local"
+                name="due_date"
+                value={formData.due_date}
                 onChange={handleChange}
-                required
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="dueTime">Due Time *</label>
-              <input
-                type="time"
-                id="dueTime"
-                name="dueTime"
-                value={formData.dueTime}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="totalPoints">Total Points *</label>
+              <label>Total Points</label>
               <input
                 type="number"
-                id="totalPoints"
-                name="totalPoints"
-                value={formData.totalPoints}
+                name="total_points"
+                value={formData.total_points}
                 onChange={handleChange}
                 min="1"
-                required
               />
             </div>
           </div>
+
+          <div className="form-group">
+            <label>Description</label>
+            <textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              rows="4"
+              placeholder="Enter assignment description..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Instructions</label>
+            <textarea
+              name="instructions"
+              value={formData.instructions}
+              onChange={handleChange}
+              rows="4"
+              placeholder="Enter assignment instructions..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Requirements</label>
+            <textarea
+              name="requirements"
+              value={formData.requirements}
+              onChange={handleChange}
+              rows="4"
+              placeholder="Enter assignment requirements..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Submission Type</label>
+            <select
+              name="submission_type"
+              value={formData.submission_type}
+              onChange={handleChange}
+            >
+              <option value="online">Online Submission</option>
+              <option value="in-person">In-Person Submission</option>
+              <option value="quiz">Online Quiz</option>
+            </select>
+          </div>
         </div>
 
-        {/* AI Generation Section */}
+        {/* AI Features Section (Placeholder) */}
         <div className="form-section ai-section">
-          <h3>
-            <span className="ai-icon">🤖</span> AI-Powered Tools
-          </h3>
+          <h3>AI Assistant Tools <span className="ai-badge">AI Powered</span></h3>
           <p className="section-description">
-            Use AI to generate assignment content, rubrics, and questions
+            Use AI features to help generate assignment content and grading criteria (coming soon)
           </p>
           
           <div className="ai-tools-grid">
-            <button
-              type="button"
-              className="ai-tool-button"
-              onClick={handleGenerateAssignment}
-              disabled={aiLoading}
-            >
+            <button type="button" className="ai-tool-button" disabled>
               <span className="ai-tool-icon">✨</span>
               <div>
                 <h4>Generate Assignment</h4>
-                <p>Create complete assignment with AI</p>
+                <p>AI creates assignment content</p>
               </div>
             </button>
 
-            <button
-              type="button"
-              className="ai-tool-button"
-              onClick={handleGenerateRubric}
-              disabled={aiLoading || !formData.title}
-            >
+            <button type="button" className="ai-tool-button" disabled>
               <span className="ai-tool-icon">📋</span>
               <div>
                 <h4>Generate Rubric</h4>
-                <p>AI-powered grading criteria</p>
+                <p>AI generates grading rubric</p>
               </div>
             </button>
 
-            <button
-              type="button"
-              className="ai-tool-button"
-              onClick={handleSuggestQuestions}
-              disabled={aiLoading}
-            >
-              <span className="ai-tool-icon">💡</span>
+            <button type="button" className="ai-tool-button" disabled>
+              <span className="ai-tool-icon">❓</span>
               <div>
                 <h4>Suggest Questions</h4>
-                <p>Get AI-generated question ideas</p>
+                <p>AI recommends relevant questions</p>
               </div>
             </button>
           </div>
         </div>
-
-        {/* Questions Section */}
-        {(formData.type === 'quiz' || formData.type === 'test') && (
-          <div className="form-section">
-            <div className="section-header">
-              <h3>Questions</h3>
-              <button type="button" className="btn-add" onClick={handleAddQuestion}>
-                + Add Question
-              </button>
-            </div>
-
-            {questions.length > 0 ? (
-              <div className="questions-list">
-                {questions.map((question, index) => (
-                  <div key={question.id} className="question-item">
-                    <div className="question-header">
-                      <span className="question-number">Question {index + 1}</span>
-                      <button
-                        type="button"
-                        className="btn-remove"
-                        onClick={() => setQuestions(questions.filter(q => q.id !== question.id))}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Enter question text..."
-                      value={question.question}
-                      onChange={(e) => {
-                        const updated = [...questions]
-                        updated[index].question = e.target.value
-                        setQuestions(updated)
-                      }}
-                      className="question-input"
-                    />
-                    {question.type === 'multiple-choice' && (
-                      <div className="options-list">
-                        {question.options.map((option, optIdx) => (
-                          <input
-                            key={option.id}
-                            type="text"
-                            placeholder={`Option ${option.id.toUpperCase()}`}
-                            value={option.text}
-                            onChange={(e) => {
-                              const updated = [...questions]
-                              updated[index].options[optIdx].text = e.target.value
-                              setQuestions(updated)
-                            }}
-                            className="option-input"
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-questions">
-                <p>No questions added yet. Click "Add Question" or use AI to generate questions.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Rubric Section */}
-        {rubric && (
-          <div className="form-section">
-            <h3>Grading Rubric</h3>
-            <div className="rubric-display">
-              <p className="rubric-total">Total Points: {rubric.totalPoints}</p>
-              {rubric.criteria.map(criterion => (
-                <div key={criterion.id} className="rubric-criterion">
-                  <h4>{criterion.name} ({criterion.points} points)</h4>
-                  <p>{criterion.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Form Actions */}
         <div className="form-actions">
           <button type="button" className="btn-cancel" onClick={onBack}>
             Cancel
           </button>
-          <button type="button" className="btn-save-draft">
-            Save as Draft
-          </button>
-          <button type="submit" className="btn-submit">
-            Publish Assignment
+          <button 
+            type="submit" 
+            className="btn-submit"
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : (assignmentId ? 'Update Assignment' : 'Create Assignment')}
           </button>
         </div>
       </form>
-
-      {/* AI Modal */}
-      {showAiModal && (
-        <div className="modal-overlay">
-          <div className="modal ai-modal">
-            <div className="modal-header">
-              <h3>
-                {aiLoading && '🤖 AI is generating...'}
-                {!aiLoading && aiModalType === 'generate' && '✅ Assignment Generated'}
-                {!aiLoading && aiModalType === 'rubric' && '✅ Rubric Generated'}
-              </h3>
-              {!aiLoading && (
-                <button className="modal-close" onClick={() => setShowAiModal(false)}>×</button>
-              )}
-            </div>
-            <div className="modal-body">
-              {aiLoading ? (
-                <div className="ai-loading">
-                  <div className="loading-spinner"></div>
-                  <p>Generating with AI... This may take a few moments</p>
-                </div>
-              ) : (
-                <div className="ai-success">
-                  <p>✨ Content has been generated and added to your assignment!</p>
-                  <button className="btn-primary" onClick={() => setShowAiModal(false)}>
-                    Continue Editing
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
 
 export default CreateAssignmentView
+
 
