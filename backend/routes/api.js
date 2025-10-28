@@ -27,7 +27,7 @@ router.get('/profile', verifyAuth, async (req, res) => {
       return res.status(404).json({ error: 'Profile not found' });
     }
 
-    return res.json({ profile: data });
+    return res.json({ data });
   } catch (err) {
     console.error('Get profile error:', err);
     return res.status(500).json({ error: err.message || 'Failed to fetch profile' });

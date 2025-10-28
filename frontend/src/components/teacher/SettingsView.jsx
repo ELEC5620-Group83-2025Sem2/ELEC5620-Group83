@@ -1,40 +1,64 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import authService from '../../services/authService'
 
-function SettingsView({ teacherData }) {
-  const [formData, setFormData] = useState({
-    name: teacherData.name,
-    email: teacherData.email,
-    bio: teacherData.bio || ''
+function SettingsView({ teacherProfile: initialProfile }) {
+  const [profileData, setProfileData] = useState({
+    first_name: '',
+    last_name: '',
+    email: ''
   })
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState(null)
 
-  const [notifications, setNotifications] = useState({
-    emailSubmissions: true,
-    emailGrades: false,
-    emailAnnouncements: true,
-    pushNotifications: true
-  })
+  useEffect(() => {
+    if (initialProfile) {
+      setProfileData({
+        first_name: initialProfile.first_name || '',
+        last_name: initialProfile.last_name || '',
+        email: initialProfile.email || ''
+      })
+    }
+  }, [initialProfile])
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+    const { name, value } = e.target
+    setProfileData(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleNotificationChange = (e) => {
-    setNotifications({
-      ...notifications,
-      [e.target.name]: e.target.checked
-    })
-  }
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    alert('Settings saved!')
+    setLoading(true)
+    setMessage(null)
+
+    try {
+      const response = await authService.updateProfile(profileData)
+      
+      // Update localStorage with new profile data
+      const currentUser = authService.getCurrentUser()
+      if (currentUser && response.data) {
+        const updatedUser = {
+          ...currentUser,
+          first_name: response.data.first_name,
+          last_name: response.data.last_name,
+          avatar: response.data.avatar
+        }
+        localStorage.setItem('user', JSON.stringify(updatedUser))
+      }
+      
+      setMessage({ type: 'success', text: 'Profile updated successfully!' })
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setMessage(null), 3000)
+    } catch (error) {
+      console.error('Failed to update profile:', error)
+      setMessage({ type: 'error', text: error.message || 'Update failed. Please try again.' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handlePasswordChange = () => {
-    alert('Password change form would open here')
+    alert('Password change feature coming soon')
   }
 
   return (
@@ -42,62 +66,65 @@ function SettingsView({ teacherData }) {
       {/* Profile Settings */}
       <section className="settings-section">
         <h3>Profile Settings</h3>
-        <form onSubmit={handleSubmit} className="settings-form">
+        
+        {message && (
+          <div className={`message ${message.type}`}>
+            {message.text}
+          </div>
+        )}
+
+        <form className="settings-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="name">Full Name</label>
+            <label>First Name</label>
             <input
               type="text"
-              id="name"
-              name="name"
-              value={formData.name}
+              name="first_name"
+              value={profileData.first_name}
               onChange={handleChange}
+              placeholder="Enter your first name"
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label>Last Name</label>
+            <input
+              type="text"
+              name="last_name"
+              value={profileData.last_name}
+              onChange={handleChange}
+              placeholder="Enter your last name"
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Email</label>
             <input
               type="email"
-              id="email"
               name="email"
-              value={formData.email}
+              value={profileData.email}
               onChange={handleChange}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="teacherId">Teacher ID</label>
-            <input
-              type="text"
-              id="teacherId"
-              value={teacherData.teacherId}
+              placeholder="Enter your email"
               disabled
             />
+            <small style={{ color: '#718096' }}>Email address cannot be changed</small>
           </div>
 
           <div className="form-group">
-            <label htmlFor="bio">Bio</label>
-            <textarea
-              id="bio"
-              name="bio"
-              value={formData.bio}
-              onChange={handleChange}
-              rows="4"
-              placeholder="Tell students about yourself..."
+            <label>Teacher ID</label>
+            <input
+              type="text"
+              value={initialProfile?.id || ''}
+              disabled
             />
+            <small style={{ color: '#718096' }}>Teacher ID is read-only</small>
           </div>
 
-          <div className="form-group">
-            <label>Subjects</label>
-            <div className="subjects-display">
-              {teacherData.subjects.map((subject, idx) => (
-                <span key={idx} className="subject-badge">{subject}</span>
-              ))}
-            </div>
-          </div>
-
-          <button type="submit" className="btn-save">
-            Save Changes
+          <button 
+            type="submit" 
+            className="btn-save"
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Save Changes'}
           </button>
         </form>
       </section>
@@ -108,54 +135,22 @@ function SettingsView({ teacherData }) {
         <div className="settings-options">
           <div className="option-item">
             <div>
-              <h4>New Submission Notifications</h4>
-              <p>Receive email when students submit assignments</p>
+              <h4>Email Notifications</h4>
+              <p>Receive email notifications for submissions and grading</p>
             </div>
-            <input
-              type="checkbox"
-              name="emailSubmissions"
-              checked={notifications.emailSubmissions}
-              onChange={handleNotificationChange}
-            />
-          </div>
-
-          <div className="option-item">
-            <div>
-              <h4>Grade Posted Confirmations</h4>
-              <p>Receive confirmation when grades are posted</p>
-            </div>
-            <input
-              type="checkbox"
-              name="emailGrades"
-              checked={notifications.emailGrades}
-              onChange={handleNotificationChange}
-            />
-          </div>
-
-          <div className="option-item">
-            <div>
-              <h4>Announcement Notifications</h4>
-              <p>Get notified when your announcements are viewed</p>
-            </div>
-            <input
-              type="checkbox"
-              name="emailAnnouncements"
-              checked={notifications.emailAnnouncements}
-              onChange={handleNotificationChange}
-            />
+            <label className="checkbox-label">
+              <input type="checkbox" defaultChecked />
+            </label>
           </div>
 
           <div className="option-item">
             <div>
               <h4>Push Notifications</h4>
-              <p>Enable browser push notifications</p>
+              <p>Receive browser push notifications</p>
             </div>
-            <input
-              type="checkbox"
-              name="pushNotifications"
-              checked={notifications.pushNotifications}
-              onChange={handleNotificationChange}
-            />
+            <label className="checkbox-label">
+              <input type="checkbox" />
+            </label>
           </div>
         </div>
       </section>
@@ -167,49 +162,53 @@ function SettingsView({ teacherData }) {
           <div className="option-item">
             <div>
               <h4>AI Assistance</h4>
-              <p>Use AI for grading and assignment generation</p>
+              <p>Enable AI features for grading and content generation</p>
             </div>
-            <input type="checkbox" defaultChecked />
+            <label className="checkbox-label">
+              <input type="checkbox" defaultChecked />
+            </label>
           </div>
 
           <div className="option-item">
             <div>
-              <h4>Auto-publish Grades</h4>
-              <p>Automatically publish grades after entering them</p>
+              <h4>Auto-Publish Grades</h4>
+              <p>Automatically publish grades to students after grading</p>
             </div>
-            <input type="checkbox" />
+            <label className="checkbox-label">
+              <input type="checkbox" />
+            </label>
           </div>
 
           <div className="option-item">
             <div>
-              <h4>Late Submission Acceptance</h4>
-              <p>Allow students to submit assignments after due date</p>
+              <h4>Accept Late Submissions</h4>
+              <p>Allow students to submit assignments after the due date</p>
             </div>
-            <input type="checkbox" defaultChecked />
+            <label className="checkbox-label">
+              <input type="checkbox" defaultChecked />
+            </label>
           </div>
         </div>
       </section>
 
       {/* Security */}
       <section className="settings-section">
-        <h3>Security</h3>
+        <h3>Security Settings</h3>
         <div className="security-info">
-          <p>Last login: {new Date().toLocaleDateString()}</p>
-          <p>Account created: {teacherData.joinedDate || '2024-01-01'}</p>
+          <p>Last login: {new Date().toLocaleString()}</p>
         </div>
         <button className="btn-secondary-action" onClick={handlePasswordChange}>
           Change Password
         </button>
       </section>
 
-      {/* Danger Zone */}
+      {/* Account Management */}
       <section className="settings-section danger-zone">
         <h3>Account Management</h3>
-        <p>If you need to deactivate your account, please contact your administrator.</p>
+        <p>To deactivate or delete your account, please contact an administrator</p>
       </section>
     </div>
   )
 }
 
 export default SettingsView
-

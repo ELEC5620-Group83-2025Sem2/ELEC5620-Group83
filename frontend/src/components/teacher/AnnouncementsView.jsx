@@ -1,184 +1,198 @@
-import { useState } from 'react'
-import { announcements, teacherClasses } from './teacherMockData'
+import { useState, useEffect } from 'react'
+import teacherApi from '../../services/teacherApi'
 
 function AnnouncementsView() {
-  const [showComposer, setShowComposer] = useState(false)
+  const [announcements, setAnnouncements] = useState([])
+  const [classes, setClasses] = useState([])
+  const [loading, setLoading] = useState(true)
   const [formData, setFormData] = useState({
     title: '',
-    message: '',
-    classId: 'all',
-    scheduleDate: ''
+    content: '',
+    class_id: ''
   })
+  const [isCreating, setIsCreating] = useState(false)
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    })
+  useEffect(() => {
+    fetchData()
+  }, [])
+
+  const fetchData = async () => {
+    try {
+      const [announcementsRes, classesRes] = await Promise.all([
+        teacherApi.getAnnouncements(),
+        teacherApi.getClasses()
+      ])
+      setAnnouncements(announcementsRes.data || [])
+      setClasses(classesRes.data || [])
+    } catch (error) {
+      console.error('Failed to fetch announcements:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleSubmit = (e) => {
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    alert('Announcement posted!')
-    setFormData({ title: '', message: '', classId: 'all', scheduleDate: '' })
-    setShowComposer(false)
+    if (!formData.title || !formData.content || !formData.class_id) {
+      alert('Please fill in all fields')
+      return
+    }
+
+    setIsCreating(true)
+    try {
+      await teacherApi.createAnnouncement(formData)
+      // Refresh announcements
+      await fetchData()
+      // Reset form
+      setFormData({ title: '', content: '', class_id: '' })
+      alert('Announcement posted successfully!')
+    } catch (error) {
+      console.error('Failed to post announcement:', error)
+      alert('Failed to post announcement. Please try again.')
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  const handleDelete = async (announcementId) => {
+    if (!window.confirm('Are you sure you want to delete this announcement?')) {
+      return
+    }
+
+    try {
+      await teacherApi.deleteAnnouncement(announcementId)
+      await fetchData()
+      alert('Announcement deleted successfully!')
+    } catch (error) {
+      console.error('Failed to delete announcement:', error)
+      alert('Failed to delete announcement. Please try again.')
+    }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+        <p>Loading announcements...</p>
+      </div>
+    )
   }
 
   return (
-    <div className="announcements-view">
-      {/* Header */}
-      <div className="announcements-header">
-        <button
-          className="btn-create-announcement"
-          onClick={() => setShowComposer(!showComposer)}
-        >
-          {showComposer ? '✕ Cancel' : '+ Create Announcement'}
-        </button>
+    <>
+      {/* Create Announcement Section */}
+      <div className="announcement-composer">
+        <h3>Post New Announcement</h3>
+        <form className="assignment-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label>Title</label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Enter announcement title"
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Class</label>
+            <select
+              name="class_id"
+              value={formData.class_id}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select a class</option>
+              {classes.map(cls => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Message</label>
+            <textarea
+              name="content"
+              value={formData.content}
+              onChange={handleChange}
+              rows="5"
+              placeholder="Enter announcement message..."
+              required
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            className="btn-post"
+            disabled={isCreating}
+          >
+            {isCreating ? 'Posting...' : '📢 Post Announcement'}
+          </button>
+        </form>
       </div>
 
-      {/* Announcement Composer */}
-      {showComposer && (
-        <div className="announcement-composer">
-          <h3>Create New Announcement</h3>
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="title">Title *</label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="Announcement title..."
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="message">Message *</label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                placeholder="Write your announcement message..."
-                rows="6"
-                required
-              />
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="classId">Post to:</label>
-                <select
-                  id="classId"
-                  name="classId"
-                  value={formData.classId}
-                  onChange={handleChange}
-                >
-                  <option value="all">All Classes</option>
-                  {teacherClasses.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="scheduleDate">Schedule for later (optional):</label>
-                <input
-                  type="datetime-local"
-                  id="scheduleDate"
-                  name="scheduleDate"
-                  value={formData.scheduleDate}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            <div className="form-actions">
-              <button type="button" className="btn-cancel" onClick={() => setShowComposer(false)}>
-                Cancel
-              </button>
-              <button type="submit" className="btn-post">
-                {formData.scheduleDate ? 'Schedule Announcement' : 'Post Now'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Announcements List */}
+      {/* Posted Announcements */}
       <div className="announcements-list-section">
-        <h3>Recent Announcements</h3>
-        {announcements.length > 0 ? (
-          <div className="announcements-list">
-            {announcements.map(announcement => {
-              const targetClass = teacherClasses.find(c => c.id === announcement.classId)
+        <h3>Posted Announcements</h3>
+        <div className="announcements-list">
+          {announcements.length > 0 ? (
+            announcements.map(announcement => {
+              const announcementClass = classes.find(c => c.id === announcement.class_id)
               
               return (
                 <div key={announcement.id} className="announcement-card">
                   <div className="announcement-card-header">
-                    <div>
-                      <h4>{announcement.title}</h4>
-                      {targetClass && (
-                        <span className="class-badge-small" style={{ background: `${targetClass.color}20`, color: targetClass.color }}>
-                          {announcement.className}
-                        </span>
-                      )}
-                    </div>
+                    <h4>{announcement.title}</h4>
                     <div className="announcement-actions">
-                      <button className="btn-icon" title="Edit">✏️</button>
-                      <button className="btn-icon" title="Delete">🗑️</button>
+                      <button 
+                        className="btn-icon"
+                        onClick={() => handleDelete(announcement.id)}
+                        title="Delete"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
+                  
+                  <span className="class-badge-small">
+                    {announcementClass?.name || 'Unknown Class'}
+                  </span>
 
-                  <p className="announcement-message">{announcement.message}</p>
+                  <p className="announcement-message">{announcement.content}</p>
 
                   <div className="announcement-meta">
-                    <span>📅 Posted: {announcement.postedDate}</span>
-                    <span>👁️ Viewed: {announcement.viewedBy}/{announcement.totalStudents}</span>
-                    <span className="view-percentage">
-                      ({Math.round((announcement.viewedBy / announcement.totalStudents) * 100)}%)
-                    </span>
-                  </div>
-
-                  <div className="view-status-bar">
-                    <div
-                      className="view-status-fill"
-                      style={{
-                        width: `${(announcement.viewedBy / announcement.totalStudents) * 100}%`,
-                        background: targetClass?.color || '#667eea'
-                      }}
-                    ></div>
+                    <span>Posted {new Date(announcement.created_at).toLocaleString()}</span>
                   </div>
                 </div>
               )
-            })}
-          </div>
-        ) : (
-          <div className="empty-state">
-            <p>No announcements yet</p>
-            <button className="btn-primary-action" onClick={() => setShowComposer(true)}>
-              Create First Announcement
-            </button>
-          </div>
-        )}
+            })
+          ) : (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>
+              <p>No announcements posted yet</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tips Section */}
       <div className="announcements-tips">
-        <h4>💡 Tips for Effective Announcements</h4>
+        <h4>💡 Announcement Tips</h4>
         <ul>
-          <li>Keep announcements clear and concise</li>
-          <li>Use specific dates and times when relevant</li>
-          <li>Important information should be at the beginning</li>
-          <li>Check that all students have viewed important announcements</li>
-          <li>Follow up with students who haven't viewed critical announcements</li>
+          <li>Use clear and concise titles</li>
+          <li>Include important dates and deadlines in announcements</li>
+          <li>Consider scheduling announcements in advance</li>
+          <li>Keep your tone professional and friendly</li>
         </ul>
       </div>
-    </div>
+    </>
   )
 }
 
 export default AnnouncementsView
-

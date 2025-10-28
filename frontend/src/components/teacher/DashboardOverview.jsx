@@ -1,24 +1,70 @@
-import {
-  teacherData,
-  teacherClasses,
-  getTotalStudents,
-  getPendingGradingCount,
-  getTodayClasses,
-  getOverallPerformance,
-  recentActivity
-} from './teacherMockData'
+import { useState, useEffect } from 'react'
+import teacherApi from '../../services/teacherApi'
+import authService from '../../services/authService'
 
 function DashboardOverview({ onTabChange, onClassClick, onCreateAssignment }) {
-  const totalStudents = getTotalStudents()
-  const pendingGrading = getPendingGradingCount()
-  const todayClasses = getTodayClasses()
-  const overallPerformance = getOverallPerformance()
+  const [classes, setClasses] = useState([])
+  const [assignments, setAssignments] = useState([])
+  const [students, setStudents] = useState([])
+  const [teacherProfile, setTeacherProfile] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [classesRes, assignmentsRes, studentsRes, profileRes] = await Promise.all([
+          teacherApi.getClasses(),
+          teacherApi.getAssignments(),
+          teacherApi.getStudents(),
+          authService.getProfile()
+        ])
+        setClasses(classesRes.data || [])
+        setAssignments(assignmentsRes.data || [])
+        setStudents(studentsRes.data || [])
+        setTeacherProfile(profileRes.data)
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [])
+
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '3rem' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+        <p>Loading dashboard data...</p>
+      </div>
+    )
+  }
+
+  const totalStudents = students.length
+  const pendingGrading = assignments.filter(a => a.status === 'grading' || a.status === 'published').length
+  const todayClasses = classes // For now, show all classes as "today's classes"
+  const overallPerformance = 85 // TODO: Calculate from actual data
+
+  const displayName = teacherProfile 
+    ? `${teacherProfile.first_name || ''} ${teacherProfile.last_name || ''}`.trim() || teacherProfile.email
+    : 'Teacher'
+
+  // Generate recent activity from assignments (mock for now)
+  const recentActivity = assignments.slice(0, 5).map((assignment, idx) => ({
+    id: idx,
+    icon: '📝',
+    action: 'created assignment',
+    item: assignment.title,
+    class: assignment.class_id,
+    timestamp: new Date(assignment.created_at).toLocaleDateString()
+  }))
 
   return (
     <>
       {/* Welcome Section */}
       <div className="welcome-section">
-        <h2>Welcome back, {teacherData.name}! 👋</h2>
+        <h2>Welcome back, {displayName}! 👋</h2>
         <p>Here's what's happening with your classes today.</p>
       </div>
 
@@ -68,7 +114,7 @@ function DashboardOverview({ onTabChange, onClassClick, onCreateAssignment }) {
                 <div
                   key={classItem.id}
                   className="class-card"
-                  style={{ borderLeft: `4px solid ${classItem.color}` }}
+                  style={{ borderLeft: `4px solid ${classItem.color || '#667eea'}` }}
                   onClick={() => onClassClick(classItem.id)}
                 >
                   <div className="class-header">
@@ -76,27 +122,13 @@ function DashboardOverview({ onTabChange, onClassClick, onCreateAssignment }) {
                       <h4>{classItem.name}</h4>
                       <p className="class-code">{classItem.code}</p>
                     </div>
-                    <span className="class-badge" style={{ background: `${classItem.color}20`, color: classItem.color }}>
-                      {classItem.studentsCount} students
+                    <span className="class-badge" style={{ background: `${classItem.color || '#667eea'}20`, color: classItem.color || '#667eea' }}>
+                      Class
                     </span>
                   </div>
-                  <div className="class-schedule-info">
-                    {classItem.schedule
-                      .filter(s => s.day === new Date().toLocaleDateString('en-US', { weekday: 'long' }))
-                      .map((session, idx) => (
-                        <div key={idx} className="schedule-item-small">
-                          <span className="schedule-icon">🕐</span>
-                          <span>{session.time}</span>
-                          <span className="schedule-location">{session.location}</span>
-                        </div>
-                      ))
-                    }
+                  <div className="class-description">
+                    <p>{classItem.description || 'No description'}</p>
                   </div>
-                  {classItem.pendingGrading > 0 && (
-                    <div className="pending-alert">
-                      ⚠️ {classItem.pendingGrading} submissions pending grading
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
@@ -113,26 +145,25 @@ function DashboardOverview({ onTabChange, onClassClick, onCreateAssignment }) {
             <h3>Recent Activity</h3>
           </div>
           <div className="activity-list">
-            {recentActivity.map(activity => (
-              <div key={activity.id} className="activity-item">
-                <div className="activity-icon">{activity.icon}</div>
-                <div className="activity-info">
-                  {activity.student && (
-                    <p className="activity-text">
-                      <strong>{activity.student}</strong> {activity.action} <em>{activity.item}</em>
-                    </p>
-                  )}
-                  {!activity.student && (
+            {recentActivity.length > 0 ? (
+              recentActivity.map(activity => (
+                <div key={activity.id} className="activity-item">
+                  <div className="activity-icon">{activity.icon}</div>
+                  <div className="activity-info">
                     <p className="activity-text">
                       You {activity.action} <em>{activity.item}</em>
                     </p>
-                  )}
-                  <p className="activity-meta">
-                    {activity.class} • {activity.timestamp}
-                  </p>
+                    <p className="activity-meta">
+                      {activity.class} • {activity.timestamp}
+                    </p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="empty-state">
+                <p>No recent activity</p>
               </div>
-            ))}
+            )}
           </div>
         </section>
       </div>
@@ -179,27 +210,29 @@ function DashboardOverview({ onTabChange, onClassClick, onCreateAssignment }) {
           <button className="btn-link" onClick={() => onTabChange('classes')}>View All</button>
         </div>
         <div className="classes-grid-compact">
-          {teacherClasses.map(classItem => (
+          {classes.map(classItem => (
             <div
               key={classItem.id}
               className="class-card-compact"
-              style={{ borderTop: `4px solid ${classItem.color}` }}
+              style={{ borderTop: `4px solid ${classItem.color || '#667eea'}` }}
               onClick={() => onClassClick(classItem.id)}
             >
               <h4>{classItem.name}</h4>
               <p className="class-code">{classItem.code}</p>
               <div className="class-stats-compact">
-                <span>👥 {classItem.studentsCount}</span>
-                <span>📊 {classItem.averageGrade}</span>
-                <span>📝 {classItem.upcomingAssignments} due</span>
+                <span>📚 {classItem.description || 'No description'}</span>
               </div>
             </div>
           ))}
         </div>
+        {classes.length === 0 && (
+          <div className="empty-state">
+            <p>You haven't created any classes yet</p>
+          </div>
+        )}
       </section>
     </>
   )
 }
 
 export default DashboardOverview
-
