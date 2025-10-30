@@ -12,6 +12,7 @@ import HSCSubjectsView from '../components/dashboard/HSCSubjectsView'
 import WeeklyReportView from '../components/dashboard/WeeklyReportView'
 import ClassDetailPage from '../components/dashboard/ClassDetailPage'
 import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
+import HSCSubjectRecommendation from '../components/dashboard/HSCSubjectRecommendation'
 import {
   studentData,
   enrolledClasses,
@@ -129,6 +130,8 @@ function StudentDashboard() {
         return <StudyPlannerView studyPlanSuggestions={studyPlanSuggestions} />
       case 'career':
         return <CareerView careerRecommendations={careerRecommendations} />
+      case 'hsc-subjects-recommendation':
+        return <HSCSubjectRecommendation />
       case 'hsc-subjects':
         return <HSCSubjectsView />
       case 'weekly-report':
@@ -156,6 +159,7 @@ function StudentDashboard() {
       assignments: 'Assignments',
       'study-planner': 'AI Study Planner',
       career: 'Career Recommendations',
+      'hsc-subjects-recommendation': 'HSC Subject Recommendation',
       'hsc-subjects': 'Browse HSC Subjects',
       'weekly-report': 'Weekly Report',
       settings: 'Settings'
@@ -209,6 +213,14 @@ function StudentDashboard() {
           >
             <span className="nav-icon">🤖</span>
             <span className="nav-label">AI Study Planner</span>
+          </button>
+          {/* New HSC Subject Recommendation button */}
+          <button 
+            className={`nav-item ${activeTab === 'hsc-subjects-recommendation' ? 'active' : ''}`}
+            onClick={() => handleTabChange('hsc-subjects-recommendation')}
+          >
+            <span className="nav-icon">🧠</span>
+            <span className="nav-label">HSC Subject Recommendation</span>
           </button>
           <button 
             className={`nav-item ${activeTab === 'career' ? 'active' : ''}`}
