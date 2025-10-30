@@ -24,7 +24,7 @@ export const createCourseRecommendation = async (req, res) => {
       max_output_tokens: maxTokens,
       temperature: 0.7,
     });
-
+    
     return res.status(200).json({
       response: JSON.parse(response.output_text)
     });

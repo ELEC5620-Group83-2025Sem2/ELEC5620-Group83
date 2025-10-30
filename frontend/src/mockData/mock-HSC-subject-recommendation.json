@@ -1,0 +1,103 @@
+{
+    "response": [
+        {
+            "id": 1,
+            "code": "MATH-ADV",
+            "recommend_subject": "Mathematics Advanced",
+            "reasoning": "Recommended for students aiming for engineering, computing, or science degrees, as it provides a strong foundation in calculus and algebra.",
+            "category": "Mathematics",
+            "units": 2,
+            "description": "Covers calculus, algebra, and mathematical reasoning, essential for advanced tertiary study and problem-solving skills.",
+            "difficulty": "High",
+            "popularity": 85,
+            "careerPaths": [
+                "Engineering",
+                "Data Science",
+                "Finance",
+                "Physics"
+            ],
+            "atarContribution": "High",
+            "examType": "Written",
+            "practicalWork": "Minimal"
+        },
+        {
+            "id": 2,
+            "code": "PHYS",
+            "recommend_subject": "Physics",
+            "reasoning": "Ideal for students interested in understanding the principles of the physical universe, supporting careers in engineering and physical sciences.",
+            "category": "Science",
+            "units": 2,
+            "description": "Explores mechanics, electricity, magnetism, and modern physics through theoretical and practical work.",
+            "difficulty": "Medium",
+            "popularity": 80,
+            "careerPaths": [
+                "Engineering",
+                "Physics",
+                "Research",
+                "Medicine"
+            ],
+            "atarContribution": "High",
+            "examType": "Written",
+            "practicalWork": "Moderate"
+        },
+        {
+            "id": 3,
+            "code": "CHEM",
+            "recommend_subject": "Chemistry",
+            "reasoning": "Suitable for students considering medicine, pharmacology, or chemical engineering by providing foundational chemical knowledge.",
+            "category": "Science",
+            "units": 2,
+            "description": "Focuses on chemical reactions, structures, and applications, combining theory and laboratory work.",
+            "difficulty": "Medium",
+            "popularity": 75,
+            "careerPaths": [
+                "Medicine",
+                "Chemical Engineering",
+                "Pharmacology",
+                "Research"
+            ],
+            "atarContribution": "High",
+            "examType": "Written",
+            "practicalWork": "Moderate"
+        },
+        {
+            "id": 4,
+            "code": "ENGLISH-ADV",
+            "recommend_subject": "English Advanced",
+            "reasoning": "Essential for university entry into most STEM courses, enhancing critical thinking and communication skills.",
+            "category": "English",
+            "units": 2,
+            "description": "Develops analytical and expressive skills through studying diverse texts and writing tasks.",
+            "difficulty": "High",
+            "popularity": 90,
+            "careerPaths": [
+                "Law",
+                "Medicine",
+                "Engineering",
+                "Science"
+            ],
+            "atarContribution": "High",
+            "examType": "Written",
+            "practicalWork": "Minimal"
+        },
+        {
+            "id": 5,
+            "code": "IT-TECH",
+            "recommend_subject": "Information Processes and Technology",
+            "reasoning": "Supports careers in computing, data management, and information systems, complementing mathematical and scientific subjects.",
+            "category": "Technology",
+            "units": 2,
+            "description": "Covers data analysis, information systems, and digital technologies with practical applications.",
+            "difficulty": "Medium",
+            "popularity": 70,
+            "careerPaths": [
+                "Information Technology",
+                "Cybersecurity",
+                "Data Analysis"
+            ],
+            "atarContribution": "Moderate",
+            "examType": "Written",
+            "practicalWork": "Moderate"
+        }
+    ]
+}
