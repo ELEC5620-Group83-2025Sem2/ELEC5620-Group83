@@ -173,6 +173,14 @@ class AuthService {
       },
     });
 
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response:', text.substring(0, 200));
+      throw new Error(`Server error: Expected JSON but got ${contentType || 'unknown type'}. Status: ${response.status}`);
+    }
+
     const data = await response.json();
 
     if (!response.ok) {
@@ -180,7 +188,7 @@ class AuthService {
       if (response.status === 401) {
         this.logout();
       }
-      throw new Error(data.error || 'Request failed');
+      throw new Error(data.error || `Request failed with status ${response.status}`);
     }
 
     return data;

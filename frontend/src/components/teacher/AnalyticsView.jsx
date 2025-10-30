@@ -5,6 +5,27 @@ function AnalyticsView() {
   const [classes, setClasses] = useState([])
   const [selectedClass, setSelectedClass] = useState('all')
   const [loading, setLoading] = useState(true)
+  const [insights, setInsights] = useState(null)
+  const [generating, setGenerating] = useState(false)
+
+  const handleGenerateInsights = async (classId) => {
+    if (!classId || classId === 'all') {
+      alert('Please select a specific class to generate insights')
+      return
+    }
+
+    setGenerating(true)
+    try {
+      const response = await teacherApi.analyzeClassPerformance(classId)
+      setInsights(response.data)
+      alert('AI Insights generated successfully!')
+    } catch (error) {
+      console.error('Failed to generate insights:', error)
+      alert('Failed to generate AI insights. Please try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -47,10 +68,59 @@ function AnalyticsView() {
           </select>
         </div>
 
-        <button className="btn-generate-insights" disabled>
-          <span>✨</span> Generate AI Insights (Coming Soon)
+        <button 
+          className="btn-generate-insights" 
+          onClick={() => handleGenerateInsights(selectedClass)}
+          disabled={selectedClass === 'all' || !selectedClass}
+        >
+          <span>✨</span> Generate AI Insights
         </button>
       </div>
+
+      {/* AI Insights Display */}
+      {insights && (
+        <div className="ai-insights-section">
+          <h3>🤖 AI-Generated Insights</h3>
+          
+          {insights.insights && insights.insights.length > 0 && (
+            <div className="insights-list">
+              <h4>Key Insights:</h4>
+              <ul>
+                {insights.insights.map((insight, index) => (
+                  <li key={index}>{insight}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {insights.recommendations && insights.recommendations.length > 0 && (
+            <div className="insights-list">
+              <h4>Recommendations:</h4>
+              <ul>
+                {insights.recommendations.map((rec, index) => (
+                  <li key={index}>{rec}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {insights.concerns && insights.concerns.length > 0 && (
+            <div className="insights-list concerns">
+              <h4>⚠️ Areas of Concern:</h4>
+              <ul>
+                {insights.concerns.map((concern, index) => (
+                  <li key={index}>{concern}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="insights-stats">
+            <p><strong>Class Average:</strong> {insights.class_average}%</p>
+            <p><strong>Total Submissions Analyzed:</strong> {insights.total_submissions}</p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="analytics-stats-grid">

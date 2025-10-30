@@ -25,6 +25,19 @@ import {
   updateAnnouncement, 
   deleteAnnouncement 
 } from '../controllers/teacher/announcements.js';
+import {
+  getAssignmentSubmissions,
+  getSubmissionDetail,
+  gradeSubmission,
+  updateSubmissionFeedback,
+  getGradingSummary
+} from '../controllers/teacher/submissions.js';
+import {
+  generateRubric,
+  summarizeContent,
+  autoGradeSubmission,
+  analyzeClassPerformance
+} from '../controllers/teacher/aiFeatures.js';
 
 const router = express.Router();
 
@@ -43,6 +56,7 @@ router.get('/classes', getTeacherClasses);
 router.get('/classes/:id', getClassDetails);
 
 // GET /api/teacher/classes/:id/students - Get class roster
+
 router.get('/classes/:id/students', getClassStudents);
 
 // GET /api/teacher/classes/:id/analytics - Get class analytics
@@ -98,6 +112,41 @@ router.put('/announcements/:id', updateAnnouncement);
 
 // DELETE /api/teacher/announcements/:id - Delete announcement
 router.delete('/announcements/:id', deleteAnnouncement);
+
+// ===================
+// Submissions & Grading Routes
+// ===================
+
+// GET /api/teacher/assignments/:assignmentId/submissions - Get submissions for an assignment
+router.get('/assignments/:assignmentId/submissions', getAssignmentSubmissions);
+
+// GET /api/teacher/submissions/:submissionId - Get submission details
+router.get('/submissions/:submissionId', getSubmissionDetail);
+
+// PUT /api/teacher/assignments/:assignmentId/submissions/:submissionId/grade - Grade a submission
+router.put('/assignments/:assignmentId/submissions/:submissionId/grade', gradeSubmission);
+
+// PUT /api/teacher/submissions/:submissionId/feedback - Update submission feedback
+router.put('/submissions/:submissionId/feedback', updateSubmissionFeedback);
+
+// GET /api/teacher/assignments/:assignmentId/grading-summary - Get grading summary
+router.get('/assignments/:assignmentId/grading-summary', getGradingSummary);
+
+// ===================
+// AI Features Routes
+// ===================
+
+// POST /api/teacher/ai/auto-grade - AI auto-grade submission
+router.post('/ai/auto-grade', autoGradeSubmission);
+
+// POST /api/teacher/ai/generate-rubric - Generate rubric with AI
+router.post('/ai/generate-rubric', generateRubric);
+
+// POST /api/teacher/ai/analyze-class - Analyze class performance
+router.post('/ai/analyze-class', analyzeClassPerformance);
+
+// POST /api/teacher/ai/summarize - Summarize content
+router.post('/ai/summarize', summarizeContent);
 
 export { router as teacherRoutes };
 

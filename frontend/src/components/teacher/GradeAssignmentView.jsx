@@ -11,6 +11,7 @@ function GradeAssignmentView({ assignmentId, onBack }) {
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [aiGrading, setAiGrading] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -80,6 +81,36 @@ function GradeAssignmentView({ assignmentId, onBack }) {
       alert('Failed to save grade. Please try again.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleAIAutoGrade = async () => {
+    if (!selectedSubmission || !assignment) return
+    
+    const confirmed = window.confirm(
+      'Use AI to automatically grade this submission? You can review and modify the grade before saving.'
+    )
+    if (!confirmed) return
+
+    setAiGrading(true)
+    try {
+      // Call AI auto-grade API
+      const response = await teacherApi.autoGradeSubmission(selectedSubmission.id, assignmentId)
+      
+      if (response.data) {
+        // Update grade data with AI suggestion
+        setGradeData({
+          grade: response.data.grade || '',
+          feedback: response.data.feedback || ''
+        })
+        
+        alert(`AI Grading Complete!\nSuggested Grade: ${response.data.grade}\n\nPlease review and save if you agree.`)
+      }
+    } catch (error) {
+      console.error('AI grading failed:', error)
+      alert('AI grading failed. Please grade manually.')
+    } finally {
+      setAiGrading(false)
     }
   }
 
@@ -173,11 +204,26 @@ function GradeAssignmentView({ assignmentId, onBack }) {
                 </span>
               </div>
 
-              {/* AI Auto-Grade Button (Placeholder) */}
+              {/* AI Auto-Grade Button */}
               <div className="ai-grade-button-container">
-                <button className="btn-ai-grade" disabled>
-                  <span>✨</span> AI Auto-Grade (Coming Soon)
+                <button 
+                  className="btn-ai-grade" 
+                  onClick={handleAIAutoGrade}
+                  disabled={aiGrading || !selectedSubmission}
+                >
+                  {aiGrading ? (
+                    <>
+                      <span className="spinner"></span> AI Grading...
+                    </>
+                  ) : (
+                    <>
+                      <span>✨</span> AI Auto-Grade
+                    </>
+                  )}
                 </button>
+                <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
+                  AI will analyze the submission and suggest a grade with feedback
+                </p>
               </div>
 
               {/* Submission Content */}

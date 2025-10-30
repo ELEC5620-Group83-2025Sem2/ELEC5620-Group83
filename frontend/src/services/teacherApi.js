@@ -152,6 +152,39 @@ class TeacherAPI {
     })
     return response
   }
+
+  // AI Features
+  async autoGradeSubmission(submissionId, assignmentId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/ai/auto-grade`, {
+      method: 'POST',
+      body: JSON.stringify({ submission_id: submissionId, assignment_id: assignmentId })
+    })
+    return response
+  }
+
+  async generateRubric(assignmentData) {
+    const response = await authService.authenticatedRequest(`${API_URL}/ai/generate-rubric`, {
+      method: 'POST',
+      body: JSON.stringify(assignmentData)
+    })
+    return response
+  }
+
+  async analyzeClassPerformance(classId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/ai/analyze-class`, {
+      method: 'POST',
+      body: JSON.stringify({ class_id: classId })
+    })
+    return response
+  }
+
+  async summarizeContent(content, contentType) {
+    const response = await authService.authenticatedRequest(`${API_URL}/ai/summarize`, {
+      method: 'POST',
+      body: JSON.stringify({ content, content_type: contentType })
+    })
+    return response
+  }
 }
 
 const teacherApi = new TeacherAPI()
