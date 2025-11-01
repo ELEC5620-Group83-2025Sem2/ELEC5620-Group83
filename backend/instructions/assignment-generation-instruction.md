@@ -20,7 +20,7 @@ You will receive JSON like:
 ```
 
 ## Output (STRICT)
-Return ONLY valid JSON with the following structure:
+Return ONLY valid JSON with the following structure. All values must be content-specific (no placeholders):
 
 ```json
 {
@@ -33,8 +33,8 @@ Return ONLY valid JSON with the following structure:
       "type": "multiple_choice",
       "question": "string",
       "points": 10,
-      "options": ["A", "B", "C", "D"],
-      "answer": "A",
+      "options": ["string", "string", "string", "string"],
+      "answer": "string",
       "explanation": "string"
     },
     {
@@ -72,7 +72,8 @@ Return ONLY valid JSON with the following structure:
 Rules:
 - Provide 4–8 questions matching `question_count` where possible; mix of MCQ and short/text responses appropriate to the topic.
 - Ensure `total_points` equals the sum of question points (e.g., 100) and matches rubric total.
-- Write clear MCQ distractors; only one correct `answer`.
+- MCQs must be genuine: options must be plausible, content-specific, and mutually exclusive. Do NOT use placeholders like "Option A/B/C/D", single letters ("A/B/C/D"), or generic text.
+- Each MCQ must include a single correct `answer` that exactly matches one of the provided `options` and an `explanation` for the correct choice.
 - For short/text questions, include concise, model-quality answers or rubric hints.
 - Align everything (title, description, questions, rubric) to the given `subject`, `topic`, and `difficulty`.
 - Return ONLY the JSON object — no extra commentary.

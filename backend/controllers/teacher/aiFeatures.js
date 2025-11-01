@@ -12,7 +12,7 @@ const OPENAI_API_KEY = (process.env.OPENAI_API_KEY
   || process.env.OPENAI_KEY
   || process.env.VITE_OPENAI_API_KEY
   || '').trim();
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.zmon.me/v1';
 
 /**
  * UC10: AI-Generated Assessment Rubric
@@ -25,7 +25,8 @@ export const generateRubric = async (req, res) => {
       assignment_description,
       submission_type,
       total_points,
-      learning_objectives
+      learning_objectives,
+      question_summary
     } = req.body;
 
     if (!assignment_title) {
@@ -53,7 +54,10 @@ export const generateRubric = async (req, res) => {
     }
 
     // Prepare details for user message
-    const prompt = `Generate a rubric for this assignment:\n\nTitle: ${assignment_title}\nDescription: ${assignment_description || 'Not provided'}\nType: ${submission_type || 'General assignment'}\nTotal Points: ${total_points || 100}\nLearning Objectives: ${Array.isArray(learning_objectives) ? learning_objectives.join(', ') : (learning_objectives || 'Not specified')}\n\nReturn ONLY the JSON array.`;
+    const qs = question_summary && typeof question_summary === 'object'
+      ? `\nQuestion Summary: ${JSON.stringify(question_summary)}`
+      : '';
+    const prompt = `Generate a rubric for this assignment:\n\nTitle: ${assignment_title}\nDescription: ${assignment_description || 'Not provided'}\nType: ${submission_type || 'General assignment'}\nTotal Points: ${total_points || 100}\nLearning Objectives: ${Array.isArray(learning_objectives) ? learning_objectives.join(', ') : (learning_objectives || 'Not specified')}${qs}\n\nRules:\n- Ensure the sum of rubric points equals Total Points.\n- If there are multiple-choice (MCQ) questions (see Question Summary), include a criterion that accounts for MCQ correctness with points aligned to the total MCQ points.\n- For short-answer/text questions, weight criteria that assess correctness, reasoning, and clarity.\n\nReturn ONLY the JSON array.`;
 
     try {
       const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
@@ -94,14 +98,27 @@ export const generateRubric = async (req, res) => {
         rubric = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : rubricText);
       } catch (parseError) {
         console.error('Failed to parse AI rubric:', parseError);
-        rubric = generateMockRubric(assignment_title, total_points || 100);
+        rubric = [];
       }
 
-      return res.json({
-        rubric,
-        ai_generated: true,
-        mock: false
-      });
+      // Validate rubric; if invalid or sums don't match, build heuristic rubric
+      const intendedPoints = Number(total_points) || 100;
+      const sum = Array.isArray(rubric) ? rubric.reduce((s, r) => s + (Number(r?.points) || 0), 0) : 0;
+      if (!Array.isArray(rubric) || rubric.length === 0 || sum !== intendedPoints) {
+        const qs = (req.body && req.body.question_summary) || null;
+        if (qs && typeof qs === 'object') {
+          rubric = buildRubricFromQuestionDistribution(intendedPoints, {
+            multiple_choice: Number(qs.points_by_type?.multiple_choice) || 0,
+            short_answer: Number(qs.points_by_type?.short_answer) || 0,
+            text: Number(qs.points_by_type?.text) || 0,
+            other: 0
+          });
+        } else {
+          rubric = generateMockRubric(assignment_title, intendedPoints);
+        }
+      }
+
+      return res.json({ rubric, ai_generated: true, mock: false });
 
     } catch (apiError) {
       console.error('OpenAI API call failed:', apiError);
@@ -131,7 +148,9 @@ export const generateAssignment = async (req, res) => {
       topic,
       difficulty,
       assignment_type,
-      question_count
+      question_count,
+      class_context,
+      mcq_only
     } = req.body || {};
 
     // If no API key, return a mock assignment
@@ -150,14 +169,17 @@ export const generateAssignment = async (req, res) => {
     }
 
     const details = {
-      subject: subject || 'General Studies',
+      // If subject not provided, infer from class_context/topic
+      subject: subject || class_context || null,
+      class_context: class_context || null,
       topic: topic || 'Core Concepts',
       difficulty: difficulty || 'medium',
       assignment_type: assignment_type || 'quiz',
-      question_count: Number(question_count) || 5
+      question_count: Number(question_count) || 6,
+      mcq_only: Boolean(mcq_only || (/mcq\s*only/i.test(topic || '')))
     };
 
-    const userPrompt = `Generate an assignment using these details:\n${JSON.stringify(details, null, 2)}\n\nReturn ONLY the JSON object.`;
+    const userPrompt = `Generate a complete, ready-to-use assignment. If subject is missing, infer a reasonable secondary-school subject from the class_context and title/topic.\n\nDetails:\n${JSON.stringify(details, null, 2)}\n\nSTRICT Rules:\n- Return ONLY the JSON object with fields: { title, description, submission_type, total_points, questions: [...], resources } (NO rubric field).\n- If mcq_only is true, ALL questions must be { type: "multiple_choice" } with content-specific, plausible, mutually exclusive options, a single correct answer that exactly matches an option, and a brief explanation.\n- If mcq_only is false, include a mix of MCQ and short/text questions suitable for the topic.\n- Ensure total_points equals the sum of question points.\n- Avoid placeholders like "Option A/B/C/D" or single letters; use domain-specific options.\n`;
 
     try {
       const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
@@ -186,12 +208,19 @@ export const generateAssignment = async (req, res) => {
 
       // Parse JSON from response
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
-      const assignment = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : text);
+      let assignment = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : text);
+
+      // Normalize assignment: fix totals (do NOT build rubric here)
+      assignment = normalizeGeneratedAssignment(assignment, { includeRubric: false });
+
+      // Improve MCQ quality if placeholder options are detected
+      assignment = await improveMcqQualityIfNeeded(assignment, details.subject || 'General Studies', details.topic || 'Core Concepts');
 
       return res.json({ assignment, ai_generated: true, mock: false });
     } catch (apiError) {
       console.error('OpenAI assignment generation failed:', apiError);
-      const mock = buildMockAssignment(details.subject, details.topic, details.assignment_type, details.question_count);
+      const mock = buildMockAssignment(details.subject || 'General', details.topic, details.assignment_type, details.question_count);
+      mock.rubric = [];
       return res.json({ assignment: mock, ai_generated: true, mock: true, message: 'AI generation failed, returning mock assignment' });
     }
   } catch (err) {
@@ -320,15 +349,20 @@ export const autoGradeSubmission = async (req, res) => {
       return ErrorResponse.forbidden('You do not have access to this submission').send(res);
     }
 
-    // Get submission answers
+    // Get submission answers (match actual assignment_questions schema)
     const { data: answers } = await supabase
       .from('assignment_submission_answers')
       .select(`
-        *,
+        id,
+        question_id,
+        text_answer,
+        selected_option_key,
         questions:question_id (
-          question_text,
-          question_type,
-          points
+          id,
+          question,
+          type,
+          points,
+          position
         )
       `)
       .eq('submission_id', submission_id);
@@ -348,106 +382,122 @@ export const autoGradeSubmission = async (req, res) => {
       });
     }
 
-    // Build prompt for AI grading
-    const prompt = `Grade the following student submission:
+    // Fetch rubric items to guide AI grading for free-response answers
+    const { data: rubricItems } = await supabase
+      .from('assignment_rubric_items')
+      .select('*')
+      .eq('assignment_id', submission.assignment_id);
 
-Assignment: ${submission.assignments.title}
-Description: ${submission.assignments.description || 'Not provided'}
-Total Points: ${submission.assignments.total_points}
-Type: ${submission.assignments.submission_type || 'General'}
-
-Student Answers:
-${answers?.map((a, idx) => `
-Question ${idx + 1}: ${a.questions.question_text}
-Student Answer: ${a.answer_text || 'No answer provided'}
-Points Available: ${a.questions.points}
-`).join('\n')}
-
-Provide:
-1. Total grade (out of ${submission.assignments.total_points})
-2. Overall feedback (2-3 sentences)
-3. Individual grades for each question
-4. Brief feedback for each answer
-
-Format as JSON:
-{
-  "total_grade": number,
-  "overall_feedback": "string",
-  "answer_grades": [
-    {
-      "question_number": number,
-      "points_earned": number,
-      "feedback": "string"
-    }
-  ]
-}`;
-
-    try {
-      console.log(`[AI Auto-Grade] Calling OpenAI API with key: ${OPENAI_API_KEY.substring(0, 7)}...${OPENAI_API_KEY.slice(-4)}`);
-      
-      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a fair and constructive educational grader. Provide accurate grades and helpful feedback.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.3,
-          max_tokens: 1000
-        })
+    // Build correctness map for MCQs
+    const questionIds = (answers || []).map(a => a.question_id);
+    let correctMap = {};
+    if (questionIds.length > 0) {
+      const { data: correctOptions } = await supabase
+        .from('assignment_question_options')
+        .select('question_id, option_key, is_correct')
+        .in('question_id', questionIds);
+      (correctOptions || []).forEach(o => {
+        if (o.is_correct) correctMap[o.question_id] = o.option_key;
       });
+    }
 
-      console.log(`[AI Auto-Grade] OpenAI API response status: ${response.status}`);
-      
-      if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`[AI Auto-Grade] OpenAI API error response:`, errorBody);
-        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+    // Deterministic MCQ grading and collect free responses
+    const mcqGrades = [];
+    const freeResponses = [];
+    let mcqPointsEarned = 0;
+    let mcqPointsPossible = 0;
+    (answers || []).forEach((a, idx) => {
+      const q = a.questions || {};
+      if (q.type === 'multiple_choice') {
+        const correctKey = correctMap[a.question_id];
+        const isCorrect = !!correctKey && a.selected_option_key && a.selected_option_key.toUpperCase() === String(correctKey).toUpperCase();
+        const earned = isCorrect ? (Number(q.points) || 0) : 0;
+        mcqPointsEarned += earned;
+        mcqPointsPossible += Number(q.points) || 0;
+        mcqGrades.push({ index: idx, answer_id: a.id, points_earned: earned, feedback: isCorrect ? 'Correct' : 'Incorrect' });
+      } else {
+        freeResponses.push({ index: idx, question: q.question, points: Number(q.points) || 0, text_answer: a.text_answer || '' });
       }
+    });
 
-      const data = await response.json();
-      const gradingText = data.choices[0].message.content;
-      
-      // Parse JSON response
-      const jsonMatch = gradingText.match(/```json\n([\s\S]*?)\n```/) || gradingText.match(/\{[\s\S]*\}/);
-      const grading = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : gradingText);
+    // If there are free-response answers, ask AI to grade them with rubric
+    let aiAnswerGrades = [];
+    let aiFeedback = '';
+    let aiPointsEarned = 0;
+    if (freeResponses.length > 0) {
+      try {
+        const prompt = `Grade the following student submission (only non-MCQ questions require judgement).\n\nAssignment: ${submission.assignments.title}\nDescription: ${submission.assignments.description || 'Not provided'}\nTotal Points: ${submission.assignments.total_points}\nType: ${submission.assignments.submission_type || 'General'}\n\nRubric (JSON):\n${JSON.stringify(rubricItems || [], null, 2)}\n\nFree-response Answers:\n${freeResponses.map((fr, i) => `Q${i + 1}: ${fr.question}\nStudent Answer: ${fr.text_answer || 'No answer provided'}\nPoints Available: ${fr.points}`).join('\n\n')}\n\nRules:\n- Grade each free-response up to its points.\n- Use the rubric when assigning points and feedback.\n- Do not exceed the points available for each question.\n- Return JSON only.\n\nFormat as JSON:\n{\n  "answer_grades": [\n    { "question_number": number, "points_earned": number, "feedback": "string" }\n  ],\n  "overall_feedback": "string"\n}`;
 
-      return res.json({
-        grade: grading.total_grade,
-        feedback: grading.overall_feedback,
-        answer_grades: grading.answer_grades?.map((ag, idx) => ({
-          answer_id: answers[idx]?.id,
-          points_earned: ag.points_earned,
-          feedback: ag.feedback
-        })),
-        ai_generated: true,
-        mock: false
-      });
+        console.log(`[AI Auto-Grade] Calling OpenAI API with key: ${OPENAI_API_KEY.substring(0, 7)}...${OPENAI_API_KEY.slice(-4)}`);
+        const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: 'You are a fair and constructive educational grader. Provide accurate grades and helpful feedback.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 1000
+          })
+        });
 
-    } catch (apiError) {
-      console.error('OpenAI auto-grading failed:', apiError);
-      const mockGrade = Math.floor(Math.random() * 20) + 80;
-      const isUnauthorized = typeof apiError?.message === 'string' && apiError.message.includes('401');
-      return res.json({
-        grade: mockGrade,
-        feedback: isUnauthorized
-          ? '自动评分暂不可用（OpenAI API 未授权）。当前返回的是模拟分数，请手动检查后调整。'
-          : 'AI 自动评分出现异常，已返回备用分数，请手动检查后调整。',
-        mock: true,
-        error: apiError.message
-      });
+        console.log(`[AI Auto-Grade] OpenAI API response status: ${response.status}`);
+        if (!response.ok) {
+          const errorBody = await response.text();
+          console.error(`[AI Auto-Grade] OpenAI API error response:`, errorBody);
+          throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const gradingText = data.choices[0].message.content;
+        const jsonMatch = gradingText.match(/```json\n([\s\S]*?)\n```/) || gradingText.match(/\{[\s\S]*\}/);
+        const grading = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : gradingText);
+
+        aiFeedback = grading.overall_feedback || '';
+        aiAnswerGrades = (grading.answer_grades || []).map((ag) => ({
+          question_number: ag.question_number,
+          points_earned: Math.max(0, Math.min(Number(ag.points_earned) || 0, freeResponses[ag.question_number - 1]?.points || 0)),
+          feedback: ag.feedback || ''
+        }));
+        aiPointsEarned = aiAnswerGrades.reduce((s, g) => s + (Number(g.points_earned) || 0), 0);
+      } catch (apiError) {
+        console.error('OpenAI auto-grading failed:', apiError);
+        aiAnswerGrades = freeResponses.map((fr, i) => ({ question_number: i + 1, points_earned: 0, feedback: 'Auto-grading unavailable' }));
+        aiFeedback = 'Auto-grading unavailable. Please grade manually.';
+      }
     }
+
+    // Merge MCQ and AI-graded results in original answer order
+    const mergedAnswerGrades = [];
+    let frCursor = 0;
+    (answers || []).forEach((a, idx) => {
+      const q = a.questions || {};
+      if (q.type === 'multiple_choice') {
+        const found = mcqGrades.find(m => m.index === idx);
+        mergedAnswerGrades.push({ answer_id: a.id, points_earned: found?.points_earned || 0, feedback: found?.feedback || '' });
+      } else {
+        const frGrade = aiAnswerGrades[frCursor] || { points_earned: 0, feedback: '' };
+        mergedAnswerGrades.push({ answer_id: a.id, points_earned: frGrade.points_earned || 0, feedback: frGrade.feedback || '' });
+        frCursor += 1;
+      }
+    });
+
+    const totalEarned = mcqPointsEarned + aiPointsEarned;
+    const totalPoints = submission.assignments.total_points || 100;
+    const finalGrade = Math.max(0, Math.min(totalPoints, Math.round(totalEarned)));
+
+    return res.json({
+      grade: finalGrade,
+      feedback: aiFeedback || (mcqPointsPossible > 0 ? `Auto-graded MCQs: ${mcqPointsEarned}/${mcqPointsPossible}.` : 'Auto-grading complete.'),
+      answer_grades: mergedAnswerGrades,
+      ai_generated: true,
+      mock: false
+    });
 
   } catch (err) {
     console.error('Auto-grade submission error:', err);
@@ -685,6 +735,189 @@ function buildMockAssignment(subject, topic, type, questionCount) {
     ]
   };
 }
+
+// ---------------------------------
+// Helpers: Normalize assignment JSON
+// ---------------------------------
+function normalizeGeneratedAssignment(assignment, options = {}) {
+  const includeRubric = options.includeRubric !== false; // default true
+  const safe = assignment && typeof assignment === 'object' ? assignment : {};
+  const questions = Array.isArray(safe.questions) ? safe.questions : [];
+
+  // Coerce question points and compute totals by type
+  let totalByType = { multiple_choice: 0, short_answer: 0, text: 0, other: 0 };
+  const normalizedQuestions = questions.map((q) => {
+    const type = q?.type || 'text';
+    const points = Math.max(0, Number(q?.points) || 0);
+    if (type === 'multiple_choice') totalByType.multiple_choice += points;
+    else if (type === 'short_answer') totalByType.short_answer += points;
+    else if (type === 'text') totalByType.text += points;
+    else totalByType.other += points;
+    // Ensure MCQ options are strings, and keep answer if present
+    const options = Array.isArray(q?.options) ? q.options.map(o => (typeof o === 'string' ? o : (o?.text || ''))) : undefined;
+    return { ...q, type, points, ...(options ? { options } : {}) };
+  });
+
+  // Ensure total_points equals sum of question points
+  const sumQuestionPoints = normalizedQuestions.reduce((s, q) => s + (Number(q.points) || 0), 0);
+  const totalPoints = sumQuestionPoints > 0 ? sumQuestionPoints : (Number(safe.total_points) || 100);
+
+  // Build rubric if missing or invalid sum
+  const rubric = Array.isArray(safe.rubric) ? safe.rubric : [];
+  const rubricSum = rubric.reduce((s, r) => s + (Number(r?.points) || 0), 0);
+  let finalRubric = rubric;
+  if (!rubric.length || rubricSum !== totalPoints) {
+    finalRubric = buildRubricFromQuestionDistribution(totalPoints, totalByType);
+  }
+
+  return {
+    title: safe.title || 'Generated Assignment',
+    description: safe.description || '',
+    submission_type: safe.submission_type || (safe.assignment_type === 'project' ? 'project' : (safe.assignment_type === 'quiz' ? 'quiz' : 'online')),
+    total_points: totalPoints,
+    questions: normalizedQuestions,
+    rubric: includeRubric ? finalRubric : [],
+    resources: Array.isArray(safe.resources) ? safe.resources : []
+  };
+}
+
+function buildRubricFromQuestionDistribution(totalPoints, byType) {
+  const mcq = Number(byType.multiple_choice) || 0;
+  const sa = Number(byType.short_answer) || 0;
+  const text = Number(byType.text) || 0;
+  const free = sa + text;
+
+  const items = [];
+  if (mcq > 0) {
+    items.push(makeRubricItem('MCQ Correctness', 'Correctly selects the right option for each multiple-choice question.', mcq));
+  }
+  if (sa > 0) {
+    const acc = Math.round(sa * 0.7);
+    const clr = sa - acc;
+    items.push(makeRubricItem('Short Answer Accuracy', 'Accurate and complete answers for short responses.', acc));
+    if (clr > 0) items.push(makeRubricItem('Short Answer Clarity', 'Clear, concise explanations and use of correct terminology.', clr));
+  }
+  if (text > 0) {
+    const acc = Math.round(text * 0.6);
+    const reason = Math.round(text * 0.3);
+    const pres = text - acc - reason;
+    items.push(makeRubricItem('Extended Response Accuracy', 'Addresses the prompt with correct and relevant content.', acc));
+    if (reason > 0) items.push(makeRubricItem('Reasoning & Working', 'Shows logical reasoning, steps, or justification where appropriate.', reason));
+    if (pres > 0) items.push(makeRubricItem('Presentation & Clarity', 'Well-structured writing, clear explanations, appropriate formatting.', pres));
+  }
+
+  // If items sum is not equal (e.g., only other types), create a balanced default
+  const sum = items.reduce((s, i) => s + i.points, 0);
+  if (sum !== totalPoints) {
+    // Adjust last item or add Technical Quality criterion
+    if (items.length > 0) {
+      items[items.length - 1].points += (totalPoints - sum);
+    } else {
+      items.push(makeRubricItem('Technical Quality', 'Grammar, formatting, completeness and adherence to instructions.', totalPoints));
+    }
+  }
+  return items;
+}
+
+function makeRubricItem(criteria, description, points) {
+  return {
+    criteria,
+    description,
+    points: Math.max(0, Number(points) || 0),
+    levels: {
+      excellent: 'Exceeds expectations with strong mastery and clarity.',
+      good: 'Meets expectations with minor issues.',
+      fair: 'Partially meets expectations with noticeable gaps.',
+      poor: 'Does not meet expectations; significant errors or missing elements.'
+    }
+  };
+}
+
+// Improve MCQ quality using AI if options are placeholders; no-op if API key missing
+async function improveMcqQualityIfNeeded(assignment, subject, topic) {
+  try {
+    const OPENAI_API_KEY = (process.env.OPENAI_API_KEY
+      || process.env.OPENAI_KEY
+      || process.env.VITE_OPENAI_API_KEY
+      || '').trim();
+    const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+
+    if (!OPENAI_API_KEY) return assignment;
+
+    const updated = { ...assignment, questions: [...(assignment.questions || [])] };
+    for (let i = 0; i < updated.questions.length; i++) {
+      const q = updated.questions[i];
+      if (q?.type !== 'multiple_choice') continue;
+
+      const options = Array.isArray(q.options) ? q.options : [];
+      const looksPlaceholder = options.length < 3 || options.some(o => isPlaceholderOption(o)) || hasDuplicates(options);
+      const hasAnswer = typeof q.answer === 'string' && options.includes(q.answer);
+      if (!looksPlaceholder && hasAnswer) continue;
+
+      const prompt = `Improve this MCQ to be specific and plausible for a secondary-school context. Provide 4 distinct, content-specific options with one correct answer and a one-sentence explanation.\nSubject: ${subject || 'General Studies'}\nTopic: ${topic || ''}\nQuestion: ${q.question || ''}\nReturn ONLY JSON: { "options": ["string"], "answer": "string", "explanation": "string" }`;
+
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You generate high-quality multiple-choice questions with realistic distractors.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 400
+        })
+      });
+
+      if (!response.ok) continue;
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content || '';
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+      const improved = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : text);
+
+      const improvedOptions = Array.isArray(improved?.options) ? improved.options.filter(Boolean) : [];
+      if (improvedOptions.length >= 3 && typeof improved?.answer === 'string' && improvedOptions.includes(improved.answer)) {
+        updated.questions[i] = {
+          ...q,
+          options: improvedOptions,
+          answer: improved.answer,
+          explanation: improved.explanation || q.explanation || ''
+        };
+      }
+    }
+    return updated;
+  } catch (e) {
+    console.warn('MCQ improvement skipped:', e?.message || e);
+    return assignment;
+  }
+}
+
+function isPlaceholderOption(opt) {
+  if (typeof opt !== 'string') return true;
+  const t = opt.trim();
+  if (!t) return true;
+  const lower = t.toLowerCase();
+  if (lower === 'a' || lower === 'b' || lower === 'c' || lower === 'd') return true;
+  if (/^option\s+[abcd]$/i.test(t)) return true;
+  // obvious generic placeholders
+  if (lower.includes('option') && lower.length <= 10) return true;
+  return false;
+}
+
+function hasDuplicates(list) {
+  const seen = new Set();
+  for (const x of list) {
+    const k = String(x).trim().toLowerCase();
+    if (seen.has(k)) return true;
+    seen.add(k);
+  }
+  return false;
+}
+
 
 
 

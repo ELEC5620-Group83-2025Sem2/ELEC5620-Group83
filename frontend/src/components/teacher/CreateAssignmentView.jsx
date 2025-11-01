@@ -82,11 +82,22 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
     setRubricError('')
     setRubricLoading(true)
     try {
+      const qs = Array.isArray(formData.questions) ? formData.questions : []
+      const summary = qs.reduce((acc, q) => {
+        const t = q.type || 'text'
+        const pts = Number(q.points) || 0
+        acc.total += 1
+        acc.points_total += pts
+        acc.counts[t] = (acc.counts[t] || 0) + 1
+        acc.points_by_type[t] = (acc.points_by_type[t] || 0) + pts
+        return acc
+      }, { total: 0, points_total: 0, counts: {}, points_by_type: {} })
       const payload = {
         assignment_title: formData.title,
         assignment_description: formData.description,
         submission_type: formData.submission_type,
-        total_points: Number(formData.total_points) || 100
+        total_points: Number(formData.total_points) || 100,
+        question_summary: summary
       }
       const res = await teacherApi.generateRubric(payload)
       const rubric = res?.rubric || []
@@ -177,12 +188,17 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
     setAssignmentGenError('')
     setAssignmentGenLoading(true)
     try {
+      const selectedClass = classes.find(cls => String(cls.id) === String(formData.class_id))
+      const classContext = selectedClass?.name || ''
+      const mcqOnly = /mcq\s*only/i.test(formData.title || '') || formData.assignment_type === 'quiz'
       const params = {
-        subject: '',
+        subject: classContext, // help the model infer domain from class name
+        class_context: classContext,
         topic: formData.title,
         difficulty: 'medium',
         assignment_type: formData.assignment_type === 'quiz' ? 'quiz' : (formData.assignment_type === 'project' ? 'project' : 'problem_set'),
-        question_count: 6
+        question_count: 6,
+        mcq_only: mcqOnly
       }
       const res = await teacherApi.generateAssignment(params)
       const a = res?.assignment
@@ -193,6 +209,7 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
           description: a.description || prev.description,
           total_points: a.total_points || prev.total_points,
           submission_type: a.submission_type || prev.submission_type,
+          // generate-assignment no longer returns rubric; keep existing if any
           rubric: Array.isArray(a.rubric) ? a.rubric : prev.rubric,
           questions: Array.isArray(a.questions) ? a.questions : prev.questions
         }))

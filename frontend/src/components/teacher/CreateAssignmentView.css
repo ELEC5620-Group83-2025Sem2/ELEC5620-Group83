@@ -439,3 +439,149 @@
   }
 }
 
+.btn-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.8rem;
+  background: #fff;
+  color: #4a5568;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.btn-back:hover {
+  background: #f7fafc;
+  border-color: #cbd5e0;
+  color: #2d3748;
+}
+.btn-back:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Secondary button (neutral outline) */
+.btn-secondary {
+  padding: 0.5rem 1rem;
+  background: #fff;
+  color: #2d3748;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .05s ease;
+}
+.btn-secondary:hover:not(:disabled) {
+  background: #f7faff;
+  border-color: #667eea;
+  color: #4c51bf;
+  box-shadow: 0 0 0 3px rgba(102,126,234,.12);
+}
+.btn-secondary:active:not(:disabled) {
+  transform: translateY(0.5px);
+}
+.btn-secondary:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* Danger button (Remove) */
+.btn-danger {
+  padding: 0.45rem 0.9rem;
+  background: #fff5f5;
+  color: #c53030;
+  border: 1px solid #fed7d7;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease, transform .05s ease;
+}
+.btn-danger:hover {
+  background: #fff;
+  border-color: #f56565;
+  color: #9b2c2c;
+  box-shadow: 0 0 0 3px rgba(245,101,101,.15);
+}
+.btn-danger:active {
+  transform: translateY(0.5px);
+}
+
+/* Error text (AI section messages) */
+.error-text {
+  display: block;
+  color: #c53030;
+  font-size: 0.875rem;
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+}
+
+/* Rubric preview block */
+.rubric-preview {
+  margin-top: 1rem;
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+}
+.rubric-preview h4 {
+  margin: 0 0 0.5rem;
+  color: #2d3748;
+  font-size: 1rem;
+}
+.rubric-preview ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rubric-preview li {
+  padding: 0.5rem 0.25rem;
+  border-bottom: 1px dashed #e2e8f0;
+}
+.rubric-preview li:last-child {
+  border-bottom: none;
+}
+
+/* Optional: total line if you want it styled here instead of elsewhere */
+.rubric-preview .rubric-total {
+  margin-top: 0.75rem;
+  font-weight: 700;
+  color: #2d3748;
+}
+
+/* Grid for rubric levels (replace inline style) */
+.rubric-levels-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+
+/* Question card (replace inline style on the question wrapper) */
+.question-card {
+  border: 1px solid #e2e8f0;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #fff;
+  margin-top: 0.75rem;
+}
+
+/* Submit disabled state */
+.btn-submit[disabled] {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Better focus states for AI tool buttons */
+.ai-tool-button:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* Tighter selects/inputs on small screens */
+@media (max-width: 480px) {
+  .btn-back { padding: 0.4rem 0.6rem; }
+  .btn-secondary, .btn-danger { padding: 0.45rem 0.75rem; }
+}

@@ -172,6 +172,68 @@ export const getAssignmentDetails = async (req, res) => {
     //   return ErrorResponse.forbidden('You do not have access to this assignment').send(res);
     // }
 
+    // Get assignment instructions
+    const { data: instructions, error: instError } = await supabase
+      .from('assignment_instructions')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .order('position', { ascending: true });
+    
+    if (instError && instError.code !== 'PGRST116') throw instError;
+
+    // Get requirements
+    const { data: requirements, error: reqError } = await supabase
+      .from('assignment_requirements')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .order('position', { ascending: true });
+    
+    if (reqError && reqError.code !== 'PGRST116') throw reqError;
+
+    // Get resources
+    const { data: resources, error: resError } = await supabase
+      .from('assignment_resources')
+      .select('*')
+      .eq('assignment_id', assignmentId);
+    
+    if (resError && resError.code !== 'PGRST116') throw resError;
+
+    // Get rubric
+    const { data: rubric, error: rubricError } = await supabase
+      .from('assignment_rubric_items')
+      .select('*')
+      .eq('assignment_id', assignmentId);
+    
+    if (rubricError && rubricError.code !== 'PGRST116') throw rubricError;
+
+    // Get questions if any
+    const { data: questions, error: qError } = await supabase
+      .from('assignment_questions')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .order('position', { ascending: true });
+    
+    if (qError && qError.code !== 'PGRST116') throw qError;
+
+    // Get options for questions
+    let questionsWithOptions = [];
+    if (questions && questions.length > 0) {
+      for (const question of questions) {
+        const { data: options, error: optError } = await supabase
+          .from('assignment_question_options')
+          .select('*')
+          .eq('question_id', question.id)
+          .order('option_key', { ascending: true });
+        
+        if (optError && optError.code !== 'PGRST116') throw optError;
+        
+        questionsWithOptions.push({
+          ...question,
+          options: options || []
+        });
+      }
+    }
+
     // Get submissions
     const { data: submissions } = await supabase
       .from('assignment_submissions')
@@ -217,6 +279,38 @@ export const getAssignmentDetails = async (req, res) => {
         status: assignment.status || 'draft',
         created_at: assignment.created_at,
         createdAt: assignment.created_at,
+        instructions: instructions?.map(i => i.text) || [],
+        requirements: requirements?.map(r => r.text) || [],
+        resources: resources?.map(r => ({ name: r.name, type: r.type, url: r.url })) || [],
+        rubric: rubric?.map(r => ({ criteria: r.criteria, points: r.points, description: r.description })) || [],
+        hasQuestions: questionsWithOptions.length > 0,
+        questions: questionsWithOptions.map(q => {
+          // Map database question types to frontend expected types
+          // Keep original type for teacher view, but also provide formatted type
+          const originalType = q.type || 'text';
+          let questionType = originalType;
+          if (originalType === 'multiple_choice') {
+            questionType = 'multiple-choice';
+          } else if (originalType === 'short_answer' || originalType === 'text') {
+            questionType = 'short-answer';
+          }
+          
+          return {
+            id: q.id,
+            question: q.question,
+            type: originalType, // Keep original for teacher view compatibility
+            formattedType: questionType, // Provide formatted type for student view
+            points: q.points,
+            position: q.position,
+            options: q.options?.map(o => ({ 
+              id: o.option_key, 
+              option_key: o.option_key, // Include for teacher view compatibility
+              key: o.option_key, // Alternative key name
+              text: o.text,
+              is_correct: o.is_correct // Include for teacher view
+            })) || []
+          };
+        }),
         submissions: enrichedSubmissions,
       }
     });

@@ -286,13 +286,23 @@ export const getAssignmentDetail = async (req, res) => {
         resources: resources?.map(r => ({ name: r.name, type: r.type, url: r.url })) || [],
         rubric: rubric?.map(r => ({ criteria: r.criteria, points: r.points })) || [],
         hasQuestions: questionsWithOptions.length > 0,
-        questions: questionsWithOptions.map(q => ({
-          id: q.id,
-          question: q.question,
-          type: q.type,
-          points: q.points,
-          options: q.options.map(o => ({ id: o.option_key, text: o.text }))
-        })),
+        questions: questionsWithOptions.map(q => {
+          // Map database question types to frontend expected types
+          let questionType = q.type || 'text';
+          if (questionType === 'multiple_choice') {
+            questionType = 'multiple-choice';
+          } else if (questionType === 'short_answer' || questionType === 'text') {
+            questionType = 'short-answer';
+          }
+          
+          return {
+            id: q.id,
+            question: q.question,
+            type: questionType,
+            points: q.points,
+            options: q.options?.map(o => ({ id: o.option_key, text: o.text })) || []
+          };
+        }),
         submission: submission,
         submissionAnswers: submissionAnswers,
         submittedDate: submission?.submitted_at ? new Date(submission.submitted_at).toLocaleDateString() : null

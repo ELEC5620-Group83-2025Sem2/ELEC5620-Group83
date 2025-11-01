@@ -109,15 +109,15 @@ function GradeAssignmentView({ assignmentId, onBack }) {
     try {
       // Call AI auto-grade API
       const response = await teacherApi.autoGradeSubmission(selectedSubmission.id, assignmentId)
-      
-      if (response.data) {
-        // Update grade data with AI suggestion
+      const resData = response?.data || response
+      if (resData && (resData.grade !== undefined || resData.feedback !== undefined)) {
         setGradeData({
-          grade: response.data.grade || '',
-          feedback: response.data.feedback || ''
+          grade: resData.grade || '',
+          feedback: resData.feedback || ''
         })
-        
-        alert(`AI Grading Complete!\nSuggested Grade: ${response.data.grade}\n\nPlease review and save if you agree.`)
+        alert(`AI Grading Complete!\nSuggested Grade: ${resData.grade}\n\nPlease review and save if you agree.`)
+      } else {
+        alert('AI grading completed, but received an unexpected response format.')
       }
     } catch (error) {
       console.error('AI grading failed:', error)
