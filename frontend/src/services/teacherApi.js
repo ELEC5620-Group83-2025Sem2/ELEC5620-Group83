@@ -191,6 +191,12 @@ class TeacherAPI {
     const response = await authService.authenticatedRequest('/hsc-subjects')
     return response
   }
+
+  // Analytics
+  async getAnalytics(classId = 'all') {
+    const response = await authService.authenticatedRequest(`${API_URL}/analytics${classId && classId !== 'all' ? `?classId=${classId}` : ''}`)
+    return response
+  }
 }
 
 const teacherApi = new TeacherAPI()

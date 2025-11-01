@@ -3,7 +3,7 @@ import { ErrorResponse } from '../../utils/errorResponse.js';
 
 /**
  * GET /api/teacher/students
- * Get all students across all classes taught by the teacher
+ * Get all students enrolled in classes taught by this teacher
  */
 export const getTeacherStudents = async (req, res) => {
   try {
@@ -11,18 +11,24 @@ export const getTeacherStudents = async (req, res) => {
     const supabase = getSupabaseClient();
 
     // Get all classes taught by this teacher
-    const { data: classTeachers } = await supabase
+    const { data: classTeachers, error: ctError } = await supabase
       .from('class_teachers')
       .select('class_id')
       .eq('profile_id', teacherId);
 
+    if (ctError) {
+      console.error('Error fetching class teachers:', ctError);
+      return ErrorResponse.internalServerError('Failed to fetch teacher classes').send(res);
+    }
+
     const classIds = classTeachers?.map(ct => ct.class_id) || [];
 
+    // If teacher has no classes, return empty array
     if (classIds.length === 0) {
       return res.status(200).json({ students: [] });
     }
 
-    // Get all students enrolled in these classes
+    // Get all enrollments in teacher's classes
     const { data: enrollments, error: enrollError } = await supabase
       .from('enrollments')
       .select(`
@@ -33,8 +39,10 @@ export const getTeacherStudents = async (req, res) => {
           id,
           first_name,
           last_name,
+          name,
           email,
-          avatar
+          avatar,
+          created_at
         ),
         classes (
           id,
@@ -49,31 +57,111 @@ export const getTeacherStudents = async (req, res) => {
       return ErrorResponse.internalServerError('Failed to fetch students').send(res);
     }
 
-    // Group enrollments by student
+    if (!enrollments || enrollments.length === 0) {
+      return res.status(200).json({ students: [] });
+    }
+
+    // Debug: Log enrollments to check enrolled_at values
+    console.log('Total enrollments:', enrollments.length);
+    console.log('Enrollments sample:', enrollments.slice(0, 3).map(e => ({
+      student_id: e.student_id,
+      enrolled_at: e.enrolled_at,
+      enrolled_at_type: typeof e.enrolled_at,
+      class_id: e.class_id,
+      profile_created_at: e.profiles?.created_at
+    })));
+    
+    // Check if enrolled_at is null/undefined for all enrollments
+    const enrollmentsWithNullDate = enrollments.filter(e => !e.enrolled_at || e.enrolled_at === null);
+    if (enrollmentsWithNullDate.length > 0) {
+      console.log(`Warning: ${enrollmentsWithNullDate.length} enrollments have null/undefined enrolled_at`);
+    }
+
+    // Group enrollments by student to avoid duplicates
     const studentMap = new Map();
 
     for (const enrollment of enrollments) {
       const studentId = enrollment.student_id;
       const profile = enrollment.profiles;
 
+      if (!profile) {
+        continue; // Skip if profile is missing
+      }
+
       if (!studentMap.has(studentId)) {
+        // Find the earliest enrollment date for this student
+        const studentEnrollments = enrollments.filter(e => e.student_id === studentId);
+        let earliestEnrolledAt = null;
+        
+        if (studentEnrollments.length > 0) {
+          // Get all enrollment dates and find the earliest (filter out null/undefined/empty values)
+          const enrollmentDates = studentEnrollments
+            .map(e => e.enrolled_at)
+            .filter(date => date !== null && date !== undefined && date !== '');
+          
+          if (enrollmentDates.length > 0) {
+            earliestEnrolledAt = enrollmentDates.reduce((earliest, current) => {
+              const earliestDate = earliest ? new Date(earliest) : new Date('9999-12-31');
+              const currentDate = current ? new Date(current) : new Date('9999-12-31');
+              return currentDate < earliestDate ? current : earliest;
+            });
+          }
+        }
+
+        // Determine enrolled_at: use earliest enrollment date, or created_at
+        let finalEnrolledAt = earliestEnrolledAt;
+        if (!finalEnrolledAt || finalEnrolledAt === null || finalEnrolledAt === undefined) {
+          finalEnrolledAt = profile.created_at;
+        }
+        
+        // Final fallback: use current date if everything is null
+        if (!finalEnrolledAt || finalEnrolledAt === null || finalEnrolledAt === undefined) {
+          finalEnrolledAt = new Date().toISOString();
+          console.log(`Warning: No enrolled_at for student ${studentId}, using current date. profile.created_at:`, profile.created_at);
+        }
+
+        // Extract first_name and last_name from name field if they're empty
+        let firstName = profile.first_name;
+        let lastName = profile.last_name;
+        
+        // If first_name and last_name are empty but name field has value, try to split it
+        if ((!firstName || firstName === '') && (!lastName || lastName === '') && profile.name) {
+          const nameParts = profile.name.trim().split(/\s+/);
+          if (nameParts.length >= 2) {
+            firstName = nameParts[0];
+            lastName = nameParts.slice(1).join(' ');
+          } else if (nameParts.length === 1) {
+            firstName = nameParts[0];
+            lastName = '';
+          }
+        }
+        
+        // Build display name: first_name + last_name, or name, or email
+        const displayName = (firstName || lastName) 
+          ? `${firstName || ''} ${lastName || ''}`.trim() 
+          : (profile.name || profile.email);
+
         studentMap.set(studentId, {
           id: profile.id,
-          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-          firstName: profile.first_name,
-          lastName: profile.last_name,
+          name: displayName,
+          firstName: firstName || '',
+          lastName: lastName || '',
           email: profile.email,
           avatar: profile.avatar,
+          created_at: profile.created_at || finalEnrolledAt, // Ensure created_at is set
+          enrolled_at: finalEnrolledAt, // Use earliest enrollment date or created_at
           classes: [],
         });
       }
 
       const student = studentMap.get(studentId);
+      // Use enrolled_at if available, otherwise use profile's created_at
+      const enrollmentDate = enrollment.enrolled_at || student.created_at || new Date().toISOString();
       student.classes.push({
         id: enrollment.classes.id,
         name: enrollment.classes.name,
         code: enrollment.classes.code,
-        enrolledAt: enrollment.enrolled_at,
+        enrolledAt: enrollmentDate, // Use enrolled_at or fallback to created_at
       });
     }
 
@@ -83,44 +171,89 @@ export const getTeacherStudents = async (req, res) => {
         // Get all assignment IDs from student's classes
         const studentClassIds = student.classes.map(c => c.id);
         
-        const { data: assignments } = await supabase
-          .from('assignments')
-          .select('id')
-          .in('class_id', studentClassIds);
+        let assignmentIds = [];
+        let avgGrade = null;
+        let completedAssignments = 0;
+        let totalAssignments = 0;
 
-        const assignmentIds = assignments?.map(a => a.id) || [];
+        if (studentClassIds.length > 0) {
+          const { data: assignments } = await supabase
+            .from('assignments')
+            .select('id')
+            .in('class_id', studentClassIds);
 
-        if (assignmentIds.length === 0) {
-          return {
-            ...student,
-            avgGrade: 'N/A',
-            completedAssignments: 0,
-            totalAssignments: 0,
-          };
+          assignmentIds = assignments?.map(a => a.id) || [];
+
+          if (assignmentIds.length > 0) {
+            // Get student's submissions
+            const { data: submissions } = await supabase
+              .from('assignment_submissions')
+              .select('grade, assignment_id')
+              .eq('student_id', student.id)
+              .in('assignment_id', assignmentIds);
+
+            const gradedSubmissions = submissions?.filter(s => s.grade !== null) || [];
+            if (gradedSubmissions.length > 0) {
+              const total = gradedSubmissions.reduce((sum, s) => sum + parseFloat(s.grade), 0);
+              avgGrade = Math.round(total / gradedSubmissions.length);
+            }
+
+            completedAssignments = submissions?.length || 0;
+            totalAssignments = assignmentIds.length;
+          }
         }
 
-        // Get student's submissions
-        const { data: submissions } = await supabase
-          .from('assignment_submissions')
-          .select('grade, assignment_id')
-          .eq('student_id', student.id)
-          .in('assignment_id', assignmentIds);
-
-        const gradedSubmissions = submissions?.filter(s => s.grade !== null) || [];
-        let avgGrade = null;
-        if (gradedSubmissions.length > 0) {
-          const total = gradedSubmissions.reduce((sum, s) => sum + parseFloat(s.grade), 0);
-          avgGrade = Math.round(total / gradedSubmissions.length);
+        // Ensure enrolled_at is set - use first class's enrolledAt if student.enrolled_at is missing
+        let finalEnrolledAt = student.enrolled_at;
+        
+        // If enrolled_at is missing, try to get it from classes
+        if ((!finalEnrolledAt || finalEnrolledAt === null || finalEnrolledAt === undefined) && student.classes && student.classes.length > 0) {
+          // Find the earliest enrolledAt from classes
+          const classDates = student.classes
+            .map(c => c.enrolledAt)
+            .filter(date => date !== null && date !== undefined && date !== '');
+          
+          if (classDates.length > 0) {
+            finalEnrolledAt = classDates.reduce((earliest, current) => {
+              try {
+                const earliestDate = earliest ? new Date(earliest) : new Date('9999-12-31');
+                const currentDate = current ? new Date(current) : new Date('9999-12-31');
+                return currentDate < earliestDate ? current : earliest;
+              } catch (e) {
+                console.error('Error comparing dates:', e, { earliest, current });
+                return earliest || current;
+              }
+            });
+          }
+        }
+        
+        // If still no enrolled_at, use created_at
+        if (!finalEnrolledAt || finalEnrolledAt === null || finalEnrolledAt === undefined) {
+          finalEnrolledAt = student.created_at;
+        }
+        
+        // Final fallback: use current date if everything is null
+        if (!finalEnrolledAt || finalEnrolledAt === null || finalEnrolledAt === undefined) {
+          finalEnrolledAt = new Date().toISOString();
+          console.warn(`Student ${student.id} has no enrolled_at or created_at, using current date`);
         }
 
         return {
           ...student,
+          enrolled_at: finalEnrolledAt, // Ensure enrolled_at is set
+          created_at: student.created_at || finalEnrolledAt, // Ensure created_at is also set
           avgGrade: avgGrade ? `${avgGrade}%` : 'N/A',
-          completedAssignments: submissions?.length || 0,
-          totalAssignments: assignmentIds.length,
+          completedAssignments,
+          totalAssignments,
         };
       })
     );
+
+    // Debug: Log first student's enrolled_at before returning
+    if (students.length > 0) {
+      console.log('First student enrolled_at before return:', students[0].enrolled_at);
+      console.log('First student classes:', students[0].classes.map(c => ({ id: c.id, enrolledAt: c.enrolledAt })));
+    }
 
     res.status(200).json({ students });
   } catch (err) {
@@ -264,12 +397,33 @@ export const getStudentDetails = async (req, res) => {
       .eq('teacher_id', teacherId)
       .single();
 
+    // Extract first_name and last_name from name field if they're empty
+    let firstName = profile.first_name;
+    let lastName = profile.last_name;
+    
+    // If first_name and last_name are empty but name field has value, try to split it
+    if ((!firstName || firstName === '') && (!lastName || lastName === '') && profile.name) {
+      const nameParts = profile.name.trim().split(/\s+/);
+      if (nameParts.length >= 2) {
+        firstName = nameParts[0];
+        lastName = nameParts.slice(1).join(' ');
+      } else if (nameParts.length === 1) {
+        firstName = nameParts[0];
+        lastName = '';
+      }
+    }
+    
+    // Build display name: first_name + last_name, or name, or email
+    const displayName = (firstName || lastName) 
+      ? `${firstName || ''} ${lastName || ''}`.trim() 
+      : (profile.name || profile.email);
+
     res.status(200).json({
       student: {
         id: profile.id,
-        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.email,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
+        name: displayName,
+        firstName: firstName || '',
+        lastName: lastName || '',
         email: profile.email,
         avatar: profile.avatar,
         classes: classesWithGrades,

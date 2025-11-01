@@ -16,7 +16,14 @@ function StudentsView() {
           teacherApi.getStudents(),
           teacherApi.getClasses()
         ])
-        setStudents(studentsRes.students || [])
+        const studentsData = studentsRes.students || []
+        console.log('Students data:', studentsData)
+        if (studentsData.length > 0) {
+          console.log('First student data:', studentsData[0])
+          console.log('First student enrolled_at:', studentsData[0].enrolled_at)
+          console.log('First student classes:', studentsData[0].classes)
+        }
+        setStudents(studentsData)
         setClasses(classesRes.classes || [])
       } catch (error) {
         console.error('Failed to fetch students:', error)
@@ -65,20 +72,32 @@ function StudentsView() {
         {filteredStudents.length > 0 ? (
           <div className="students-grid">
             {filteredStudents.map(student => {
-              const displayName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.email
+              // Support both snake_case (first_name) and camelCase (firstName) from backend
+              const firstName = student.firstName || student.first_name || '';
+              const lastName = student.lastName || student.last_name || '';
+              const fullName = `${firstName} ${lastName}`.trim();
+              const displayName = fullName || student.name || student.email;
 
               return (
                 <div key={student.id} className="student-card">
                   <div className="student-avatar-large">👤</div>
                   <h3>{displayName}</h3>
                   <p className="student-email">{student.email}</p>
-                  <p className="student-id">ID: {student.id}</p>
+                  {/* Hide UUID - email is sufficient for identification */}
+                  {/* <p className="student-id">ID: {student.id?.substring(0, 8)}...</p> */}
                   
                   <div className="student-stats">
                     <div className="student-stat">
                       <span className="stat-label">Enrolled</span>
                       <span className="stat-value">
-                        {student.created_at ? new Date(student.created_at).toLocaleDateString() : 'N/A'}
+                        {/* Priority: 1. classes[0].enrolledAt (from enrollments.enrolled_at), 2. student.enrolled_at, 3. created_at */}
+                        {student.classes && student.classes.length > 0 && student.classes[0].enrolledAt
+                          ? new Date(student.classes[0].enrolledAt).toLocaleDateString()
+                          : (student.enrolled_at 
+                              ? new Date(student.enrolled_at).toLocaleDateString()
+                              : (student.created_at 
+                                  ? new Date(student.created_at).toLocaleDateString() 
+                                  : 'N/A'))}
                       </span>
                     </div>
                   </div>
@@ -117,15 +136,29 @@ function StudentsView() {
               <div className="profile-header">
                 <div className="student-avatar-xl">👤</div>
                 <div className="profile-info">
-                  <h2>{`${selectedStudent.first_name || ''} ${selectedStudent.last_name || ''}`.trim() || selectedStudent.email}</h2>
+                  {/* Support both snake_case (first_name) and camelCase (firstName) from backend */}
+                  <h2>{(() => {
+                    const firstName = selectedStudent.firstName || selectedStudent.first_name || '';
+                    const lastName = selectedStudent.lastName || selectedStudent.last_name || '';
+                    const fullName = `${firstName} ${lastName}`.trim();
+                    return fullName || selectedStudent.name || selectedStudent.email;
+                  })()}</h2>
                   <p>{selectedStudent.email}</p>
-                  <p className="student-id-large">ID: {selectedStudent.id}</p>
+                  {/* Hide UUID - email is sufficient for identification */}
+                  {/* <p className="student-id-large">ID: {selectedStudent.id?.substring(0, 8)}...</p> */}
                 </div>
               </div>
 
               <div className="profile-section">
                 <h4>Basic Information</h4>
-                <p>Name: {`${selectedStudent.first_name || ''} ${selectedStudent.last_name || ''}`.trim() || 'N/A'}</p>
+                <p>Name: {(() => {
+                  // Support both snake_case (first_name) and camelCase (firstName) from backend
+                  const firstName = selectedStudent.firstName || selectedStudent.first_name || '';
+                  const lastName = selectedStudent.lastName || selectedStudent.last_name || '';
+                  const fullName = `${firstName} ${lastName}`.trim();
+                  // Fallback to name field, then email
+                  return fullName || selectedStudent.name || selectedStudent.email || 'N/A';
+                })()}</p>
                 <p>Email: {selectedStudent.email}</p>
                 <p>Registered: {selectedStudent.created_at ? new Date(selectedStudent.created_at).toLocaleString() : 'N/A'}</p>
               </div>
