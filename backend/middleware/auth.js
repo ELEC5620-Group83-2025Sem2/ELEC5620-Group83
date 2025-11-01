@@ -48,22 +48,33 @@ export const requireRole = (allowedRoles) => {
       // Fetch user's roles
       const { data: userRoles, error } = await supabase
         .from('profile_roles')
-        .select('role')
+        .select('role, profile_id')
         .eq('profile_id', req.user.id);
 
       if (error) {
         console.error('Role check error:', error);
-        return ErrorResponse.internalServerError('Failed to verify user role').send(res);
+        console.error('Error details:', error.message, error.code, error.details);
+        return ErrorResponse.internalServerError(`Failed to verify user role: ${error.message}`).send(res);
       }
+      
+      console.log(`[Auth] Found ${userRoles?.length || 0} roles for user ${req.user.id}`);
 
-      const roles = userRoles?.map(r => r.role) || [];
+      // Map roles and normalize them to strings (handle enum types)
+      const roles = (userRoles || []).map(r => String(r.role).toLowerCase());
+      const allowedRolesLower = allowedRoles.map(r => String(r).toLowerCase());
+      
+      console.log(`[Auth] User ${req.user.id} roles:`, roles);
+      console.log(`[Auth] Required roles:`, allowedRolesLower);
       
       // Check if user has any of the allowed roles
-      const hasPermission = allowedRoles.some(role => roles.includes(role));
+      const hasPermission = allowedRolesLower.some(reqRole => roles.includes(reqRole));
 
       if (!hasPermission) {
-        return ErrorResponse.forbidden('Insufficient permissions').send(res);
+        console.error(`[Auth] Permission denied. User roles: [${roles.join(', ')}], Required: [${allowedRolesLower.join(', ')}]`);
+        return ErrorResponse.forbidden(`Insufficient permissions. Your roles: [${roles.join(', ')}]. Required: [${allowedRoles.join(', ')}]`).send(res);
       }
+      
+      console.log(`[Auth] Permission granted for user ${req.user.id}`);
 
       // Attach roles to request object
       req.userRoles = roles;
