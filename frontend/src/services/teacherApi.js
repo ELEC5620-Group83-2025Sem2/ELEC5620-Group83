@@ -185,6 +185,12 @@ class TeacherAPI {
     })
     return response
   }
+
+  // HSC Subjects (for creating classes and assignments)
+  async getHSCSubjects() {
+    const response = await authService.authenticatedRequest('/hsc-subjects')
+    return response
+  }
 }
 
 const teacherApi = new TeacherAPI()

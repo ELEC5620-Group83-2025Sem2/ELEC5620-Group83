@@ -58,4 +58,25 @@ router.get('/teacher-data', verifyAuth, requireRole(['teacher']), (req, res) => 
 // Public endpoint - Get tertiary courses subjects mapping
 router.get('/tertiary-courses-subjects-mapping', getTertiaryCoursesSubjectsMapping);
 
+// Get HSC Subjects - requires authentication
+router.get('/hsc-subjects', verifyAuth, async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+      .from('hsc_subjects')
+      .select('*')
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching HSC subjects:', error);
+      return res.status(500).json({ error: 'Failed to fetch HSC subjects' });
+    }
+
+    return res.json({ data: data || [] });
+  } catch (err) {
+    console.error('Get HSC subjects error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to fetch HSC subjects' });
+  }
+});
+
 export default router;

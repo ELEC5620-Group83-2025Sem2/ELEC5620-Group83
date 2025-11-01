@@ -18,9 +18,9 @@ function DashboardOverview({ onTabChange, onClassClick, onCreateAssignment }) {
           teacherApi.getStudents(),
           authService.getProfile()
         ])
-        setClasses(classesRes.data || [])
-        setAssignments(assignmentsRes.data || [])
-        setStudents(studentsRes.data || [])
+        setClasses(classesRes.classes || [])
+        setAssignments(assignmentsRes.assignments || [])
+        setStudents(studentsRes.students || [])
         setTeacherProfile(profileRes.data)
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error)

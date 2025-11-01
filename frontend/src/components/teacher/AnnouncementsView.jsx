@@ -22,8 +22,8 @@ function AnnouncementsView() {
         teacherApi.getAnnouncements(),
         teacherApi.getClasses()
       ])
-      setAnnouncements(announcementsRes.data || [])
-      setClasses(classesRes.data || [])
+      setAnnouncements(announcementsRes.announcements || [])
+      setClasses(classesRes.classes || [])
     } catch (error) {
       console.error('Failed to fetch announcements:', error)
     } finally {
