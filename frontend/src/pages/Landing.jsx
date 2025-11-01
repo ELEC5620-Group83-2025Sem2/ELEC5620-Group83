@@ -21,6 +21,9 @@ function Landing() {
               <button className="btn-text" onClick={() => navigate('/login/teacher')}>
                 Teacher Login
               </button>
+              <button className="btn-text" onClick={() => navigate('/login/parent')}>
+                Parent Login
+              </button>
               <button className="btn-primary" onClick={() => navigate('/register/student')}>
                 Get Started
               </button>
@@ -173,6 +176,13 @@ function Landing() {
               <h4>For Teachers</h4>
               <ul>
                 <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/teacher'); }}>Login</a></li>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/recover'); }}>Recover Account</a></li>
+              </ul>
+            </div>
+            <div className="footer-section">
+              <h4>For Parents</h4>
+              <ul>
+                <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/parent'); }}>Login</a></li>
                 <li><a href="#" onClick={(e) => { e.preventDefault(); navigate('/recover'); }}>Recover Account</a></li>
               </ul>
             </div>

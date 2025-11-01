@@ -3,10 +3,12 @@ import Landing from './pages/Landing'
 import StudentLogin from './pages/StudentLogin'
 import StudentRegister from './pages/StudentRegister'
 import TeacherLogin from './pages/TeacherLogin'
+import ParentLogin from './pages/ParentLogin'
 import AccountRecovery from './pages/AccountRecovery'
 import StudentDashboard from './pages/StudentDashboard'
 import CareerResultPage from './pages/CareerResultPage'
 import TeacherDashboard from './pages/TeacherDashboard'
+import ParentDashboard from './pages/ParentDashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -17,6 +19,7 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login/student" element={<StudentLogin />} />
         <Route path="/login/teacher" element={<TeacherLogin />} />
+        <Route path="/login/parent" element={<ParentLogin />} />
         <Route path="/register/student" element={<StudentRegister />} />
         <Route path="/recover" element={<AccountRecovery />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
@@ -74,6 +77,14 @@ function App() {
           element={
             <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
               <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/parent/dashboard" 
+          element={
+            <ProtectedRoute requiredRole="parent" redirectTo="/login/parent">
+              <ParentDashboard />
             </ProtectedRoute>
           } 
         />

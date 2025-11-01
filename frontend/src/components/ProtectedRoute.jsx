@@ -27,6 +27,7 @@ function ProtectedRoute({ children, requiredRole, redirectTo = '/login/student' 
       const roleDashboards = {
         student: '/student/dashboard',
         teacher: '/teacher/dashboard',
+        parent: '/parent/dashboard',
         admin: '/admin/dashboard'
       }
       const dashboard = roleDashboards[user.role] || '/'

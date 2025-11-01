@@ -117,6 +117,12 @@ function StudentLogin() {
               Teacher Login
             </a>
           </p>
+          <p className="switch-role">
+            Are you a parent?{' '}
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/parent'); }} className="link">
+              Parent Login
+            </a>
+          </p>
         </div>
 
         <div className="back-home">
