@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
-import authService from '../services/authService.js'
 
-function StudentLogin() {
+function ParentLogin() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: '',
@@ -11,13 +10,6 @@ function StudentLogin() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  // Redirect to dashboard if already authenticated
-  useEffect(() => {
-    if (authService.isAuthenticated()) {
-      navigate('/student/dashboard')
-    }
-  }, [])
 
   const handleChange = (e) => {
     setFormData({
@@ -43,11 +35,11 @@ function StudentLogin() {
       // Import auth service dynamically
       const authService = (await import('../services/authService.js')).default
       
-      // Call login API with student role
-      await authService.login(formData.email, formData.password, 'student')
+      // Call login API with parent role
+      await authService.login(formData.email, formData.password, 'parent')
       
-      // Navigate to student dashboard on success
-      navigate('/student/dashboard')
+      // Navigate to parent dashboard on success
+      navigate('/parent/dashboard')
       
     } catch (err) {
       setError(err.message || 'Invalid email or password')
@@ -64,8 +56,8 @@ function StudentLogin() {
             <span className="logo-icon">⚡</span>
             <span className="logo-text">HSC Power</span>
           </div>
-          <h1>Student Login</h1>
-          <p>Welcome back! Please login to your student account</p>
+          <h1>Parent Login</h1>
+          <p>Welcome back! Please login to your parent account</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -79,7 +71,7 @@ function StudentLogin() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="student@school.edu.au"
+              placeholder="parent@example.com"
               required
             />
           </div>
@@ -113,22 +105,23 @@ function StudentLogin() {
         </form>
 
         <div className="auth-footer">
-          <p>
-            Don't have an account?{' '}
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register/student'); }} className="link">
-              Register here
+          <div className="info-box">
+            <p className="info-title">📌 Note for Parents</p>
+            <p className="info-text">
+              Connect with your child's academic progress and get personalized insights 
+              about their learning journey.
+            </p>
+          </div>
+          <p className="switch-role">
+            Are you a student?{' '}
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/student'); }} className="link">
+              Student Login
             </a>
           </p>
           <p className="switch-role">
             Are you a teacher?{' '}
             <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/teacher'); }} className="link">
               Teacher Login
-            </a>
-          </p>
-          <p className="switch-role">
-            Are you a parent?{' '}
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/parent'); }} className="link">
-              Parent Login
             </a>
           </p>
         </div>
@@ -143,5 +136,5 @@ function StudentLogin() {
   )
 }
 
-export default StudentLogin
+export default ParentLogin
 

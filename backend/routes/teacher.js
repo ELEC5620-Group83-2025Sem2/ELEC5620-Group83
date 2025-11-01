@@ -7,6 +7,7 @@ import {
   getClassAnalytics,
   createClass
 } from '../controllers/teacher/classes.js';
+import { getOverallAnalytics } from '../controllers/teacher/analytics.js';
 import { 
   getTeacherAssignments, 
   getAssignmentDetails, 
@@ -47,6 +48,13 @@ router.use(verifyAuth);
 router.use(requireRole(['teacher', 'admin']));
 
 // ===================
+// Analytics Routes (Must be before parameter routes)
+// ===================
+
+// GET /api/teacher/analytics - Get overall analytics for all classes
+router.get('/analytics', getOverallAnalytics);
+
+// ===================
 // Classes Routes
 // ===================
 
@@ -60,7 +68,6 @@ router.post('/classes', createClass);
 router.get('/classes/:id', getClassDetails);
 
 // GET /api/teacher/classes/:id/students - Get class roster
-
 router.get('/classes/:id/students', getClassStudents);
 
 // GET /api/teacher/classes/:id/analytics - Get class analytics
