@@ -8,7 +8,7 @@ function AnnouncementsView() {
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    class_id: ''
+    classId: ''
   })
   const [isCreating, setIsCreating] = useState(false)
 
@@ -38,7 +38,7 @@ function AnnouncementsView() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!formData.title || !formData.content || !formData.class_id) {
+    if (!formData.title || !formData.content || !formData.classId) {
       alert('Please fill in all fields')
       return
     }
@@ -49,7 +49,7 @@ function AnnouncementsView() {
       // Refresh announcements
       await fetchData()
       // Reset form
-      setFormData({ title: '', content: '', class_id: '' })
+      setFormData({ title: '', content: '', classId: '' })
       alert('Announcement posted successfully!')
     } catch (error) {
       console.error('Failed to post announcement:', error)
@@ -104,8 +104,8 @@ function AnnouncementsView() {
           <div className="form-group">
             <label>Class</label>
             <select
-              name="class_id"
-              value={formData.class_id}
+              name="classId"
+              value={formData.classId}
               onChange={handleChange}
               required
             >
@@ -144,7 +144,7 @@ function AnnouncementsView() {
         <div className="announcements-list">
           {announcements.length > 0 ? (
             announcements.map(announcement => {
-              const announcementClass = classes.find(c => c.id === announcement.class_id)
+              const announcementClass = classes.find(c => c.id === announcement.classId || c.id === announcement.class_id)
               
               return (
                 <div key={announcement.id} className="announcement-card">

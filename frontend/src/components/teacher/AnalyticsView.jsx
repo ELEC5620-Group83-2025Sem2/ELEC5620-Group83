@@ -7,6 +7,16 @@ function AnalyticsView() {
   const [loading, setLoading] = useState(true)
   const [insights, setInsights] = useState(null)
   const [generating, setGenerating] = useState(false)
+  const [analytics, setAnalytics] = useState({
+    totalStudents: 0,
+    averageGrade: 'N/A',
+    assignmentCompletion: 'N/A',
+    attendanceRate: 'N/A',
+    gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
+    totalAssignments: 0,
+    totalSubmissions: 0,
+    gradedSubmissions: 0,
+  })
 
   const handleGenerateInsights = async (classId) => {
     if (!classId || classId === 'all') {
@@ -27,6 +37,7 @@ function AnalyticsView() {
     }
   }
 
+  // Fetch classes on initial load
   useEffect(() => {
     const fetchClasses = async () => {
       try {
@@ -41,6 +52,41 @@ function AnalyticsView() {
 
     fetchClasses()
   }, [])
+
+  // Fetch analytics when class selection changes
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const response = await teacherApi.getAnalytics(selectedClass)
+        setAnalytics(response || {
+          totalStudents: 0,
+          averageGrade: 'N/A',
+          assignmentCompletion: 'N/A',
+          attendanceRate: 'N/A',
+          gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
+          totalAssignments: 0,
+          totalSubmissions: 0,
+          gradedSubmissions: 0,
+        })
+      } catch (error) {
+        console.error('Failed to fetch analytics:', error)
+        setAnalytics({
+          totalStudents: 0,
+          averageGrade: 'N/A',
+          assignmentCompletion: 'N/A',
+          attendanceRate: 'N/A',
+          gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 },
+          totalAssignments: 0,
+          totalSubmissions: 0,
+          gradedSubmissions: 0,
+        })
+      }
+    }
+
+    if (!loading) {
+      fetchAnalytics()
+    }
+  }, [selectedClass, loading])
 
   if (loading) {
     return (
@@ -126,62 +172,108 @@ function AnalyticsView() {
       <div className="analytics-stats-grid">
         <div className="analytics-stat-card">
           <h3>Total Students</h3>
-          <p className="stat-value-xl">0</p>
-          <p className="stat-trend">No data yet</p>
+          <p className="stat-value-xl">{analytics.totalStudents || 0}</p>
+          <p className="stat-trend">
+            {analytics.totalStudents > 0 ? `${analytics.totalStudents} enrolled` : 'No students yet'}
+          </p>
         </div>
 
         <div className="analytics-stat-card">
           <h3>Average Grade</h3>
-          <p className="stat-value-xl">N/A</p>
-          <p className="stat-trend">No data yet</p>
+          <p className="stat-value-xl">{analytics.averageGrade || 'N/A'}</p>
+          <p className="stat-trend">
+            {analytics.averageGrade !== 'N/A' ? 'Based on graded submissions' : 'No grades yet'}
+          </p>
         </div>
 
         <div className="analytics-stat-card">
           <h3>Assignment Completion</h3>
-          <p className="stat-value-xl">N/A</p>
-          <p className="stat-trend">No data yet</p>
+          <p className="stat-value-xl">{analytics.assignmentCompletion || 'N/A'}</p>
+          <p className="stat-trend">
+            {analytics.assignmentCompletion !== 'N/A' ? 'Completion rate' : 'No submissions yet'}
+          </p>
         </div>
 
         <div className="analytics-stat-card">
           <h3>Attendance Rate</h3>
-          <p className="stat-value-xl">N/A</p>
-          <p className="stat-trend">No data yet</p>
+          <p className="stat-value-xl">{analytics.attendanceRate || 'N/A'}</p>
+          <p className="stat-trend">
+            {analytics.attendanceRate !== 'N/A' ? 'Average attendance' : 'No data yet'}
+          </p>
         </div>
       </div>
 
-      {/* Performance Overview */}
-      <div className="analytics-section">
-        <h2>Performance Overview</h2>
-        <div className="detail-card">
-          <div style={{ padding: '3rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📊</div>
-            <h3>Analytics Feature Coming Soon</h3>
-            <p style={{ color: '#718096', marginTop: '0.5rem' }}>
-              We're developing detailed class performance analytics, including grade distribution, trend analysis, and AI insights
-            </p>
+      {/* Grade Distribution */}
+      {analytics.gradeDistribution && analytics.gradedSubmissions > 0 && (
+        <div className="analytics-section">
+          <h2>Grade Distribution</h2>
+          <div className="detail-card">
+            <div className="grade-distribution">
+              {Object.entries(analytics.gradeDistribution).map(([grade, count]) => {
+                const percentage = analytics.gradedSubmissions > 0 
+                  ? Math.round((count / analytics.gradedSubmissions) * 100) 
+                  : 0;
+                const colors = {
+                  A: '#48bb78', // green
+                  B: '#4299e1', // blue
+                  C: '#ed8936', // orange
+                  D: '#f56565', // red
+                  F: '#9f7aea'  // purple
+                };
+                
+                return (
+                  <div key={grade} className="grade-dist-item">
+                    <div className="grade-dist-header">
+                      <span className="grade-label" style={{ color: colors[grade] }}>
+                        Grade {grade}
+                      </span>
+                      <span className="grade-count">{count} ({percentage}%)</span>
+                    </div>
+                    <div className="grade-dist-bar">
+                      <div 
+                        className="grade-dist-fill" 
+                        style={{ 
+                          width: `${percentage}%`,
+                          background: colors[grade]
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* AI Insights Placeholder */}
-      <div className="analytics-section">
-        <h2>AI Insights <span className="ai-badge">AI Powered</span></h2>
-        <div className="detail-card">
-          <div style={{ padding: '3rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🤖</div>
-            <h3>AI Analysis Feature Coming Soon</h3>
-            <p style={{ color: '#718096', marginTop: '0.5rem' }}>
-              AI will help identify at-risk students, analyze course difficulty, and provide teaching recommendations
-            </p>
-            <ul style={{ textAlign: 'left', maxWidth: '600px', margin: '2rem auto', color: '#718096' }}>
-              <li style={{ marginBottom: '0.5rem' }}>Identify students who need extra support</li>
-              <li style={{ marginBottom: '0.5rem' }}>Analyze course difficulties and weak points</li>
-              <li style={{ marginBottom: '0.5rem' }}>Provide personalized teaching suggestions</li>
-              <li style={{ marginBottom: '0.5rem' }}>Compare class performance benchmarks</li>
-            </ul>
+      {/* Additional Statistics */}
+      {(analytics.totalAssignments > 0 || analytics.totalSubmissions > 0) && (
+        <div className="analytics-section">
+          <h2>Assignment Statistics</h2>
+          <div className="analytics-stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
+            <div className="analytics-stat-card">
+              <h3>Total Assignments</h3>
+              <p className="stat-value-xl">{analytics.totalAssignments || 0}</p>
+            </div>
+            <div className="analytics-stat-card">
+              <h3>Total Submissions</h3>
+              <p className="stat-value-xl">{analytics.totalSubmissions || 0}</p>
+            </div>
+            <div className="analytics-stat-card">
+              <h3>Graded Submissions</h3>
+              <p className="stat-value-xl">{analytics.gradedSubmissions || 0}</p>
+            </div>
+            {analytics.totalSubmissions > 0 && (
+              <div className="analytics-stat-card">
+                <h3>Grading Progress</h3>
+                <p className="stat-value-xl">
+                  {Math.round((analytics.gradedSubmissions / analytics.totalSubmissions) * 100)}%
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
