@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import DashboardOverview from '../components/dashboard/DashboardOverview'
 import authService from '../services/authService'
 import ClassesView from '../components/dashboard/ClassesView'
@@ -25,7 +25,15 @@ import './StudentDashboard.css'
 
 function StudentDashboard() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const location = useLocation()
+  
+  // Extract tab from URL path
+  const pathParts = location.pathname.split('/')
+  const urlTab = pathParts[pathParts.length - 1] // Get last part of path
+  const validTabs = ['dashboard', 'classes', 'grades', 'assignments', 'study-planner', 'career', 'hsc-subjects', 'hsc-subjects-recommendation', 'weekly-report', 'settings']
+  const initialTab = validTabs.includes(urlTab) ? urlTab : 'dashboard'
+  
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
@@ -50,14 +58,15 @@ function StudentDashboard() {
 
   useEffect(() => {
     // Set initial user data from localStorage immediately
-    if (initialUserData) {
-      setUserProfile(initialUserData)
-    }
+    // if (initialUserData) {
+    //   setUserProfile(initialUserData)
+    // }
     
     const fetchUserProfile = async () => {
       try {
         const response = await authService.getProfile()
-        setUserProfile(response.profile)
+        // console.log(response)
+        setUserProfile(response.data)
       } catch (error) {
         console.error('Failed to fetch profile:', error)
         // Keep the initial data if API fails
@@ -68,6 +77,13 @@ function StudentDashboard() {
 
     fetchUserProfile()
   }, [])
+  
+  // Sync activeTab with URL changes
+  useEffect(() => {
+    if (urlTab !== activeTab && validTabs.includes(urlTab)) {
+      setActiveTab(urlTab)
+    }
+  }, [location.pathname])
 
   const handleClassClick = (classId) => {
     setSelectedClassId(classId)
@@ -92,6 +108,12 @@ function StudentDashboard() {
     // Clear selected class/assignment when changing tabs
     setSelectedClassId(null)
     setSelectedAssignmentId(null)
+    // Update URL to match the active tab
+    if (tab === 'dashboard') {
+      navigate('/student/dashboard', { replace: true })
+    } else {
+      navigate(`/student/${tab}`, { replace: true })
+    }
   }
 
   const renderContent = () => {
@@ -289,7 +311,7 @@ function StudentDashboard() {
                     <p className="user-info-id">ID: {userProfile?.id ? userProfile.id.slice(0, 8) : 'N/A'}</p>
                   </div>
                   <div className="dropdown-divider"></div>
-                  <button className="dropdown-item" onClick={() => setActiveTab('settings')}>
+                  <button className="dropdown-item" onClick={() => handleTabChange('settings')}>
                     Settings
                   </button>
                   <button className="dropdown-item" onClick={handleLogout}>
