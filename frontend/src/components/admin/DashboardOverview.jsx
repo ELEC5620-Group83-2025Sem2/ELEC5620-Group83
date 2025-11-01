@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import adminApi from '../../services/adminApi'
 
 function DashboardOverview() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState({
     students: 0,
     teachers: 0,
@@ -76,7 +78,10 @@ function DashboardOverview() {
       </div>
 
       <div className="quick-actions-grid" style={{ marginTop: '2rem' }}>
-        <div className="action-card">
+        <div 
+          className="action-card" 
+          onClick={() => navigate('/admin/students')}
+        >
           <div className="action-icon">👥</div>
           <div>
             <h4>Manage Students</h4>
@@ -84,7 +89,10 @@ function DashboardOverview() {
           </div>
         </div>
 
-        <div className="action-card">
+        <div 
+          className="action-card" 
+          onClick={() => navigate('/admin/teachers')}
+        >
           <div className="action-icon">👨‍🏫</div>
           <div>
             <h4>Manage Teachers</h4>
