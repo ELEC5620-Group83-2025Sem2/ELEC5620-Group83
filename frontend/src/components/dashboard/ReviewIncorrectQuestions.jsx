@@ -1,41 +1,47 @@
 import { useState, useEffect, useMemo } from 'react'
-import * as studentApi from '../../services/studentApi'
 
-function ReviewIncorrectQuestions({ questions: initialQuestions = [], reviewStats: initialStats = { total: 0, dueForReview: 0, masteryRate: 0, mastered: 0 } }) {
-  const [questions, setQuestions] = useState(initialQuestions)
+function ReviewIncorrectQuestions() {
+  const [questions, setQuestions] = useState([])
   const [selectedTopic, setSelectedTopic] = useState('All')
   const [selectedSubject, setSelectedSubject] = useState('All')
   const [selectedMasteryLevel, setSelectedMasteryLevel] = useState('All')
   const [showReviewMode, setShowReviewMode] = useState(false)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
-  const [reviewStats, setReviewStats] = useState(initialStats)
+  const [reviewStats, setReviewStats] = useState({
+    total: 0,
+    dueForReview: 0,
+    masteryRate: 0,
+    mastered: 0
+  })
   const [selectedQuestion, setSelectedQuestion] = useState(null)
 
-  // Keep local state in sync with parent-provided data
   useEffect(() => {
-    setQuestions(initialQuestions || [])
-  }, [initialQuestions])
-
-  useEffect(() => {
-    setReviewStats(initialStats || { total: 0, dueForReview: 0, masteryRate: 0, mastered: 0 })
-  }, [initialStats])
+    // TODO: Load incorrect questions from Supabase API
+    setQuestions([])
+    setReviewStats({
+      total: 0,
+      dueForReview: 0,
+      masteryRate: 0,
+      mastered: 0
+    })
+  }, [])
 
   // Get unique topics, subjects, and mastery levels for filters
   const topics = useMemo(() => {
     const uniqueTopics = [...new Set(questions.map(q => q.topic))]
     return ['All', ...uniqueTopics]
-  }, [])
+  }, [questions])
 
   const subjects = useMemo(() => {
     const uniqueSubjects = [...new Set(questions.map(q => q.subject))]
     return ['All', ...uniqueSubjects]
-  }, [])
+  }, [questions])
 
   const masteryLevels = useMemo(() => {
     const uniqueLevels = [...new Set(questions.map(q => q.masteryLevel))]
     return ['All', ...uniqueLevels]
-  }, [])
+  }, [questions])
 
   // Filter questions based on selected filters
   const filteredQuestions = useMemo(() => {
@@ -56,28 +62,26 @@ function ReviewIncorrectQuestions({ questions: initialQuestions = [], reviewStat
     return filtered
   }, [questions, selectedTopic, selectedSubject, selectedMasteryLevel])
 
-  const questionsForReview = useMemo(() => {
-    const now = new Date()
-    return questions.filter(q => q.nextReviewDate && new Date(q.nextReviewDate) <= now)
-  }, [questions])
-
   const handleStartReview = () => {
     setShowReviewMode(true)
     setCurrentQuestionIndex(0)
     setShowAnswer(false)
   }
 
-  const handleAnswerQuestion = async (isCorrect) => {
+  const handleAnswerQuestion = (isCorrect) => {
+    // TODO: Update question review status in Supabase
     const currentQuestion = filteredQuestions[currentQuestionIndex]
     if (currentQuestion) {
-      try {
-        const { question } = await studentApi.updateReviewQuestion(currentQuestion.id, { isCorrect })
-        setQuestions(prev => prev.map(q => q.id === question.id ? question : q))
-        const sRes = await studentApi.getReviewStats()
-        setReviewStats(sRes.stats || reviewStats)
-      } catch (e) {}
+      // Update local state
+      const updatedQuestions = questions.map(q =>
+        q.id === currentQuestion.id
+          ? { ...q, reviewCount: q.reviewCount + 1, masteryLevel: isCorrect ? 'Practicing' : 'Needs Review' }
+          : q
+      )
+      setQuestions(updatedQuestions)
     }
 
+    // Move to next question or finish review
     if (currentQuestionIndex < filteredQuestions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1)
       setShowAnswer(false)
@@ -85,6 +89,7 @@ function ReviewIncorrectQuestions({ questions: initialQuestions = [], reviewStat
       setShowReviewMode(false)
       setCurrentQuestionIndex(0)
       setShowAnswer(false)
+      alert('Review session completed! Great job!')
     }
   }
 
@@ -107,15 +112,17 @@ function ReviewIncorrectQuestions({ questions: initialQuestions = [], reviewStat
     setSelectedQuestion(null)
   }
 
-  const handleAnswerSingleQuestion = async (isCorrect) => {
+  const handleAnswerSingleQuestion = (isCorrect) => {
+    // TODO: Update question review status in Supabase
     if (selectedQuestion) {
-      try {
-        const { question } = await studentApi.updateReviewQuestion(selectedQuestion.id, { isCorrect })
-        setQuestions(prev => prev.map(q => q.id === question.id ? question : q))
-        const sRes = await studentApi.getReviewStats()
-        setReviewStats(sRes.stats || reviewStats)
-      } catch (e) {}
+      const updatedQuestions = questions.map(q =>
+        q.id === selectedQuestion.id
+          ? { ...q, reviewCount: q.reviewCount + 1, masteryLevel: isCorrect ? 'Practicing' : 'Needs Review' }
+          : q
+      )
+      setQuestions(updatedQuestions)
       setSelectedQuestion(null)
+      alert(isCorrect ? 'Great! Keep it up!' : 'Keep practicing, you\'ll get it!')
     }
   }
 
@@ -170,7 +177,7 @@ function ReviewIncorrectQuestions({ questions: initialQuestions = [], reviewStat
                 </span>
               </div>
               <div className="question-assignment">
-                From: {selectedQuestion.assignment} • {selectedQuestion.dateAnswered ? new Date(selectedQuestion.dateAnswered).toLocaleDateString() : ''}
+                From: {selectedQuestion.assignment} • {new Date(selectedQuestion.dateAnswered).toLocaleDateString()}
               </div>
             </div>
 
@@ -449,7 +456,7 @@ function ReviewIncorrectQuestions({ questions: initialQuestions = [], reviewStat
                   <h4>{question.question}</h4>
                   <div className="question-details">
                     <span>Assignment: {question.assignment}</span>
-                    <span>Date: {question.dateAnswered ? new Date(question.dateAnswered).toLocaleDateString() : ''}</span>
+                    <span>Date: {new Date(question.dateAnswered).toLocaleDateString()}</span>
                     <span>Reviews: {question.reviewCount}</span>
                   </div>
                 </div>

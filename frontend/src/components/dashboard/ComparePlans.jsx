@@ -1,9 +1,14 @@
-import { useState } from 'react'
-import { studyPlans, calculatePlanMetrics, getPlanDifferences } from './mockData'
+import { useState, useEffect } from 'react'
 
 function ComparePlans() {
-  const [selectedPlans, setSelectedPlans] = useState([1, 2]) // Default: compare first two plans
+  const [studyPlans, setStudyPlans] = useState([])
+  const [selectedPlans, setSelectedPlans] = useState([])
   const [showComparison, setShowComparison] = useState(false)
+  
+  useEffect(() => {
+    // TODO: Load study plans from Supabase API
+    setStudyPlans([])
+  }, [])
 
   const handlePlanSelection = (planId, position) => {
     const newSelectedPlans = [...selectedPlans]
@@ -42,11 +47,43 @@ function ComparePlans() {
     return { symbol: '=', color: '#718096', text: 'Same' }
   }
 
+  const calculatePlanMetrics = (plan) => {
+    return {
+      workload: plan.weeklyHours * 5 || 0,
+      difficulty: plan.difficulty === 'High' ? 85 : plan.difficulty === 'Medium' ? 60 : 35,
+      risk: plan.riskLevel === 'High' ? 80 : plan.riskLevel === 'Medium' ? 50 : 25
+    }
+  }
+
+  const getPlanDifferences = (plan1, plan2) => {
+    const metrics1 = calculatePlanMetrics(plan1)
+    const metrics2 = calculatePlanMetrics(plan2)
+    return {
+      workload: metrics2.workload - metrics1.workload,
+      difficulty: metrics2.difficulty - metrics1.difficulty,
+      risk: metrics2.risk - metrics1.risk,
+      hours: plan2.weeklyHours - plan1.weeklyHours
+    }
+  }
+
   const plan1 = studyPlans.find(p => p.id === selectedPlans[0])
   const plan2 = studyPlans.find(p => p.id === selectedPlans[1])
   const metrics1 = plan1 ? calculatePlanMetrics(plan1) : null
   const metrics2 = plan2 ? calculatePlanMetrics(plan2) : null
   const differences = (plan1 && plan2) ? getPlanDifferences(plan1, plan2) : null
+
+  if (studyPlans.length === 0) {
+    return (
+      <div className="compare-plans-container">
+        <div className="compare-header">
+          <div className="header-content">
+            <h2>⚖️ Compare Study Plans</h2>
+            <p>No study plans available yet. Create study plans to compare them.</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (!showComparison) {
     return (

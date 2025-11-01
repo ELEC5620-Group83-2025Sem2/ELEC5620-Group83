@@ -65,26 +65,6 @@ const signUp = async (req, res) => {
       return ErrorResponse.internalServerError('Failed to enroll in class').send(res);
     }
 
-    // Ensure the user has the 'student' role assigned
-    try {
-      const { error: roleInsertError } = await supabase
-        .from('profile_roles')
-        .insert({ profile_id: userId, role: 'student' })
-        .select();
-
-      if (roleInsertError) {
-        // Ignore unique constraint errors (role already assigned)
-        const isConflict =
-          (roleInsertError.message || '').toLowerCase().includes('duplicate key') ||
-          (roleInsertError.code === '23505');
-        if (!isConflict) {
-          console.error('Assign role error:', roleInsertError);
-        }
-      }
-    } catch (assignErr) {
-      console.error('Assign role unexpected error:', assignErr);
-    }
-
     return res.status(201).json({ 
       message: 'Registration successful',
       user: {

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import DashboardOverview from '../components/dashboard/DashboardOverview'
 import authService from '../services/authService'
-import * as studentApi from '../services/studentApi'
+import studentApi from '../services/studentApi'
 import ClassesView from '../components/dashboard/ClassesView'
 import GradesView from '../components/dashboard/GradesView'
 import AssignmentsView from '../components/dashboard/AssignmentsView'
@@ -18,24 +18,32 @@ import './StudentDashboard.css'
 
 function StudentDashboard() {
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const initialTabFromUrl = searchParams.get('tab') || 'dashboard'
-  const [activeTab, setActiveTab] = useState(initialTabFromUrl)
+  const location = useLocation()
+  
+  // Extract tab from URL path
+  const pathParts = location.pathname.split('/')
+  const urlTab = pathParts[pathParts.length - 1] // Get last part of path
+  const validTabs = ['dashboard', 'classes', 'grades', 'assignments', 'study-planner', 'career', 'hsc-subjects', 'hsc-subjects-recommendation', 'weekly-report', 'settings']
+  const initialTab = validTabs.includes(urlTab) ? urlTab : 'dashboard'
+  
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [notifications, setNotifications] = useState([])
+  const [showNotificationPopup, setShowNotificationPopup] = useState(false)
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
+  const notificationPopupRef = useRef(null)
   
-  // Data states
+  // State for data from API
+  const [studentData, setStudentData] = useState({})
   const [enrolledClasses, setEnrolledClasses] = useState([])
   const [upcomingAssignments, setUpcomingAssignments] = useState([])
   const [recentGrades, setRecentGrades] = useState([])
-  const [dashboardData, setDashboardData] = useState(null)
-  const [gradesSummary, setGradesSummary] = useState(null)
-  const [reviewQuestions, setReviewQuestions] = useState([])
-  const [reviewStats, setReviewStats] = useState({ total: 0, dueForReview: 0, masteryRate: 0, mastered: 0 })
-  const [dataLoading, setDataLoading] = useState(true)
+  const [studyPlanSuggestions, setStudyPlanSuggestions] = useState([])
+  const [careerRecommendations, setCareerRecommendations] = useState([])
   
   // Get initial user data from localStorage
   const getInitialUserData = () => {
@@ -55,13 +63,14 @@ function StudentDashboard() {
 
   useEffect(() => {
     // Set initial user data from localStorage immediately
-    if (initialUserData) {
-      setUserProfile(initialUserData)
-    }
+    // if (initialUserData) {
+    //   setUserProfile(initialUserData)
+    // }
     
     const fetchUserProfile = async () => {
       try {
         const response = await authService.getProfile()
+        // console.log(response)
         setUserProfile(response.data)
       } catch (error) {
         console.error('Failed to fetch profile:', error)
@@ -73,48 +82,72 @@ function StudentDashboard() {
 
     fetchUserProfile()
   }, [])
-
-  // Keep activeTab in sync with the URL, and update URL when tab changes
-  useEffect(() => {
-    const tab = searchParams.get('tab')
-    if (tab && tab !== activeTab) {
-      setActiveTab(tab)
-    }
-  }, [searchParams])
   
-  // Fetch all student data
+  // Sync activeTab with URL changes
   useEffect(() => {
-    const fetchStudentData = async () => {
-      try {
-        setDataLoading(true)
-        
-        // Fetch dashboard overview, classes, assignments, grades, grades summary, and review data in parallel
-        const [dashData, classesData, assignmentsData, gradesData, gradesSummaryData, reviewQuestionsData, reviewStatsData] = await Promise.all([
-          studentApi.getDashboardData().catch(() => ({ data: {} })),
-          studentApi.getStudentClasses().catch(() => ({ classes: [] })),
-          studentApi.getStudentAssignments({ upcoming: true }).catch(() => ({ assignments: [] })),
-          studentApi.getStudentGrades().catch(() => ({ grades: [] })),
-          studentApi.getGradesSummary().catch(() => ({ summary: null })),
-          studentApi.getReviewQuestions().catch(() => ({ questions: [] })),
-          studentApi.getReviewStats().catch(() => ({ stats: { total: 0, dueForReview: 0, masteryRate: 0, mastered: 0 } }))
-        ])
-        
-        setDashboardData(dashData.data || {})
-        setEnrolledClasses(classesData.classes || [])
-        setUpcomingAssignments(assignmentsData.assignments || [])
-        setRecentGrades((gradesData.grades || []).slice(0, 5))
-        setGradesSummary(gradesSummaryData.summary || null)
-        setReviewQuestions(reviewQuestionsData.questions || [])
-        setReviewStats(reviewStatsData.stats || { total: 0, dueForReview: 0, masteryRate: 0, mastered: 0 })
-      } catch (error) {
-        console.error('Failed to fetch student data:', error)
-      } finally {
-        setDataLoading(false)
+    if (urlTab !== activeTab && validTabs.includes(urlTab)) {
+      setActiveTab(urlTab)
+    }
+  }, [location.pathname])
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true)
+    try {
+      const response = await studentApi.getAnnouncements()
+      setNotifications(response.announcements || [])
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+      // Keep existing notifications on error
+    } finally {
+      setLoadingNotifications(false)
+    }
+  }
+
+  // Fetch notifications on component mount
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  // Fetch notifications when popup opens
+  useEffect(() => {
+    if (showNotificationPopup) {
+      fetchNotifications()
+    }
+  }, [showNotificationPopup])
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        notificationPopupRef.current &&
+        !notificationPopupRef.current.contains(event.target) &&
+        showNotificationPopup
+      ) {
+        setShowNotificationPopup(false)
       }
     }
-    
-    fetchStudentData()
-  }, [])
+
+    if (showNotificationPopup) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showNotificationPopup])
+
+  // Helper function to format time ago
+  const getTimeAgo = (dateString) => {
+    const now = new Date()
+    const date = new Date(dateString)
+    const diffInSeconds = Math.floor((now - date) / 1000)
+
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
+    return date.toLocaleDateString()
+  }
 
   const handleClassClick = (classId) => {
     setSelectedClassId(classId)
@@ -139,20 +172,15 @@ function StudentDashboard() {
     // Clear selected class/assignment when changing tabs
     setSelectedClassId(null)
     setSelectedAssignmentId(null)
-    setSearchParams({ tab })
+    // Update URL to match the active tab
+    if (tab === 'dashboard') {
+      navigate('/student/dashboard', { replace: true })
+    } else {
+      navigate(`/student/${tab}`, { replace: true })
+    }
   }
 
   const renderContent = () => {
-    // Show loading state
-    if (dataLoading && activeTab !== 'settings' && activeTab !== 'hsc-subjects-recommendation' && activeTab !== 'hsc-subjects') {
-      return (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
-          <div className="loading-spinner"></div>
-          <p style={{ marginLeft: '10px' }}>Loading...</p>
-        </div>
-      )
-    }
-    
     // Show Class Detail Page if a class is selected
     if (selectedClassId) {
       const classData = enrolledClasses.find(c => c.id === selectedClassId)
@@ -170,7 +198,7 @@ function StudentDashboard() {
       case 'dashboard':
         return (
           <DashboardOverview
-            dashboardData={dashboardData}
+            studentData={studentData}
             userProfile={userProfile}
             enrolledClasses={enrolledClasses}
             upcomingAssignments={upcomingAssignments}
@@ -181,21 +209,21 @@ function StudentDashboard() {
       case 'classes':
         return <ClassesView enrolledClasses={enrolledClasses} onClassClick={handleClassClick} />
       case 'grades':
-        return <GradesView enrolledClasses={enrolledClasses} recentGrades={recentGrades} gradesSummary={gradesSummary} reviewQuestions={reviewQuestions} reviewStats={reviewStats} />
+        return <GradesView enrolledClasses={enrolledClasses} recentGrades={recentGrades} />
       case 'assignments':
         return <AssignmentsView upcomingAssignments={upcomingAssignments} onAssignmentClick={handleAssignmentClick} />
       case 'study-planner':
-        return <StudyPlannerView />
+        return <StudyPlannerView studyPlanSuggestions={studyPlanSuggestions} />
       case 'career':
-        return <CareerView />
+        return <CareerView careerRecommendations={careerRecommendations} />
       case 'hsc-subjects-recommendation':
         return <HSCSubjectRecommendation />
       case 'hsc-subjects':
         return <HSCSubjectsView />
       case 'weekly-report':
-        return <WeeklyReportView enrolledClasses={enrolledClasses} recentGrades={recentGrades} upcomingAssignments={upcomingAssignments} />
+        return <WeeklyReportView />
       case 'settings':
-        return <SettingsView userProfile={userProfile} onProfileUpdate={setUserProfile} />
+        return <SettingsView studentData={studentData} userProfile={userProfile} onProfileUpdate={setUserProfile} />
       default:
         return null
     }
@@ -230,7 +258,7 @@ function StudentDashboard() {
       {/* Sidebar */}
       <aside className="dashboard-sidebar">
         <div className="sidebar-header">
-          <div className="logo-dashboard" onClick={() => navigate('/student/dashboard?tab=dashboard')}>
+          <div className="logo-dashboard" onClick={() => navigate('/')}>
             <span className="logo-icon">⚡</span>
             <span className="logo-text">HSC Power</span>
           </div>
@@ -319,14 +347,58 @@ function StudentDashboard() {
             <h1 className="page-title">{getPageTitle()}</h1>
           </div>
           <div className="header-right">
-            <button className="header-btn">
-              <span className="notification-icon">🔔</span>
-              <span className="notification-badge">3</span>
-            </button>
+            <div className="notification-container" ref={notificationPopupRef}>
+              <button 
+                className="header-btn"
+                onClick={() => {
+                  setShowNotificationPopup(!showNotificationPopup)
+                  setShowUserMenu(false) // Close user menu when opening notifications
+                }}
+              >
+                <span className="notification-icon">🔔</span>
+                {notifications.length > 0 && (
+                  <span className="notification-badge">{notifications.length}</span>
+                )}
+              </button>
+              {showNotificationPopup && (
+                <div className="notification-popup">
+                  <div className="notification-popup-header">
+                    <h3>Notifications</h3>
+                    {loadingNotifications && <span className="notification-loading">Loading...</span>}
+                  </div>
+                  <div className="notification-popup-content">
+                    {notifications.length === 0 ? (
+                      <div className="notification-empty">
+                        <p>No notifications</p>
+                        <span>You're all caught up!</span>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div key={notification.id} className="notification-item">
+                          <div className="notification-title">{notification.title}</div>
+                          <div className="notification-content">
+                            {notification.content.length > 100
+                              ? `${notification.content.substring(0, 100)}...`
+                              : notification.content}
+                          </div>
+                          <div className="notification-meta">
+                            <span className="notification-class">{notification.className}</span>
+                            <span className="notification-time">{getTimeAgo(notification.createdAt)}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="user-menu-container">
               <button 
                 className="user-profile-btn"
-                onClick={() => setShowUserMenu(!showUserMenu)}
+                onClick={() => {
+                  setShowUserMenu(!showUserMenu)
+                  setShowNotificationPopup(false) // Close notifications when opening user menu
+                }}
               >
                 <span className="user-avatar">{userProfile?.avatar || '👤'}</span>
                 <span className="user-name">
@@ -347,7 +419,7 @@ function StudentDashboard() {
                     <p className="user-info-id">ID: {userProfile?.id ? userProfile.id.slice(0, 8) : 'N/A'}</p>
                   </div>
                   <div className="dropdown-divider"></div>
-                  <button className="dropdown-item" onClick={() => setActiveTab('settings')}>
+                  <button className="dropdown-item" onClick={() => handleTabChange('settings')}>
                     Settings
                   </button>
                   <button className="dropdown-item" onClick={handleLogout}>
