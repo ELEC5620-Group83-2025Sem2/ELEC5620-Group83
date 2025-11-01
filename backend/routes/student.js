@@ -6,6 +6,7 @@ import {
   getStudyPlanPreferences
 } from '../controllers/student/studyPlanner.js';
 import { getStudentAnnouncements } from '../controllers/student/announcements.js';
+import { getStudentClasses } from '../controllers/student/classes.js';
 
 const router = express.Router();
 
@@ -32,6 +33,13 @@ router.get('/study-plan/preferences', getStudyPlanPreferences);
 
 // GET /api/student/announcements - Get all announcements for student's enrolled classes
 router.get('/announcements', getStudentAnnouncements);
+
+// ===================
+// Classes Routes
+// ===================
+
+// GET /api/student/classes - Get all classes the student is enrolled in
+router.get('/classes', getStudentClasses);
 
 export { router as studentRoutes };
 
