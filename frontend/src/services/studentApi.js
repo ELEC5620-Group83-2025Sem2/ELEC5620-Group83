@@ -87,6 +87,14 @@ const studentApi = {
     });
   },
 
+  // HSC Subjects
+  // Get all HSC subjects from the database
+  async getHSCSubjects() {
+    return authenticatedRequest('/student/hsc-subjects', {
+      method: 'GET'
+    
+    });
+  },
   // Assignments
   // Get all assignments for student's enrolled classes
   // JWT token is automatically passed in Authorization header
