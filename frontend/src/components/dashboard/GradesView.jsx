@@ -1,30 +1,6 @@
-import { useState } from 'react'
-import ReviewIncorrectQuestions from './ReviewIncorrectQuestions'
-
 function GradesView({ enrolledClasses, recentGrades }) {
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' or 'review'
-
   return (
     <>
-      {/* Tab Navigation */}
-      <div className="grades-tabs">
-        <button 
-          className={`tab-button ${activeTab === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overview')}
-        >
-          📊 Grades Overview
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'review' ? 'active' : ''}`}
-          onClick={() => setActiveTab('review')}
-        >
-          📚 Review Incorrect Questions
-        </button>
-      </div>
-
-      {/* Grades Overview Tab */}
-      {activeTab === 'overview' && (
-        <>
           <div className="grades-overview">
             <div className="grade-summary-card">
               <h3>Overall Performance</h3>
@@ -75,13 +51,6 @@ function GradesView({ enrolledClasses, recentGrades }) {
               </table>
             </div>
           </section>
-        </>
-      )}
-
-      {/* Review Incorrect Questions Tab */}
-      {activeTab === 'review' && (
-        <ReviewIncorrectQuestions />
-      )}
     </>
   )
 }

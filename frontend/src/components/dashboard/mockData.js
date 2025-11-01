@@ -2386,3 +2386,53 @@ export const getDaysUntilDue = (dueDate) => {
   return `${diffDays} days left`
 }
 
+// Add incorrect question to the list
+export const addIncorrectQuestion = (questionData) => {
+  const newQuestion = {
+    id: incorrectQuestions.length + 1,
+    question: questionData.question,
+    correctAnswer: questionData.correctAnswer,
+    studentAnswer: questionData.studentAnswer,
+    explanation: questionData.explanation,
+    topic: questionData.topic,
+    subject: questionData.subject,
+    difficulty: questionData.difficulty,
+    dateAnswered: new Date().toISOString().split('T')[0], // Today's date
+    assignment: questionData.assignment || 'Practice Questions',
+    reviewCount: 0,
+    lastReviewed: null,
+    nextReviewDate: null,
+    masteryLevel: 'Needs Review'
+  }
+  
+  incorrectQuestions.push(newQuestion)
+  return newQuestion
+}
+
+// Add multiple incorrect questions from practice
+export const addIncorrectQuestionsFromPractice = (practiceSet, questionsWithAnswers) => {
+  const incorrectQs = []
+  
+  questionsWithAnswers.forEach(({ question, selectedOptionId }) => {
+    const selectedOption = question.options.find(opt => opt.id === selectedOptionId)
+    const correctOption = question.options.find(opt => opt.correct)
+    
+    // Only add if the answer is incorrect
+    if (selectedOption && !selectedOption.correct) {
+      const newQuestion = addIncorrectQuestion({
+        question: question.question,
+        correctAnswer: correctOption.text,
+        studentAnswer: selectedOption.text,
+        explanation: question.explanation,
+        topic: practiceSet.topic,
+        subject: practiceSet.subject,
+        difficulty: practiceSet.difficulty,
+        assignment: `Practice: ${practiceSet.topic}`
+      })
+      incorrectQs.push(newQuestion)
+    }
+  })
+  
+  return incorrectQs
+}
+
