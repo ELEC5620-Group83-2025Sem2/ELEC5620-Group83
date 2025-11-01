@@ -7,6 +7,7 @@ import {
 } from '../controllers/student/studyPlanner.js';
 import { getStudentAnnouncements } from '../controllers/student/announcements.js';
 import { getStudentClasses } from '../controllers/student/classes.js';
+import { getHSCSubjects } from '../controllers/student/hscSubjects.js';
 
 const router = express.Router();
 
@@ -40,6 +41,13 @@ router.get('/announcements', getStudentAnnouncements);
 
 // GET /api/student/classes - Get all classes the student is enrolled in
 router.get('/classes', getStudentClasses);
+
+// ===================
+// HSC Subjects Routes
+// ===================
+
+// GET /api/student/hsc-subjects - Get all HSC subjects
+router.get('/hsc-subjects', getHSCSubjects);
 
 export { router as studentRoutes };
 

@@ -85,6 +85,14 @@ const studentApi = {
     return authenticatedRequest('/student/classes', {
       method: 'GET'
     });
+  },
+
+  // HSC Subjects
+  // Get all HSC subjects from the database
+  async getHSCSubjects() {
+    return authenticatedRequest('/student/hsc-subjects', {
+      method: 'GET'
+    });
   }
 };
 
