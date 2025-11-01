@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import DashboardOverview from '../components/dashboard/DashboardOverview'
 import authService from '../services/authService'
+import * as studentApi from '../services/studentApi'
 import ClassesView from '../components/dashboard/ClassesView'
 import GradesView from '../components/dashboard/GradesView'
 import AssignmentsView from '../components/dashboard/AssignmentsView'
@@ -13,24 +14,28 @@ import WeeklyReportView from '../components/dashboard/WeeklyReportView'
 import ClassDetailPage from '../components/dashboard/ClassDetailPage'
 import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
 import HSCSubjectRecommendation from '../components/dashboard/HSCSubjectRecommendation'
-import {
-  studentData,
-  enrolledClasses,
-  upcomingAssignments,
-  recentGrades,
-  studyPlanSuggestions,
-  careerRecommendations
-} from '../components/dashboard/mockData'
 import './StudentDashboard.css'
 
 function StudentDashboard() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTabFromUrl = searchParams.get('tab') || 'dashboard'
+  const [activeTab, setActiveTab] = useState(initialTabFromUrl)
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  
+  // Data states
+  const [enrolledClasses, setEnrolledClasses] = useState([])
+  const [upcomingAssignments, setUpcomingAssignments] = useState([])
+  const [recentGrades, setRecentGrades] = useState([])
+  const [dashboardData, setDashboardData] = useState(null)
+  const [gradesSummary, setGradesSummary] = useState(null)
+  const [reviewQuestions, setReviewQuestions] = useState([])
+  const [reviewStats, setReviewStats] = useState({ total: 0, dueForReview: 0, masteryRate: 0, mastered: 0 })
+  const [dataLoading, setDataLoading] = useState(true)
   
   // Get initial user data from localStorage
   const getInitialUserData = () => {
@@ -57,7 +62,7 @@ function StudentDashboard() {
     const fetchUserProfile = async () => {
       try {
         const response = await authService.getProfile()
-        setUserProfile(response.profile)
+        setUserProfile(response.data)
       } catch (error) {
         console.error('Failed to fetch profile:', error)
         // Keep the initial data if API fails
@@ -67,6 +72,48 @@ function StudentDashboard() {
     }
 
     fetchUserProfile()
+  }, [])
+
+  // Keep activeTab in sync with the URL, and update URL when tab changes
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
+  
+  // Fetch all student data
+  useEffect(() => {
+    const fetchStudentData = async () => {
+      try {
+        setDataLoading(true)
+        
+        // Fetch dashboard overview, classes, assignments, grades, grades summary, and review data in parallel
+        const [dashData, classesData, assignmentsData, gradesData, gradesSummaryData, reviewQuestionsData, reviewStatsData] = await Promise.all([
+          studentApi.getDashboardData().catch(() => ({ data: {} })),
+          studentApi.getStudentClasses().catch(() => ({ classes: [] })),
+          studentApi.getStudentAssignments({ upcoming: true }).catch(() => ({ assignments: [] })),
+          studentApi.getStudentGrades().catch(() => ({ grades: [] })),
+          studentApi.getGradesSummary().catch(() => ({ summary: null })),
+          studentApi.getReviewQuestions().catch(() => ({ questions: [] })),
+          studentApi.getReviewStats().catch(() => ({ stats: { total: 0, dueForReview: 0, masteryRate: 0, mastered: 0 } }))
+        ])
+        
+        setDashboardData(dashData.data || {})
+        setEnrolledClasses(classesData.classes || [])
+        setUpcomingAssignments(assignmentsData.assignments || [])
+        setRecentGrades((gradesData.grades || []).slice(0, 5))
+        setGradesSummary(gradesSummaryData.summary || null)
+        setReviewQuestions(reviewQuestionsData.questions || [])
+        setReviewStats(reviewStatsData.stats || { total: 0, dueForReview: 0, masteryRate: 0, mastered: 0 })
+      } catch (error) {
+        console.error('Failed to fetch student data:', error)
+      } finally {
+        setDataLoading(false)
+      }
+    }
+    
+    fetchStudentData()
   }, [])
 
   const handleClassClick = (classId) => {
@@ -92,9 +139,20 @@ function StudentDashboard() {
     // Clear selected class/assignment when changing tabs
     setSelectedClassId(null)
     setSelectedAssignmentId(null)
+    setSearchParams({ tab })
   }
 
   const renderContent = () => {
+    // Show loading state
+    if (dataLoading && activeTab !== 'settings' && activeTab !== 'hsc-subjects-recommendation' && activeTab !== 'hsc-subjects') {
+      return (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <div className="loading-spinner"></div>
+          <p style={{ marginLeft: '10px' }}>Loading...</p>
+        </div>
+      )
+    }
+    
     // Show Class Detail Page if a class is selected
     if (selectedClassId) {
       const classData = enrolledClasses.find(c => c.id === selectedClassId)
@@ -112,7 +170,7 @@ function StudentDashboard() {
       case 'dashboard':
         return (
           <DashboardOverview
-            studentData={studentData}
+            dashboardData={dashboardData}
             userProfile={userProfile}
             enrolledClasses={enrolledClasses}
             upcomingAssignments={upcomingAssignments}
@@ -123,21 +181,21 @@ function StudentDashboard() {
       case 'classes':
         return <ClassesView enrolledClasses={enrolledClasses} onClassClick={handleClassClick} />
       case 'grades':
-        return <GradesView enrolledClasses={enrolledClasses} recentGrades={recentGrades} />
+        return <GradesView enrolledClasses={enrolledClasses} recentGrades={recentGrades} gradesSummary={gradesSummary} reviewQuestions={reviewQuestions} reviewStats={reviewStats} />
       case 'assignments':
         return <AssignmentsView upcomingAssignments={upcomingAssignments} onAssignmentClick={handleAssignmentClick} />
       case 'study-planner':
-        return <StudyPlannerView studyPlanSuggestions={studyPlanSuggestions} />
+        return <StudyPlannerView />
       case 'career':
-        return <CareerView careerRecommendations={careerRecommendations} />
+        return <CareerView />
       case 'hsc-subjects-recommendation':
         return <HSCSubjectRecommendation />
       case 'hsc-subjects':
         return <HSCSubjectsView />
       case 'weekly-report':
-        return <WeeklyReportView />
+        return <WeeklyReportView enrolledClasses={enrolledClasses} recentGrades={recentGrades} upcomingAssignments={upcomingAssignments} />
       case 'settings':
-        return <SettingsView studentData={studentData} userProfile={userProfile} onProfileUpdate={setUserProfile} />
+        return <SettingsView userProfile={userProfile} onProfileUpdate={setUserProfile} />
       default:
         return null
     }
@@ -172,7 +230,7 @@ function StudentDashboard() {
       {/* Sidebar */}
       <aside className="dashboard-sidebar">
         <div className="sidebar-header">
-          <div className="logo-dashboard" onClick={() => navigate('/')}>
+          <div className="logo-dashboard" onClick={() => navigate('/student/dashboard?tab=dashboard')}>
             <span className="logo-icon">⚡</span>
             <span className="logo-text">HSC Power</span>
           </div>
