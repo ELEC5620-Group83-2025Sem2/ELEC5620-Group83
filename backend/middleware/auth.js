@@ -58,25 +58,28 @@ export const requireRole = (allowedRoles) => {
       // Fetch user's roles
       const { data: userRoles, error } = await supabase
         .from('profile_roles')
-        .select('role')
+        .select('role, profile_id')
         .eq('profile_id', req.user.id);
 
       if (error) {
         console.error('Role check error:', error);
-        return ErrorResponse.internalServerError('Failed to verify user role').send(res);
+        console.error('Error details:', error.message, error.code, error.details);
+        return ErrorResponse.internalServerError(`Failed to verify user role: ${error.message}`).send(res);
       }
+      
+      console.log(`[Auth] Found ${userRoles?.length || 0} roles for user ${req.user.id}`);
 
-      const roles = userRoles?.map(r => r.role) || [];
-      console.log('[Auth.requireRole] fetched roles', {
-        userId: req.user.id,
-        roles,
-        allowedRoles,
-        path: req.originalUrl
-      });
+      // Map roles and normalize them to strings (handle enum types)
+      const roles = (userRoles || []).map(r => String(r.role).toLowerCase().trim());
+      const allowedRolesLower = allowedRoles.map(r => String(r).toLowerCase().trim());
+      
+      console.log(`[Auth] User ${req.user.id} roles:`, roles);
+      console.log(`[Auth] Required roles:`, allowedRolesLower);
+      
       let effectiveRoles = new Set(roles);
       
       // Fallback: If route allows 'student' and user is enrolled but missing role, backfill it
-      if (allowedRoles.includes('student') && !effectiveRoles.has('student')) {
+      if (allowedRolesLower.includes('student') && !effectiveRoles.has('student')) {
         try {
           const { data: enrollmentRows, error: enrollmentError } = await supabase
             .from('enrollments')
@@ -110,25 +113,14 @@ export const requireRole = (allowedRoles) => {
       }
       
       // Check if user has any of the allowed roles
-      const hasPermission = allowedRoles.some(role => effectiveRoles.has(role));
-      console.log('[Auth.requireRole] decision', {
-        userId: req.user.id,
-        allowedRoles,
-        effectiveRoles: Array.from(effectiveRoles),
-        hasPermission,
-        path: req.originalUrl
-      });
+      const hasPermission = allowedRolesLower.some(reqRole => effectiveRoles.has(reqRole));
 
       if (!hasPermission) {
-        return ErrorResponse.forbidden('Insufficient permissions', {
-          details: {
-            allowedRoles,
-            roles,
-            effectiveRoles: Array.from(effectiveRoles)
-          }
-        }).send(res);
+        console.error(`[Auth] Permission denied. User roles: [${Array.from(effectiveRoles).join(', ')}], Required: [${allowedRolesLower.join(', ')}]`);
+        return ErrorResponse.forbidden(`Insufficient permissions. Your roles: [${Array.from(effectiveRoles).join(', ')}]. Required: [${allowedRolesLower.join(', ')}]`).send(res);
       }
 
+      console.log(`[Auth] Permission granted for user ${req.user.id}`);
       // Attach roles to request object
       req.userRoles = Array.from(effectiveRoles);
       next();
@@ -138,4 +130,5 @@ export const requireRole = (allowedRoles) => {
     }
   };
 };
+
 
