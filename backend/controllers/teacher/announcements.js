@@ -44,7 +44,9 @@ export const getAnnouncements = async (req, res) => {
       className: announcement.classes?.name || 'Unknown',
       classCode: announcement.classes?.code || '',
       createdAt: announcement.created_at,
+      created_at: announcement.created_at,  // Also include snake_case for compatibility
       updatedAt: announcement.updated_at,
+      updated_at: announcement.updated_at,  // Also include snake_case for compatibility
       // Add view statistics if available
       viewCount: announcement.view_count || 0,
     }));
@@ -119,6 +121,7 @@ export const createAnnouncement = async (req, res) => {
         className: announcement.classes?.name,
         classCode: announcement.classes?.code,
         createdAt: announcement.created_at,
+        created_at: announcement.created_at,  // Also include snake_case for compatibility
       }
     });
   } catch (err) {

@@ -438,6 +438,147 @@ export const getStudentDetails = async (req, res) => {
 };
 
 /**
+ * GET /api/teacher/students/:id/grades
+ * Get all grades for a specific student across all assignments
+ */
+export const getStudentGrades = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const { id: studentId } = req.params;
+    const { classId } = req.query; // Optional filter by class
+    const supabase = getSupabaseClient();
+
+    // Get all classes taught by this teacher
+    const { data: classTeachers } = await supabase
+      .from('class_teachers')
+      .select('class_id')
+      .eq('profile_id', teacherId);
+
+    const classIds = classTeachers?.map(ct => ct.class_id) || [];
+
+    if (classIds.length === 0) {
+      return res.status(200).json({ grades: [], student: null });
+    }
+
+    // Verify student is enrolled in at least one of teacher's classes
+    const { data: enrollment } = await supabase
+      .from('enrollments')
+      .select(`
+        *,
+        profiles (
+          id,
+          first_name,
+          last_name,
+          email,
+          avatar
+        )
+      `)
+      .eq('student_id', studentId)
+      .in('class_id', classIds)
+      .limit(1)
+      .single();
+
+    if (!enrollment) {
+      return ErrorResponse.forbidden('Student not found in your classes').send(res);
+    }
+
+    // Build query for assignments and submissions
+    let assignmentsQuery = supabase
+      .from('assignments')
+      .select(`
+        id,
+        title,
+        due_date,
+        due_time,
+        total_points,
+        weight,
+        status,
+        class_id,
+        classes (
+          id,
+          name,
+          code,
+          color
+        )
+      `)
+      .in('class_id', classIds)
+      .eq('status', 'published')
+      .order('due_date', { ascending: false });
+
+    // Filter by specific class if provided
+    if (classId && classId !== 'all') {
+      assignmentsQuery = assignmentsQuery.eq('class_id', classId);
+    }
+
+    const { data: assignments } = await assignmentsQuery;
+
+    // Get all submissions for this student
+    const assignmentIds = assignments?.map(a => a.id) || [];
+    
+    const { data: submissions } = await supabase
+      .from('assignment_submissions')
+      .select('*')
+      .eq('student_id', studentId)
+      .in('assignment_id', assignmentIds);
+
+    // Combine assignments with submission data
+    const gradesData = assignments?.map(assignment => {
+      const submission = submissions?.find(s => s.assignment_id === assignment.id);
+      
+      return {
+        assignmentId: assignment.id,
+        assignmentTitle: assignment.title,
+        className: assignment.classes?.name || 'Unknown',
+        classCode: assignment.classes?.code || '',
+        classColor: assignment.classes?.color || '#3b82f6',
+        dueDate: assignment.due_date,
+        dueTime: assignment.due_time,
+        totalPoints: assignment.total_points,
+        weight: assignment.weight,
+        grade: submission?.grade || null,
+        feedback: submission?.feedback || null,
+        submittedAt: submission?.submitted_at || null,
+        gradedAt: submission?.graded_at || null,
+        status: submission ? submission.status : 'not_submitted',
+        percentage: submission?.grade && assignment.total_points 
+          ? Math.round((submission.grade / assignment.total_points) * 100) 
+          : null
+      };
+    }) || [];
+
+    // Calculate overall statistics
+    const gradedAssignments = gradesData.filter(g => g.grade !== null);
+    const totalWeightedScore = gradedAssignments.reduce((sum, g) => {
+      const percentage = g.percentage || 0;
+      const weight = g.weight || 0;
+      return sum + (percentage * weight);
+    }, 0);
+    const totalWeight = gradedAssignments.reduce((sum, g) => sum + (g.weight || 0), 0);
+    const overallGrade = totalWeight > 0 ? Math.round(totalWeightedScore / totalWeight) : null;
+
+    res.status(200).json({
+      student: {
+        id: enrollment.profiles.id,
+        firstName: enrollment.profiles.first_name,
+        lastName: enrollment.profiles.last_name,
+        email: enrollment.profiles.email,
+        avatar: enrollment.profiles.avatar
+      },
+      stats: {
+        totalAssignments: gradesData.length,
+        gradedAssignments: gradedAssignments.length,
+        overallGrade: overallGrade,
+        submittedCount: gradesData.filter(g => g.status !== 'not_submitted').length
+      },
+      grades: gradesData
+    });
+  } catch (err) {
+    console.error('Error fetching student grades:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching student grades').send(res);
+  }
+};
+
+/**
  * PUT /api/teacher/students/:id/notes
  * Save or update notes for a student
  */
