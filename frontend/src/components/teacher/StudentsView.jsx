@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import teacherApi from '../../services/teacherApi'
 
 function StudentsView() {
+  const navigate = useNavigate()
   const [students, setStudents] = useState([])
   const [classes, setClasses] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -102,12 +104,20 @@ function StudentsView() {
                     </div>
                   </div>
 
-                  <button 
-                    className="btn-view-student"
-                    onClick={() => setSelectedStudent(student)}
-                  >
-                    View Details
-                  </button>
+                  <div className="student-actions">
+                    <button 
+                      className="btn-view-student"
+                      onClick={() => setSelectedStudent(student)}
+                    >
+                      View Details
+                    </button>
+                    <button 
+                      className="btn-view-grades"
+                      onClick={() => navigate(`/teacher/students/${student.id}/grades`)}
+                    >
+                      查看成绩
+                    </button>
+                  </div>
                 </div>
               )
             })}

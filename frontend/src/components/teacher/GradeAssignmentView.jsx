@@ -20,15 +20,27 @@ function GradeAssignmentView({ assignmentId, onBack }) {
           teacherApi.getAssignmentById(assignmentId),
           teacherApi.getAssignmentSubmissions(assignmentId)
         ])
-        setAssignment(assignmentRes.data)
-        setSubmissions(submissionsRes.data || [])
+        
+        // Backend returns { assignment: {...} } not { data: {...} }
+        const assignment = assignmentRes.assignment || assignmentRes.data
+        const submissions = submissionsRes.submissions || submissionsRes.data || []
+        
+        if (!assignment) {
+          console.error('Assignment not found in response:', assignmentRes)
+          return
+        }
+        
+        setAssignment(assignment)
+        setSubmissions(submissions)
         
         // Select first submission if available
-        if (submissionsRes.data && submissionsRes.data.length > 0) {
-          handleSelectSubmission(submissionsRes.data[0])
+        if (submissions.length > 0) {
+          handleSelectSubmission(submissions[0])
         }
       } catch (error) {
         console.error('Failed to fetch assignment data:', error)
+        // Set assignment to null to show error message
+        setAssignment(null)
       } finally {
         setLoading(false)
       }
@@ -164,8 +176,10 @@ function GradeAssignmentView({ assignmentId, onBack }) {
           <div className="submissions-list">
             <h3>Submissions</h3>
             {submissions.map(submission => {
-              const studentName = submission.profiles 
-                ? `${submission.profiles.first_name || ''} ${submission.profiles.last_name || ''}`.trim() || submission.profiles.email
+              // Support both submission.profiles and submission.student formats
+              const student = submission.student || submission.profiles
+              const studentName = student
+                ? `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.email
                 : 'Unknown Student'
 
               return (

@@ -19,7 +19,8 @@ import {
 import { 
   getTeacherStudents, 
   getStudentDetails, 
-  updateStudentNotes 
+  updateStudentNotes,
+  getStudentGrades
 } from '../controllers/teacher/students.js';
 import { 
   getAnnouncements, 
@@ -80,11 +81,24 @@ router.get('/classes/:id/analytics', getClassAnalytics);
 // GET /api/teacher/assignments - Get all assignments
 router.get('/assignments', getTeacherAssignments);
 
-// GET /api/teacher/assignments/:id - Get assignment details
-router.get('/assignments/:id', getAssignmentDetails);
-
 // POST /api/teacher/assignments - Create assignment
 router.post('/assignments', createAssignment);
+
+// IMPORTANT: More specific routes must come BEFORE generic parameter routes
+// GET /api/teacher/assignments/:assignmentId/submissions - Get submissions (must be before /:id)
+router.get('/assignments/:assignmentId/submissions', getAssignmentSubmissions);
+
+// PUT /api/teacher/assignments/:assignmentId/submissions/:submissionId/grade - Grade a submission (must be before /:id)
+router.put('/assignments/:assignmentId/submissions/:submissionId/grade', gradeSubmission);
+
+// GET /api/teacher/assignments/:assignmentId/grading-summary - Get grading summary (must be before /:id)
+router.get('/assignments/:assignmentId/grading-summary', getGradingSummary);
+
+// POST /api/teacher/assignments/:id/publish - Publish assignment (must be before /:id)
+router.post('/assignments/:id/publish', publishAssignment);
+
+// GET /api/teacher/assignments/:id - Get assignment details (generic route comes last)
+router.get('/assignments/:id', getAssignmentDetails);
 
 // PUT /api/teacher/assignments/:id - Update assignment
 router.put('/assignments/:id', updateAssignment);
@@ -92,15 +106,15 @@ router.put('/assignments/:id', updateAssignment);
 // DELETE /api/teacher/assignments/:id - Delete assignment
 router.delete('/assignments/:id', deleteAssignment);
 
-// POST /api/teacher/assignments/:id/publish - Publish assignment
-router.post('/assignments/:id/publish', publishAssignment);
-
 // ===================
 // Students Routes
 // ===================
 
 // GET /api/teacher/students - Get all students
 router.get('/students', getTeacherStudents);
+
+// GET /api/teacher/students/:id/grades - Get student grades (must be before /:id)
+router.get('/students/:id/grades', getStudentGrades);
 
 // GET /api/teacher/students/:id - Get student details
 router.get('/students/:id', getStudentDetails);
@@ -127,21 +141,14 @@ router.delete('/announcements/:id', deleteAnnouncement);
 // ===================
 // Submissions & Grading Routes
 // ===================
-
-// GET /api/teacher/assignments/:assignmentId/submissions - Get submissions for an assignment
-router.get('/assignments/:assignmentId/submissions', getAssignmentSubmissions);
+// Note: /assignments/:assignmentId/submissions routes are already defined above in Assignments Routes section
+// to ensure they come before the generic /assignments/:id route
 
 // GET /api/teacher/submissions/:submissionId - Get submission details
 router.get('/submissions/:submissionId', getSubmissionDetail);
 
-// PUT /api/teacher/assignments/:assignmentId/submissions/:submissionId/grade - Grade a submission
-router.put('/assignments/:assignmentId/submissions/:submissionId/grade', gradeSubmission);
-
 // PUT /api/teacher/submissions/:submissionId/feedback - Update submission feedback
 router.put('/submissions/:submissionId/feedback', updateSubmissionFeedback);
-
-// GET /api/teacher/assignments/:assignmentId/grading-summary - Get grading summary
-router.get('/assignments/:assignmentId/grading-summary', getGradingSummary);
 
 // ===================
 // AI Features Routes

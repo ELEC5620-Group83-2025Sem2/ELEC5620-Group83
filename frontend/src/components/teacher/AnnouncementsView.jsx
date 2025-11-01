@@ -168,7 +168,25 @@ function AnnouncementsView() {
                   <p className="announcement-message">{announcement.content}</p>
 
                   <div className="announcement-meta">
-                    <span>Posted {new Date(announcement.created_at).toLocaleString()}</span>
+                    <span>
+                      Posted {
+                        announcement.created_at 
+                          ? new Date(announcement.created_at).toLocaleString('zh-CN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                          : new Date().toLocaleString('zh-CN', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })
+                      }
+                    </span>
                   </div>
                 </div>
               )
