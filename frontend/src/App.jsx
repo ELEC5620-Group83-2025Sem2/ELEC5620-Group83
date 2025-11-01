@@ -29,6 +29,54 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+          path="/teacher/classes" 
+          element={
+            <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/teacher/assignments" 
+          element={
+            <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/teacher/students" 
+          element={
+            <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/teacher/analytics" 
+          element={
+            <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/teacher/announcements" 
+          element={
+            <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/teacher/settings" 
+          element={
+            <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
+              <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
       </Routes>
     </Router>
   )

@@ -16,8 +16,8 @@ function StudentsView() {
           teacherApi.getStudents(),
           teacherApi.getClasses()
         ])
-        setStudents(studentsRes.data || [])
-        setClasses(classesRes.data || [])
+        setStudents(studentsRes.students || [])
+        setClasses(classesRes.classes || [])
       } catch (error) {
         console.error('Failed to fetch students:', error)
       } finally {

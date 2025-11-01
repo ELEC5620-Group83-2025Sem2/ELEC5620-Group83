@@ -20,7 +20,7 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
     const fetchClasses = async () => {
       try {
         const response = await teacherApi.getClasses()
-        setClasses(response.data || [])
+        setClasses(response.classes || [])
       } catch (error) {
         console.error('Failed to fetch classes:', error)
       }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import authService from '../services/authService'
 import DashboardOverview from '../components/teacher/DashboardOverview'
 import MyClassesView from '../components/teacher/MyClassesView'
@@ -15,7 +15,15 @@ import './TeacherDashboard.css'
 
 function TeacherDashboard() {
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const location = useLocation()
+  
+  // Extract tab from URL path
+  const pathParts = location.pathname.split('/')
+  const urlTab = pathParts[pathParts.length - 1] // Get last part of path
+  const validTabs = ['dashboard', 'classes', 'assignments', 'students', 'analytics', 'announcements', 'settings']
+  const initialTab = validTabs.includes(urlTab) ? urlTab : 'dashboard'
+  
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
@@ -41,6 +49,13 @@ function TeacherDashboard() {
 
     fetchTeacherProfile()
   }, [navigate])
+  
+  // Sync activeTab with URL changes
+  useEffect(() => {
+    if (urlTab !== activeTab && validTabs.includes(urlTab)) {
+      setActiveTab(urlTab)
+    }
+  }, [location.pathname])
 
   const handleLogout = async () => {
     try {
@@ -84,6 +99,12 @@ function TeacherDashboard() {
     setSelectedAssignmentId(null)
     setIsCreatingAssignment(false)
     setIsGradingAssignment(false)
+    // Update URL to match the active tab
+    if (tab === 'dashboard') {
+      navigate('/teacher/dashboard', { replace: true })
+    } else {
+      navigate(`/teacher/${tab}`, { replace: true })
+    }
   }
 
   const renderContent = () => {

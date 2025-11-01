@@ -4,7 +4,8 @@ import {
   getTeacherClasses, 
   getClassDetails, 
   getClassStudents, 
-  getClassAnalytics 
+  getClassAnalytics,
+  createClass
 } from '../controllers/teacher/classes.js';
 import { 
   getTeacherAssignments, 
@@ -51,6 +52,9 @@ router.use(requireRole(['teacher', 'admin']));
 
 // GET /api/teacher/classes - Get all teacher's classes
 router.get('/classes', getTeacherClasses);
+
+// POST /api/teacher/classes - Create a new class
+router.post('/classes', createClass);
 
 // GET /api/teacher/classes/:id - Get class details
 router.get('/classes/:id', getClassDetails);

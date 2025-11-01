@@ -10,9 +10,10 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
     const fetchClassData = async () => {
       try {
         const response = await teacherApi.getClassById(classId)
-        setClassData(response.data)
+        setClassData(response.class || response.data)
       } catch (error) {
         console.error('Failed to fetch class details:', error)
+        console.error('Error details:', error.message, error.response)
       } finally {
         setLoading(false)
       }

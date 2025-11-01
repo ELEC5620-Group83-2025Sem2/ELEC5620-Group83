@@ -15,8 +15,8 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
           teacherApi.getAssignments(),
           teacherApi.getClasses()
         ])
-        setAssignments(assignmentsRes.data || [])
-        setClasses(classesRes.data || [])
+        setAssignments(assignmentsRes.assignments || [])
+        setClasses(classesRes.classes || [])
       } catch (error) {
         console.error('Failed to fetch assignments:', error)
       } finally {
