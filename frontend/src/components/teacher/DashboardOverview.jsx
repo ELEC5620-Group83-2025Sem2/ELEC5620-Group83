@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import teacherApi from '../../services/teacherApi'
 import authService from '../../services/authService'
+import './DashboardOverview.css'
 
 function DashboardOverview({ onTabChange, onClassClick, onCreateAssignment }) {
   const [classes, setClasses] = useState([])

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import teacherApi from '../../services/teacherApi'
+import './AnalyticsView.css'
 
 function AnalyticsView() {
   const [classes, setClasses] = useState([])

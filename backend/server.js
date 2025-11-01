@@ -45,7 +45,8 @@ app.get('/', (req, res) => {
       },
       aiAgent: {
         courseRecommendation: '/api/ai-agent/course-recommendation',
-        careerPathway: '/api/ai-agent/career-pathway'
+        careerPathway: '/api/ai-agent/career-pathway',
+        weeklyReport: '/api/ai-agent/weekly-report'
       },
       teacher: {
         classes: '/api/teacher/classes',
@@ -54,7 +55,8 @@ app.get('/', (req, res) => {
         ai: '/api/teacher/ai/*'
       },
       student: {
-        studyPlan: '/api/student/study-plan/*'
+        studyPlan: '/api/student/study-plan/*',
+        weeklyReport: '/api/student/weekly-report'
       },
       admin: {
         students: '/api/admin/students',
