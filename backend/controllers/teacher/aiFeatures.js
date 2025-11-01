@@ -1,8 +1,11 @@
 import { getSupabaseClient } from '../../clients/supabaseClient.js';
 import { ErrorResponse } from '../../utils/errorResponse.js';
 
-// Note: OpenAI integration requires OPENAI_API_KEY in environment
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+// Note: OpenAI integration requires OPENAI_API_KEY (or compatible alias) in environment
+const OPENAI_API_KEY = (process.env.OPENAI_API_KEY
+  || process.env.OPENAI_KEY
+  || process.env.VITE_OPENAI_API_KEY
+  || '').trim();
 
 /**
  * UC10: AI-Generated Assessment Rubric
@@ -13,8 +16,8 @@ export const generateRubric = async (req, res) => {
     const {
       assignment_title,
       assignment_description,
-      assignment_type,
-      points_possible,
+      submission_type,
+      total_points,
       learning_objectives
     } = req.body;
 
@@ -26,7 +29,7 @@ export const generateRubric = async (req, res) => {
     if (!OPENAI_API_KEY) {
       // Return a mock rubric for development
       return res.json({
-        rubric: generateMockRubric(assignment_title, points_possible || 100),
+        rubric: generateMockRubric(assignment_title, total_points || 100),
         ai_generated: true,
         mock: true,
         message: 'OpenAI API key not configured, returning mock rubric'
@@ -38,8 +41,8 @@ export const generateRubric = async (req, res) => {
 
 Title: ${assignment_title}
 Description: ${assignment_description || 'Not provided'}
-Type: ${assignment_type || 'General assignment'}
-Total Points: ${points_possible || 100}
+Type: ${submission_type || 'General assignment'}
+Total Points: ${total_points || 100}
 Learning Objectives: ${learning_objectives || 'Not specified'}
 
 Create a comprehensive rubric with 4-6 criteria. For each criterion, provide:
@@ -115,7 +118,7 @@ Format as JSON array with structure:
       console.error('OpenAI API call failed:', apiError);
       // Fallback to mock rubric
       return res.json({
-        rubric: generateMockRubric(assignment_title, points_possible || 100),
+        rubric: generateMockRubric(assignment_title, total_points || 100),
         ai_generated: true,
         mock: true,
         message: 'AI generation failed, returning mock rubric'
@@ -219,14 +222,14 @@ export const autoGradeSubmission = async (req, res) => {
       .from('assignment_submissions')
       .select(`
         *,
-        assignments:assignment_id (
-          id,
-          title,
-          description,
-          points_possible,
-          class_id,
-          assignment_type
-        )
+      assignments:assignment_id (
+        id,
+        title,
+        description,
+        total_points,
+        class_id,
+        submission_type
+      )
       `)
       .eq('id', submission_id)
       .single();
@@ -281,8 +284,8 @@ export const autoGradeSubmission = async (req, res) => {
 
 Assignment: ${submission.assignments.title}
 Description: ${submission.assignments.description || 'Not provided'}
-Total Points: ${submission.assignments.points_possible}
-Type: ${submission.assignments.assignment_type}
+Total Points: ${submission.assignments.total_points}
+Type: ${submission.assignments.submission_type || 'General'}
 
 Student Answers:
 ${answers?.map((a, idx) => `
@@ -292,7 +295,7 @@ Points Available: ${a.questions.points}
 `).join('\n')}
 
 Provide:
-1. Total grade (out of ${submission.assignments.points_possible})
+1. Total grade (out of ${submission.assignments.total_points})
 2. Overall feedback (2-3 sentences)
 3. Individual grades for each question
 4. Brief feedback for each answer
@@ -311,6 +314,8 @@ Format as JSON:
 }`;
 
     try {
+      console.log(`[AI Auto-Grade] Calling OpenAI API with key: ${OPENAI_API_KEY.substring(0, 7)}...${OPENAI_API_KEY.slice(-4)}`);
+      
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
@@ -318,7 +323,7 @@ Format as JSON:
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -334,8 +339,12 @@ Format as JSON:
         })
       });
 
+      console.log(`[AI Auto-Grade] OpenAI API response status: ${response.status}`);
+      
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.statusText}`);
+        const errorBody = await response.text();
+        console.error(`[AI Auto-Grade] OpenAI API error response:`, errorBody);
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -360,9 +369,12 @@ Format as JSON:
     } catch (apiError) {
       console.error('OpenAI auto-grading failed:', apiError);
       const mockGrade = Math.floor(Math.random() * 20) + 80;
+      const isUnauthorized = typeof apiError?.message === 'string' && apiError.message.includes('401');
       return res.json({
         grade: mockGrade,
-        feedback: 'AI grading encountered an error. This is a fallback grade.',
+        feedback: isUnauthorized
+          ? '自动评分暂不可用（OpenAI API 未授权）。当前返回的是模拟分数，请手动检查后调整。'
+          : 'AI 自动评分出现异常，已返回备用分数，请手动检查后调整。',
         mock: true,
         error: apiError.message
       });
@@ -398,11 +410,11 @@ export const analyzeClassPerformance = async (req, res) => {
     // Get class performance data
     const { data: submissions } = await supabase
       .from('assignment_submissions')
-      .select('grade, points_possible, submitted_at')
+      .select('grade, total_points, submitted_at')
       .eq('class_id', class_id)
       .not('grade', 'is', null);
 
-    const grades = submissions?.map(s => (s.grade / s.points_possible) * 100) || [];
+    const grades = submissions?.map(s => (s.grade / s.total_points) * 100) || [];
     const avgGrade = grades.length > 0 ? grades.reduce((a, b) => a + b, 0) / grades.length : 0;
 
     if (!OPENAI_API_KEY) {
@@ -451,7 +463,7 @@ Format as JSON:
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -468,7 +480,7 @@ Format as JSON:
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.statusText}`);
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -487,12 +499,19 @@ Format as JSON:
 
     } catch (apiError) {
       console.error('OpenAI analysis failed:', apiError);
+      const isUnauthorized = typeof apiError?.message === 'string' && apiError.message.includes('401');
       return res.json({
         insights: [
           `Class average: ${Math.round(avgGrade)}%`,
-          `Total graded submissions: ${grades.length}`
+          `Total graded submissions: ${grades.length}`,
+          isUnauthorized
+            ? 'AI 分析暂不可用（OpenAI API 未授权）。'
+            : 'AI 分析暂不可用，已提供基础数据。'
         ],
-        recommendations: ['AI analysis unavailable'],
+        recommendations: [
+          '关注低提交率或低分学生，及时跟进支持',
+          '请在稍后再次尝试生成 AI 洞察'
+        ],
         mock: true,
         error: apiError.message
       });

@@ -111,6 +111,14 @@ class TeacherAPI {
     return response
   }
 
+  async getStudentGrades(studentId, classId = 'all') {
+    const url = classId && classId !== 'all' 
+      ? `${API_URL}/students/${studentId}/grades?classId=${classId}`
+      : `${API_URL}/students/${studentId}/grades`
+    const response = await authService.authenticatedRequest(url)
+    return response
+  }
+
   async updateStudentProfile(studentId, profileData) {
     const response = await authService.authenticatedRequest(`${API_URL}/students/${studentId}`, {
       method: 'PUT',

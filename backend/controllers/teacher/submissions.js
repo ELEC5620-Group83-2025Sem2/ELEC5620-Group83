@@ -13,13 +13,14 @@ export const getAssignmentSubmissions = async (req, res) => {
     const supabase = getSupabaseClient();
 
     // Get assignment and verify access
-    const { data: assignment } = await supabase
+    const { data: assignment, error: assignError } = await supabase
       .from('assignments')
-      .select('class_id, title, points_possible')
+      .select('class_id, title, total_points')
       .eq('id', assignmentId)
       .single();
 
-    if (!assignment) {
+    if (assignError || !assignment) {
+      console.error('Error fetching assignment in getAssignmentSubmissions:', assignError);
       return ErrorResponse.notFound('Assignment not found').send(res);
     }
 
@@ -84,12 +85,8 @@ export const getAssignmentSubmissions = async (req, res) => {
     );
 
     return res.json({
-      assignment: {
-        id: assignmentId,
-        title: assignment.title,
-        points_possible: assignment.points_possible
-      },
-      submissions: submissionsWithAnswers,
+      data: submissionsWithAnswers, // For compatibility with frontend expecting .data
+      submissions: submissionsWithAnswers, // Also include direct submissions key
       total: submissionsWithAnswers.length
     });
 
@@ -124,7 +121,7 @@ export const getSubmissionDetail = async (req, res) => {
           id,
           title,
           description,
-          points_possible,
+          total_points,
           class_id
         )
       `)
@@ -219,9 +216,9 @@ export const gradeSubmission = async (req, res) => {
 
     // Validate grade
     if (grade !== undefined && grade !== null) {
-      if (grade < 0 || grade > submission.assignments.points_possible) {
+      if (grade < 0 || grade > submission.assignments.total_points) {
         return ErrorResponse.badRequest(
-          `Grade must be between 0 and ${submission.assignments.points_possible}`
+          `Grade must be between 0 and ${submission.assignments.total_points}`
         ).send(res);
       }
     }
@@ -338,7 +335,7 @@ export const getGradingSummary = async (req, res) => {
     // Get assignment and verify access
     const { data: assignment } = await supabase
       .from('assignments')
-      .select('class_id, title, points_possible')
+      .select('class_id, title, total_points')
       .eq('id', assignmentId)
       .single();
 
@@ -379,7 +376,7 @@ export const getGradingSummary = async (req, res) => {
     // Get graded submissions for stats
     const { data: gradedSubmissions } = await supabase
       .from('assignment_submissions')
-      .select('grade, points_possible')
+      .select('grade, total_points')
       .eq('assignment_id', assignmentId)
       .not('grade', 'is', null);
 
@@ -398,7 +395,7 @@ export const getGradingSummary = async (req, res) => {
       summary: {
         assignment_id: assignmentId,
         assignment_title: assignment.title,
-        points_possible: assignment.points_possible,
+        points_possible: assignment.total_points,
         total_submissions: totalSubmissions || 0,
         graded_count: gradedCount || 0,
         pending_count: pendingCount || 0,
