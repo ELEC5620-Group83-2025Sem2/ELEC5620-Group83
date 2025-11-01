@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { generateWeeklyReport, transformWeeklyReport } from '../../services/weeklyReportService.js'
 import authService from '../../services/authService.js'
-import { enrolledClasses, recentGrades, upcomingAssignments } from './mockData'
 
 function WeeklyReportView() {
   const [report, setReport] = useState(null)
