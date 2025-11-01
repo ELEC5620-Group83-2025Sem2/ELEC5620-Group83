@@ -92,8 +92,21 @@ const studentApi = {
   async getHSCSubjects() {
     return authenticatedRequest('/student/hsc-subjects', {
       method: 'GET'
+    
+    });
+  },
+  // Assignments
+  // Get all assignments for student's enrolled classes
+  // JWT token is automatically passed in Authorization header
+  async getAssignments(upcoming = false) {
+    return authenticatedRequest('/student/assignments', {
+      method: 'GET',
+      params: {
+        upcoming: upcoming
+      }
     });
   }
+
 };
 
 export default studentApi;

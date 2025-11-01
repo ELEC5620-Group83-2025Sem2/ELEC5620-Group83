@@ -97,12 +97,33 @@ function StudentDashboard() {
     }
   }, [])
 
+  // Function to fetch student assignments - memoized with useCallback
+  const fetchStudentAssignments = useCallback(async () => {
+    try {
+      // Invoke backend API /api/student/assignments
+      // JWT token is automatically passed via authenticatedRequest in studentApi
+      const response = await studentApi.getAssignments({ upcoming: 'true' })
+      setUpcomingAssignments(response.assignments || [])
+    } catch (error) {
+      console.error('Failed to fetch student assignments:', error)
+      // Keep empty array on error
+      setUpcomingAssignments([])
+    }
+  }, [])
+
   // Fetch classes when classes tab is clicked/activated
   useEffect(() => {
     if (activeTab === 'classes') {
       fetchStudentClasses()
     }
   }, [activeTab, fetchStudentClasses])
+
+  // Fetch assignments when assignments tab is clicked/activated
+  useEffect(() => {
+    if (activeTab === 'assignments') {
+      fetchStudentAssignments()
+    }
+  }, [activeTab, fetchStudentAssignments])
   
   // Sync activeTab with URL changes
   useEffect(() => {
