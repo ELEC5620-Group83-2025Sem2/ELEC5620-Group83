@@ -24,19 +24,19 @@ jobs:
       - name: Backend Coverage
         working-directory: ./backend
         run: |
-          npm ci
-          npm run test:ci
+          npm install
+          npm test
       
       # Frontend Coverage  
       - name: Frontend Coverage
         working-directory: ./frontend
         run: |
-          npm ci
+          npm install
           npm run test:ci
       
       # Upload to Codecov
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./backend/coverage/lcov.info,./frontend/coverage/lcov.info
           fail_ci_if_error: false

@@ -22,11 +22,11 @@ jobs:
       # Backend Deployment
       - name: Install backend dependencies
         working-directory: ./backend
-        run: npm ci
+        run: npm install
       
       - name: Test backend
         working-directory: ./backend
-        run: npm run test:ci
+        run: npm test
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
@@ -35,7 +35,7 @@ jobs:
       # Frontend Deployment
       - name: Install frontend dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: npm install
       
       - name: Build frontend
         working-directory: ./frontend
