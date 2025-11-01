@@ -1,8 +1,21 @@
 import { useState } from 'react'
 import ReviewIncorrectQuestions from './ReviewIncorrectQuestions'
 
-function GradesView({ enrolledClasses, recentGrades }) {
+function GradesView({ enrolledClasses, recentGrades, gradesSummary, reviewQuestions, reviewStats }) {
   const [activeTab, setActiveTab] = useState('overview') // 'overview' or 'review'
+
+  const getAverageGradeLetter = (avg) => {
+    if (avg == null) return 'N/A'
+    if (avg >= 90) return 'A+'
+    if (avg >= 85) return 'A'
+    if (avg >= 80) return 'A-'
+    if (avg >= 75) return 'B+'
+    if (avg >= 70) return 'B'
+    if (avg >= 65) return 'B-'
+    if (avg >= 60) return 'C+'
+    if (avg >= 55) return 'C'
+    return 'D'
+  }
 
   return (
     <>
@@ -29,9 +42,9 @@ function GradesView({ enrolledClasses, recentGrades }) {
             <div className="grade-summary-card">
               <h3>Overall Performance</h3>
               <div className="grade-circle">
-                <span className="grade-large">A-</span>
+                <span className="grade-large">{getAverageGradeLetter(gradesSummary?.overallAverage)}</span>
               </div>
-              <p>Overall GPA: 3.8</p>
+              <p>Overall Average: {gradesSummary?.overallAverage != null ? `${Number(gradesSummary.overallAverage).toFixed(1)}%` : 'N/A'}</p>
             </div>
             <div className="grades-by-subject">
               {enrolledClasses.map(course => (
@@ -68,7 +81,7 @@ function GradesView({ enrolledClasses, recentGrades }) {
                       <td>{grade.class}</td>
                       <td>{grade.score}/{grade.maxScore}</td>
                       <td><span className="grade-badge">{grade.grade}</span></td>
-                      <td>Oct {10 + index}, 2025</td>
+                      <td>{grade.gradedAt || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -80,7 +93,7 @@ function GradesView({ enrolledClasses, recentGrades }) {
 
       {/* Review Incorrect Questions Tab */}
       {activeTab === 'review' && (
-        <ReviewIncorrectQuestions />
+        <ReviewIncorrectQuestions questions={reviewQuestions} reviewStats={reviewStats} />
       )}
     </>
   )

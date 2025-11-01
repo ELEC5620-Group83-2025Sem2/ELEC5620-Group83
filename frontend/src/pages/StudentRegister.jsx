@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
+import authService from '../services/authService.js'
 
 function StudentRegister() {
   const navigate = useNavigate()
@@ -14,6 +15,13 @@ function StudentRegister() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (authService.isAuthenticated()) {
+      navigate('/student/dashboard')
+    }
+  }, [])
 
   const handleChange = (e) => {
     setFormData({
