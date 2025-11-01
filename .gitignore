@@ -38,7 +38,8 @@ coverage/
 .cache/
 
 # Package manager
-package-lock.json.bak
+# package-lock.json should be committed for CI/CD
+# package-lock.json
 yarn.lock
 
 # Database
