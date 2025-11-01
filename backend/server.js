@@ -6,6 +6,7 @@ import { authRoutes } from './routes/auth.js';
 import { aiRoutes } from './routes/aiAgent.js';
 import { teacherRoutes } from './routes/teacher.js';
 import { studentRoutes } from './routes/student.js';
+import { adminRoutes } from './routes/admin.js';
 import { logger } from './middleware/logger.js';
 
 dotenv.config();
@@ -55,6 +56,11 @@ app.get('/', (req, res) => {
       student: {
         studyPlan: '/api/student/study-plan/*'
       },
+      admin: {
+        students: '/api/admin/students',
+        teachers: '/api/admin/teachers',
+        users: '/api/admin/users/*'
+      },
       tertiaryCoursesSubjectsMapping: '/api/tertiary-courses-subjects-mapping',
       examples: '/api/examples'
     }
@@ -71,6 +77,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/ai-agent', aiRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
