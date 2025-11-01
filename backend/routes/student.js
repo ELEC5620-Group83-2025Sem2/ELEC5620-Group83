@@ -5,6 +5,7 @@ import {
   saveStudyPlanPreferences,
   getStudyPlanPreferences
 } from '../controllers/student/studyPlanner.js';
+import { getStudentAnnouncements } from '../controllers/student/announcements.js';
 
 const router = express.Router();
 
@@ -24,6 +25,13 @@ router.post('/study-plan/preferences', saveStudyPlanPreferences);
 
 // GET /api/student/study-plan/preferences - Get study preferences
 router.get('/study-plan/preferences', getStudyPlanPreferences);
+
+// ===================
+// Announcements Routes
+// ===================
+
+// GET /api/student/announcements - Get all announcements for student's enrolled classes
+router.get('/announcements', getStudentAnnouncements);
 
 export { router as studentRoutes };
 

@@ -1,40 +1,47 @@
 import { useState, useEffect, useMemo } from 'react'
-import { 
-  incorrectQuestions, 
-  getQuestionsByTopic, 
-  getQuestionsBySubject, 
-  getQuestionsByMasteryLevel,
-  getQuestionsForReview,
-  updateQuestionReview,
-  getReviewStats
-} from './mockData'
 
 function ReviewIncorrectQuestions() {
-  const [questions, setQuestions] = useState(incorrectQuestions)
+  const [questions, setQuestions] = useState([])
   const [selectedTopic, setSelectedTopic] = useState('All')
   const [selectedSubject, setSelectedSubject] = useState('All')
   const [selectedMasteryLevel, setSelectedMasteryLevel] = useState('All')
   const [showReviewMode, setShowReviewMode] = useState(false)
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
-  const [reviewStats, setReviewStats] = useState(getReviewStats())
+  const [reviewStats, setReviewStats] = useState({
+    total: 0,
+    dueForReview: 0,
+    masteryRate: 0,
+    mastered: 0
+  })
   const [selectedQuestion, setSelectedQuestion] = useState(null)
+
+  useEffect(() => {
+    // TODO: Load incorrect questions from Supabase API
+    setQuestions([])
+    setReviewStats({
+      total: 0,
+      dueForReview: 0,
+      masteryRate: 0,
+      mastered: 0
+    })
+  }, [])
 
   // Get unique topics, subjects, and mastery levels for filters
   const topics = useMemo(() => {
-    const uniqueTopics = [...new Set(incorrectQuestions.map(q => q.topic))]
+    const uniqueTopics = [...new Set(questions.map(q => q.topic))]
     return ['All', ...uniqueTopics]
-  }, [])
+  }, [questions])
 
   const subjects = useMemo(() => {
-    const uniqueSubjects = [...new Set(incorrectQuestions.map(q => q.subject))]
+    const uniqueSubjects = [...new Set(questions.map(q => q.subject))]
     return ['All', ...uniqueSubjects]
-  }, [])
+  }, [questions])
 
   const masteryLevels = useMemo(() => {
-    const uniqueLevels = [...new Set(incorrectQuestions.map(q => q.masteryLevel))]
+    const uniqueLevels = [...new Set(questions.map(q => q.masteryLevel))]
     return ['All', ...uniqueLevels]
-  }, [])
+  }, [questions])
 
   // Filter questions based on selected filters
   const filteredQuestions = useMemo(() => {
@@ -55,9 +62,6 @@ function ReviewIncorrectQuestions() {
     return filtered
   }, [questions, selectedTopic, selectedSubject, selectedMasteryLevel])
 
-  // Get questions due for review
-  const questionsForReview = getQuestionsForReview()
-
   const handleStartReview = () => {
     setShowReviewMode(true)
     setCurrentQuestionIndex(0)
@@ -65,10 +69,16 @@ function ReviewIncorrectQuestions() {
   }
 
   const handleAnswerQuestion = (isCorrect) => {
+    // TODO: Update question review status in Supabase
     const currentQuestion = filteredQuestions[currentQuestionIndex]
     if (currentQuestion) {
-      updateQuestionReview(currentQuestion.id, isCorrect)
-      setReviewStats(getReviewStats())
+      // Update local state
+      const updatedQuestions = questions.map(q =>
+        q.id === currentQuestion.id
+          ? { ...q, reviewCount: q.reviewCount + 1, masteryLevel: isCorrect ? 'Practicing' : 'Needs Review' }
+          : q
+      )
+      setQuestions(updatedQuestions)
     }
 
     // Move to next question or finish review
@@ -103,9 +113,14 @@ function ReviewIncorrectQuestions() {
   }
 
   const handleAnswerSingleQuestion = (isCorrect) => {
+    // TODO: Update question review status in Supabase
     if (selectedQuestion) {
-      updateQuestionReview(selectedQuestion.id, isCorrect)
-      setReviewStats(getReviewStats())
+      const updatedQuestions = questions.map(q =>
+        q.id === selectedQuestion.id
+          ? { ...q, reviewCount: q.reviewCount + 1, masteryLevel: isCorrect ? 'Practicing' : 'Needs Review' }
+          : q
+      )
+      setQuestions(updatedQuestions)
       setSelectedQuestion(null)
       alert(isCorrect ? 'Great! Keep it up!' : 'Keep practicing, you\'ll get it!')
     }

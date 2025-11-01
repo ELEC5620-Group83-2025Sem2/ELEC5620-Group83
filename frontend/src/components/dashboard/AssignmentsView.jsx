@@ -1,4 +1,4 @@
-import { getDaysUntilDue } from './mockData'
+import { getDaysUntilDue } from '../../utils/helpers'
 
 function AssignmentsView({ upcomingAssignments, onAssignmentClick }) {
   return (

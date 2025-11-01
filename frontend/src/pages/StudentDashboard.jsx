@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import DashboardOverview from '../components/dashboard/DashboardOverview'
 import authService from '../services/authService'
+import studentApi from '../services/studentApi'
 import ClassesView from '../components/dashboard/ClassesView'
 import GradesView from '../components/dashboard/GradesView'
 import AssignmentsView from '../components/dashboard/AssignmentsView'
@@ -13,14 +14,6 @@ import WeeklyReportView from '../components/dashboard/WeeklyReportView'
 import ClassDetailPage from '../components/dashboard/ClassDetailPage'
 import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
 import HSCSubjectRecommendation from '../components/dashboard/HSCSubjectRecommendation'
-import {
-  studentData,
-  enrolledClasses,
-  upcomingAssignments,
-  recentGrades,
-  studyPlanSuggestions,
-  careerRecommendations
-} from '../components/dashboard/mockData'
 import './StudentDashboard.css'
 
 function StudentDashboard() {
@@ -39,6 +32,18 @@ function StudentDashboard() {
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
   const [userProfile, setUserProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [notifications, setNotifications] = useState([])
+  const [showNotificationPopup, setShowNotificationPopup] = useState(false)
+  const [loadingNotifications, setLoadingNotifications] = useState(false)
+  const notificationPopupRef = useRef(null)
+  
+  // State for data from API
+  const [studentData, setStudentData] = useState({})
+  const [enrolledClasses, setEnrolledClasses] = useState([])
+  const [upcomingAssignments, setUpcomingAssignments] = useState([])
+  const [recentGrades, setRecentGrades] = useState([])
+  const [studyPlanSuggestions, setStudyPlanSuggestions] = useState([])
+  const [careerRecommendations, setCareerRecommendations] = useState([])
   
   // Get initial user data from localStorage
   const getInitialUserData = () => {
@@ -84,6 +89,65 @@ function StudentDashboard() {
       setActiveTab(urlTab)
     }
   }, [location.pathname])
+
+  // Fetch notifications
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true)
+    try {
+      const response = await studentApi.getAnnouncements()
+      setNotifications(response.announcements || [])
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error)
+      // Keep existing notifications on error
+    } finally {
+      setLoadingNotifications(false)
+    }
+  }
+
+  // Fetch notifications on component mount
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  // Fetch notifications when popup opens
+  useEffect(() => {
+    if (showNotificationPopup) {
+      fetchNotifications()
+    }
+  }, [showNotificationPopup])
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        notificationPopupRef.current &&
+        !notificationPopupRef.current.contains(event.target) &&
+        showNotificationPopup
+      ) {
+        setShowNotificationPopup(false)
+      }
+    }
+
+    if (showNotificationPopup) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside)
+      }
+    }
+  }, [showNotificationPopup])
+
+  // Helper function to format time ago
+  const getTimeAgo = (dateString) => {
+    const now = new Date()
+    const date = new Date(dateString)
+    const diffInSeconds = Math.floor((now - date) / 1000)
+
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
+    return date.toLocaleDateString()
+  }
 
   const handleClassClick = (classId) => {
     setSelectedClassId(classId)
@@ -283,14 +347,58 @@ function StudentDashboard() {
             <h1 className="page-title">{getPageTitle()}</h1>
           </div>
           <div className="header-right">
-            <button className="header-btn">
-              <span className="notification-icon">🔔</span>
-              <span className="notification-badge">3</span>
-            </button>
+            <div className="notification-container" ref={notificationPopupRef}>
+              <button 
+                className="header-btn"
+                onClick={() => {
+                  setShowNotificationPopup(!showNotificationPopup)
+                  setShowUserMenu(false) // Close user menu when opening notifications
+                }}
+              >
+                <span className="notification-icon">🔔</span>
+                {notifications.length > 0 && (
+                  <span className="notification-badge">{notifications.length}</span>
+                )}
+              </button>
+              {showNotificationPopup && (
+                <div className="notification-popup">
+                  <div className="notification-popup-header">
+                    <h3>Notifications</h3>
+                    {loadingNotifications && <span className="notification-loading">Loading...</span>}
+                  </div>
+                  <div className="notification-popup-content">
+                    {notifications.length === 0 ? (
+                      <div className="notification-empty">
+                        <p>No notifications</p>
+                        <span>You're all caught up!</span>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div key={notification.id} className="notification-item">
+                          <div className="notification-title">{notification.title}</div>
+                          <div className="notification-content">
+                            {notification.content.length > 100
+                              ? `${notification.content.substring(0, 100)}...`
+                              : notification.content}
+                          </div>
+                          <div className="notification-meta">
+                            <span className="notification-class">{notification.className}</span>
+                            <span className="notification-time">{getTimeAgo(notification.createdAt)}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="user-menu-container">
               <button 
                 className="user-profile-btn"
-                onClick={() => setShowUserMenu(!showUserMenu)}
+                onClick={() => {
+                  setShowUserMenu(!showUserMenu)
+                  setShowNotificationPopup(false) // Close notifications when opening user menu
+                }}
               >
                 <span className="user-avatar">{userProfile?.avatar || '👤'}</span>
                 <span className="user-name">

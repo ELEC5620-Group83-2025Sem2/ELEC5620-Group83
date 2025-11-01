@@ -1,4 +1,4 @@
-import { getDaysUntilDue } from './mockData'
+import { getDaysUntilDue } from '../../utils/helpers'
 
 function DashboardOverview({ studentData, userProfile, enrolledClasses, upcomingAssignments, recentGrades, onTabChange }) {
   const displayName = userProfile?.first_name && userProfile?.last_name 
