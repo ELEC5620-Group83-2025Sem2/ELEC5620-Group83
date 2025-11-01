@@ -13,6 +13,7 @@ function ParentDashboard() {
     const fetchParentProfile = async () => {
       try {
         const response = await authService.getProfile()
+        //console.log(response)
         setParentProfile(response.data)
       } catch (error) {
         console.error('Failed to fetch parent profile:', error)
@@ -37,7 +38,7 @@ function ParentDashboard() {
   }
 
   const displayName = parentProfile
-    ? `${parentProfile.firstName || ''} ${parentProfile.lastName || ''}`.trim()
+    ? `${parentProfile.first_name || ''} ${parentProfile.last_name || ''}`.trim()
     : 'Parent'
 
   return (

@@ -1,21 +1,8 @@
 import { useState } from 'react'
 import ReviewIncorrectQuestions from './ReviewIncorrectQuestions'
 
-function GradesView({ enrolledClasses, recentGrades, gradesSummary, reviewQuestions, reviewStats }) {
+function GradesView({ enrolledClasses, recentGrades }) {
   const [activeTab, setActiveTab] = useState('overview') // 'overview' or 'review'
-
-  const getAverageGradeLetter = (avg) => {
-    if (avg == null) return 'N/A'
-    if (avg >= 90) return 'A+'
-    if (avg >= 85) return 'A'
-    if (avg >= 80) return 'A-'
-    if (avg >= 75) return 'B+'
-    if (avg >= 70) return 'B'
-    if (avg >= 65) return 'B-'
-    if (avg >= 60) return 'C+'
-    if (avg >= 55) return 'C'
-    return 'D'
-  }
 
   return (
     <>
@@ -42,9 +29,9 @@ function GradesView({ enrolledClasses, recentGrades, gradesSummary, reviewQuesti
             <div className="grade-summary-card">
               <h3>Overall Performance</h3>
               <div className="grade-circle">
-                <span className="grade-large">{getAverageGradeLetter(gradesSummary?.overallAverage)}</span>
+                <span className="grade-large">A-</span>
               </div>
-              <p>Overall Average: {gradesSummary?.overallAverage != null ? `${Number(gradesSummary.overallAverage).toFixed(1)}%` : 'N/A'}</p>
+              <p>Overall GPA: 3.8</p>
             </div>
             <div className="grades-by-subject">
               {enrolledClasses.map(course => (
@@ -81,7 +68,7 @@ function GradesView({ enrolledClasses, recentGrades, gradesSummary, reviewQuesti
                       <td>{grade.class}</td>
                       <td>{grade.score}/{grade.maxScore}</td>
                       <td><span className="grade-badge">{grade.grade}</span></td>
-                      <td>{grade.gradedAt || '-'}</td>
+                      <td>Oct {10 + index}, 2025</td>
                     </tr>
                   ))}
                 </tbody>
@@ -93,7 +80,7 @@ function GradesView({ enrolledClasses, recentGrades, gradesSummary, reviewQuesti
 
       {/* Review Incorrect Questions Tab */}
       {activeTab === 'review' && (
-        <ReviewIncorrectQuestions questions={reviewQuestions} reviewStats={reviewStats} />
+        <ReviewIncorrectQuestions />
       )}
     </>
   )

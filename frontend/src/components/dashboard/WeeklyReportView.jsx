@@ -1,28 +1,70 @@
 import { useState, useEffect } from 'react'
-import * as studentApi from '../../services/studentApi'
+import { generateWeeklyReport, transformWeeklyReport } from '../../services/weeklyReportService.js'
+import authService from '../../services/authService.js'
 
-function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAssignments = [] }) {
+function WeeklyReportView() {
   const [report, setReport] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [error, setError] = useState(null)
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [showSubjectModal, setShowSubjectModal] = useState(false)
+  const [weekStart, setWeekStart] = useState(() => {
+    // Default to start of current week (Monday)
+    const today = new Date()
+    const day = today.getDay()
+    const diff = today.getDate() - day + (day === 0 ? -6 : 1) // Adjust when day is Sunday
+    const monday = new Date(today.setDate(diff))
+    monday.setHours(0, 0, 0, 0)
+    return monday.toISOString().split('T')[0]
+  })
+  const [weekEnd, setWeekEnd] = useState(() => {
+    // Default to end of current week (Sunday)
+    const today = new Date()
+    const day = today.getDay()
+    const diff = today.getDate() - day + (day === 0 ? 0 : 7) // Adjust when day is Sunday
+    const sunday = new Date(today.setDate(diff))
+    sunday.setHours(23, 59, 59, 999)
+    return sunday.toISOString().split('T')[0]
+  })
 
   useEffect(() => {
     generateReport()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekStart, weekEnd])
 
-  const generateReport = () => {
+  const generateReport = async () => {
     setIsGenerating(true)
-    studentApi.getWeeklyReport()
-      .then((res) => {
-        setReport(res.report)
+    setError(null)
+    
+    try {
+      // Get current user
+      const user = authService.getCurrentUser()
+      if (!user || !user.id) {
+        throw new Error('User not authenticated. Please log in again.')
+      }
+
+      // Call API to generate weekly report
+      // Pass student_id explicitly
+      const apiReport = await generateWeeklyReport({
+        student_id: user.id,
+        report_week_start: weekStart,
+        report_week_end: weekEnd,
+        useStudentEndpoint: true // Use the new student endpoint
       })
-      .catch(() => {
-        setReport(null)
-      })
-      .finally(() => setIsGenerating(false))
+
+      console.log('API Report:', apiReport)
+
+      // Transform API response to component format
+      const transformedReport = transformWeeklyReport(apiReport)
+      setReport(transformedReport)
+    } catch (err) {
+      console.error('Error generating weekly report:', err)
+      setError(err.message || 'Failed to generate weekly report. Please try again.')
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const handlePrint = () => {
@@ -36,12 +78,15 @@ function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAss
 
   const handleEmail = () => {
     setShowEmailModal(true)
+    // In a real app, this would open an email client or send via API
     setTimeout(() => {
       setShowEmailModal(false)
-    }, 800)
+      alert('Weekly report has been sent to your email!')
+    }, 1000)
   }
 
   const handleSubjectClick = (subjectName) => {
+    // Find the subject data from enrolled classes
     const subjectData = enrolledClasses.find(cls => cls.name === subjectName)
     if (subjectData) {
       setSelectedSubject(subjectData)
@@ -50,11 +95,11 @@ function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAss
   }
 
   const getSubjectGrades = (subjectName) => {
-    return (recentGrades || []).filter(grade => (grade.class || grade.className) === subjectName)
+    return recentGrades.filter(grade => grade.class === subjectName)
   }
 
   const getSubjectAssignments = (subjectName) => {
-    return (upcomingAssignments || []).filter(assignment => assignment.class === subjectName)
+    return upcomingAssignments.filter(assignment => assignment.class === subjectName)
   }
 
   const getPriorityColor = (priority) => {
@@ -81,24 +126,28 @@ function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAss
         <div className="generating-report">
           <div className="loading-spinner"></div>
           <h3>Generating Your Weekly Report...</h3>
-          <p>Compiling your recent study activity</p>
+          <p>Analyzing your study patterns and performance</p>
         </div>
       </div>
     )
   }
 
-  if (!report) {
+  if (error) {
     return (
       <div className="weekly-report-container">
         <div className="error-state">
           <h3>Unable to generate report</h3>
-          <p>Please try again later</p>
+          <p>{error}</p>
           <button onClick={generateReport} className="btn-retry">
             Retry
           </button>
         </div>
       </div>
     )
+  }
+
+  if (!report) {
+    return null
   }
 
   return (
@@ -109,6 +158,7 @@ function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAss
           <h2>📊 Weekly Study Report</h2>
           <p className="report-week">{report.week}</p>
           <p className="report-generated">Generated on {new Date(report.generatedAt).toLocaleDateString()}</p>
+          
         </div>
         <div className="header-actions">
           <button className="btn-email" onClick={handleEmail}>
@@ -151,43 +201,43 @@ function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAss
         </div>
       </div>
 
-      {/* Study Activity Summary */}
+      {/* Study Time Summary */}
       <div className="report-section">
-        <h3>⏰ Study Activity Summary</h3>
+        <h3>⏰ Study Time Summary</h3>
         <div className="study-summary">
           <div className="summary-stats">
             <div className="stat-card">
               <div className="stat-icon">📚</div>
               <div className="stat-content">
-                <span className="stat-value">{report.studySummary.totalSessions}</span>
-                <span className="stat-label">Total Sessions</span>
+                <span className="stat-value">{report.studySummary.totalHours}h</span>
+                <span className="stat-label">Total Study Time</span>
               </div>
             </div>
             <div className="stat-card">
               <div className="stat-icon">🎯</div>
               <div className="stat-content">
-                <span className="stat-value">{report.studySummary.assignmentsCompleted}</span>
-                <span className="stat-label">Assignments Completed</span>
+                <span className="stat-value">{report.studySummary.completionRate}%</span>
+                <span className="stat-label">Target Completion</span>
               </div>
             </div>
             <div className="stat-card">
               <div className="stat-icon">⚡</div>
               <div className="stat-content">
-                <span className="stat-value">{report.studySummary.practiceAttempts}</span>
-                <span className="stat-label">Practice Attempts</span>
+                <span className="stat-value">{report.studySummary.averageSession}h</span>
+                <span className="stat-label">Avg Session Length</span>
               </div>
             </div>
           </div>
           
           <div className="progress-section">
             <div className="progress-header">
-              <span>Weekly Completion</span>
-              <span>{report.studySummary.completionRate != null ? `${report.studySummary.completionRate}%` : 'N/A'}</span>
+              <span>Weekly Study Progress</span>
+              <span>{report.studySummary.totalHours}/{report.studySummary.targetHours} hours</span>
             </div>
             <div className="progress-bar">
               <div 
                 className="progress-fill"
-                style={{ width: `${Math.min(report.studySummary.completionRate || 0, 100)}%` }}
+                style={{ width: `${Math.min(report.studySummary.completionRate, 100)}%` }}
               ></div>
             </div>
             <p className="progress-recommendation">{report.studySummary.recommendation}</p>
@@ -195,8 +245,52 @@ function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAss
         </div>
       </div>
 
+      {/* Grade History */}
+      <div className="report-section">
+        <h3>📊 Grade History</h3>
+        <div className="grade-history-list">
+          {report.gradeHistory && report.gradeHistory.length > 0 ? (
+            report.gradeHistory.map((grade, index) => (
+              <div key={index} className="grade-item">
+                <div className="grade-info">
+                  <h4>{grade.assessment}</h4>
+                  <span className="grade-subject">{grade.course_name}</span>
+                </div>
+                <div className="grade-details">
+                  <div className="grade-scores">
+                    <span className="grade-score">{grade.score}</span>
+                    <span className="grade-separator">/</span>
+                    <span className="grade-max">{grade.max_score}</span>
+                    {grade.percentage !== null && (
+                      <span className="grade-percentage">({grade.percentage}%)</span>
+                    )}
+                  </div>
+                  {grade.grade && (
+                    <span className="grade-letter">{grade.grade}</span>
+                  )}
+                </div>
+                {grade.feedback && (
+                  <div className="grade-feedback">
+                    <strong>Feedback:</strong> {grade.feedback}
+                  </div>
+                )}
+                {grade.created_at && (
+                  <div className="grade-date">
+                    {new Date(grade.created_at).toLocaleDateString()}
+                  </div>
+                )}
+              </div>
+            ))
+          ) : (
+            <p style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+              No grade history available for this week
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* Weekly Insights */}
-      {report.insights.length > 0 && (
+      {report.insights && report.insights.length > 0 && (
         <div className="report-section">
           <h3>💡 Weekly Insights</h3>
           <div className="insights-list">
@@ -226,9 +320,7 @@ function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAss
                 >
                   {subject.name}
                 </h4>
-                  {typeof subject.sessions === 'number' && (
-                    <span className="study-time">{subject.sessions} sessions</span>
-                  )}
+                <span className="study-time">{subject.studyTime}h</span>
               </div>
               <div className="subject-details">
                 <div className="detail-item">
@@ -237,65 +329,28 @@ function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAss
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Last Studied:</span>
-                  <span className="detail-value">{subject.lastStudied ? new Date(subject.lastStudied).toLocaleDateString() : '—'}</span>
+                  <span className="detail-value">{new Date(subject.lastStudied).toLocaleDateString()}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Progress:</span>
                   <span className="detail-value">{subject.progress}%</span>
                 </div>
               </div>
-              <div className="topics-list">
-                <span className="topics-label">Topics covered:</span>
-                <div className="topics-tags">
-                  {(subject.topics || []).map((topic, topicIndex) => (
-                    <span key={topicIndex} className="topic-tag">{topic}</span>
-                  ))}
+              {subject.topics && subject.topics.length > 0 && (
+                <div className="topics-list">
+                  <span className="topics-label">Topics covered:</span>
+                  <div className="topics-tags">
+                    {subject.topics.map((topic, topicIndex) => (
+                      <span key={topicIndex} className="topic-tag">{topic}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Assignments Completed */}
-      <div className="report-section">
-        <h3>✅ Assignments Completed</h3>
-        <div className="assignments-list">
-          {report.assignments.map((assignment, index) => (
-            <div key={index} className="assignment-item">
-              <div className="assignment-info">
-                <h4>{assignment.title}</h4>
-                <span className="assignment-subject">{assignment.subject}</span>
-              </div>
-              <div className="assignment-details">
-                <span className="assignment-grade">{assignment.grade || 'Pending'}</span>
-                {assignment.submittedAt && (
-                  <span className="assignment-time">Submitted {new Date(assignment.submittedAt).toLocaleDateString()}</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Upcoming Deadlines */}
-      <div className="report-section">
-        <h3>📅 Upcoming Deadlines</h3>
-        <div className="deadlines-list">
-          {report.upcomingDeadlines.map((deadline, index) => (
-            <div key={index} className="deadline-item">
-              <div className="deadline-info">
-                <h4>{deadline.title}</h4>
-                <span className="deadline-subject">{deadline.subject}</span>
-              </div>
-              <div className="deadline-details">
-                <span className={`priority-badge ${deadline.priority}`}>
-                  {deadline.priority} Priority
-                </span>
-                <span className="deadline-date">
-                  Due: {new Date(deadline.dueDate).toLocaleDateString()}
-                </span>
-              </div>
+              )}
+              {subject.feedback && (
+                <div style={{ marginTop: '10px', padding: '10px', background: '#f0f0f0', borderRadius: '5px' }}>
+                  <strong>Teacher Feedback:</strong> {subject.feedback}
+                </div>
+              )}
             </div>
           ))}
         </div>
