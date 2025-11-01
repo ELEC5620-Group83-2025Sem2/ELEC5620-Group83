@@ -1,0 +1,60 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      # Backend Deployment
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+      
+      - name: Test backend
+        working-directory: ./backend
+        run: npm run test:ci
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      
+      # Frontend Deployment
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+      
+      - name: Deploy to hosting service
+        run: |
+          echo "🚀 Deployment configured"
+          echo "Add your deployment steps here (e.g., Vercel, Netlify, Railway, etc.)"
+          # Example for Vercel:
+          # npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+          
+          # Example for custom server:
+          # scp -r ./frontend/dist user@server:/var/www/hsc-power
+          # ssh user@server 'pm2 restart backend'
+      
+      - name: Notify deployment status
+        if: always()
+        run: |
+          echo "Deployment completed: ${{ job.status }}"
+          # Add notification to Slack, Discord, etc. if needed
+

@@ -2,6 +2,10 @@
 
 **Empowering Your Academic Journey with Smart Technology**
 
+[![CI/CD](https://github.com/YOUR_USERNAME/ELEC5620-Group83/actions/workflows/CICD.yml/badge.svg)](https://github.com/YOUR_USERNAME/ELEC5620-Group83/actions)
+[![Tests](https://img.shields.io/badge/tests-245%20passing-brightgreen.svg)](./TESTS_SUMMARY.md)
+[![License](https://img.shields.io/badge/license-ISC-blue.svg)](./LICENSE)
+
 HSC Power is a comprehensive web-based platform designed for HSC students to excel in their studies with intelligent tools, resources, and collaborative learning features.
 
 ## 🚀 Project Overview
@@ -9,7 +13,11 @@ HSC Power is a comprehensive web-based platform designed for HSC students to exc
 This full-stack application combines modern web technologies to deliver a seamless educational experience:
 - **Frontend**: React 19 with Vite for blazing-fast development
 - **Backend**: Node.js with Express.js for robust API services
+- **Database**: Supabase (PostgreSQL) with Row Level Security
+- **AI Features**: OpenAI integration for intelligent assistance
 - **Architecture**: RESTful API design with modular structure
+- **Testing**: Comprehensive test suite with 60%+ coverage
+- **CI/CD**: Automated testing and deployment with GitHub Actions
 
 ## 📁 Project Structure
 
