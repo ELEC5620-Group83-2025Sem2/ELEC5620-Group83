@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { weeklyStudyData, generateWeeklyReport, enrolledClasses, recentGrades, upcomingAssignments } from './mockData'
 
 function WeeklyReportView() {
   const [report, setReport] = useState(null)
@@ -8,6 +7,9 @@ function WeeklyReportView() {
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [showSubjectModal, setShowSubjectModal] = useState(false)
+  const [enrolledClasses, setEnrolledClasses] = useState([])
+  const [recentGrades, setRecentGrades] = useState([])
+  const [upcomingAssignments, setUpcomingAssignments] = useState([])
 
   useEffect(() => {
     generateReport()
@@ -15,9 +17,24 @@ function WeeklyReportView() {
 
   const generateReport = () => {
     setIsGenerating(true)
-    // Simulate report generation delay
+    // TODO: Replace with actual API call to fetch weekly study data from Supabase
     setTimeout(() => {
-      const generatedReport = generateWeeklyReport(weeklyStudyData)
+      const generatedReport = {
+        week: 'Week of ' + new Date().toLocaleDateString(),
+        generatedAt: new Date().toISOString(),
+        topFocusAreas: [],
+        studySummary: {
+          totalHours: 0,
+          targetHours: 20,
+          completionRate: 0,
+          averageSession: 0,
+          recommendation: 'Start studying to build your report'
+        },
+        insights: [],
+        subjects: [],
+        assignments: [],
+        upcomingDeadlines: []
+      }
       setReport(generatedReport)
       setIsGenerating(false)
     }, 1000)

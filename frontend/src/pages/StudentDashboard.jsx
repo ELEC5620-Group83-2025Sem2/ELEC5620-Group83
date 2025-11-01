@@ -14,14 +14,6 @@ import WeeklyReportView from '../components/dashboard/WeeklyReportView'
 import ClassDetailPage from '../components/dashboard/ClassDetailPage'
 import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
 import HSCSubjectRecommendation from '../components/dashboard/HSCSubjectRecommendation'
-import {
-  studentData,
-  enrolledClasses,
-  upcomingAssignments,
-  recentGrades,
-  studyPlanSuggestions,
-  careerRecommendations
-} from '../components/dashboard/mockData'
 import './StudentDashboard.css'
 
 function StudentDashboard() {
@@ -44,6 +36,14 @@ function StudentDashboard() {
   const [showNotificationPopup, setShowNotificationPopup] = useState(false)
   const [loadingNotifications, setLoadingNotifications] = useState(false)
   const notificationPopupRef = useRef(null)
+  
+  // State for data from API
+  const [studentData, setStudentData] = useState({})
+  const [enrolledClasses, setEnrolledClasses] = useState([])
+  const [upcomingAssignments, setUpcomingAssignments] = useState([])
+  const [recentGrades, setRecentGrades] = useState([])
+  const [studyPlanSuggestions, setStudyPlanSuggestions] = useState([])
+  const [careerRecommendations, setCareerRecommendations] = useState([])
   
   // Get initial user data from localStorage
   const getInitialUserData = () => {

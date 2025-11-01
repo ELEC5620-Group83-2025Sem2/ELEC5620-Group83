@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getDaysUntilDue } from './mockData'
+import { getDaysUntilDue } from '../../utils/helpers'
 
 function AssignmentDetailPage({ assignmentData, onBack }) {
   const [submissionText, setSubmissionText] = useState('')
