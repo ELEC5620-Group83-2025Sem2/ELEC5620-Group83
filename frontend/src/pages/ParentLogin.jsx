@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
 
-function TeacherLogin() {
+function ParentLogin() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: '',
@@ -35,11 +35,11 @@ function TeacherLogin() {
       // Import auth service dynamically
       const authService = (await import('../services/authService.js')).default
       
-      // Call login API with teacher role
-      await authService.login(formData.email, formData.password, 'teacher')
+      // Call login API with parent role
+      await authService.login(formData.email, formData.password, 'parent')
       
-      // Navigate to teacher dashboard on success
-      navigate('/teacher/dashboard')
+      // Navigate to parent dashboard on success
+      navigate('/parent/dashboard')
       
     } catch (err) {
       setError(err.message || 'Invalid email or password')
@@ -56,8 +56,8 @@ function TeacherLogin() {
             <span className="logo-icon">⚡</span>
             <span className="logo-text">HSC Power</span>
           </div>
-          <h1>Teacher Login</h1>
-          <p>Welcome back! Please login to your teacher account</p>
+          <h1>Parent Login</h1>
+          <p>Welcome back! Please login to your parent account</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -71,7 +71,7 @@ function TeacherLogin() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="teacher@school.edu.au"
+              placeholder="parent@example.com"
               required
             />
           </div>
@@ -106,10 +106,10 @@ function TeacherLogin() {
 
         <div className="auth-footer">
           <div className="info-box">
-            <p className="info-title">📌 Note for Teachers</p>
+            <p className="info-title">📌 Note for Parents</p>
             <p className="info-text">
-              Teacher accounts are created by administrators. If you need an account, 
-              please contact your school administrator.
+              Connect with your child's academic progress and get personalized insights 
+              about their learning journey.
             </p>
           </div>
           <p className="switch-role">
@@ -119,9 +119,9 @@ function TeacherLogin() {
             </a>
           </p>
           <p className="switch-role">
-            Are you a parent?{' '}
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/parent'); }} className="link">
-              Parent Login
+            Are you a teacher?{' '}
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/teacher'); }} className="link">
+              Teacher Login
             </a>
           </p>
         </div>
@@ -136,5 +136,5 @@ function TeacherLogin() {
   )
 }
 
-export default TeacherLogin
+export default ParentLogin
 
