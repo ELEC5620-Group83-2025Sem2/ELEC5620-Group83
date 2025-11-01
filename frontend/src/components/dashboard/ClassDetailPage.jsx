@@ -35,7 +35,7 @@ function ClassDetailPage({ classData, onBack }) {
           <div className="class-detail-stats-row">
             <div className="stat-box">
               <span className="stat-label">Grade</span>
-              <span className="stat-value-large" style={{ color: classData.color }}>{classData.grade}</span>
+              <span className="stat-value-large" style={{ color: classData.color }}>{classData.studentAvgGrade}</span>
             </div>
             <div className="stat-box">
               <span className="stat-label">Progress</span>
@@ -43,7 +43,7 @@ function ClassDetailPage({ classData, onBack }) {
             </div>
             <div className="stat-box">
               <span className="stat-label">Assignments</span>
-              <span className="stat-value-large" style={{ color: classData.color }}>{classData.assignments}</span>
+              <span className="stat-value-large" style={{ color: classData.color }}>{classData.upcomingAssignments}</span>
             </div>
           </div>
         </div>
