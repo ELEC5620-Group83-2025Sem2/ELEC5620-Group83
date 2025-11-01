@@ -148,7 +148,17 @@ class AuthService {
    */
   hasRole(role) {
     const user = this.getCurrentUser();
-    return user && user.role === role;
+    if (!user) return false;
+    
+    // Check if user has the role directly
+    if (user.role === role) return true;
+    
+    // Check if user has the role in the roles array
+    if (user.roles && Array.isArray(user.roles)) {
+      return user.roles.includes(role);
+    }
+    
+    return false;
   }
 
   /**

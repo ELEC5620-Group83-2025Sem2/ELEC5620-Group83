@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
-import authService from '../services/authService.js'
 
-function StudentLogin() {
+function AdminLogin() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
     email: '',
@@ -11,13 +10,6 @@ function StudentLogin() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-
-  // Redirect to dashboard if already authenticated
-  useEffect(() => {
-    if (authService.isAuthenticated()) {
-      navigate('/student/dashboard')
-    }
-  }, [])
 
   const handleChange = (e) => {
     setFormData({
@@ -43,11 +35,11 @@ function StudentLogin() {
       // Import auth service dynamically
       const authService = (await import('../services/authService.js')).default
       
-      // Call login API with student role
-      await authService.login(formData.email, formData.password, 'student')
+      // Call login API with admin role
+      await authService.login(formData.email, formData.password, 'admin')
       
-      // Navigate to student dashboard on success
-      navigate('/student/dashboard')
+      // Navigate to admin dashboard on success
+      navigate('/admin/dashboard')
       
     } catch (err) {
       setError(err.message || 'Invalid email or password')
@@ -64,8 +56,8 @@ function StudentLogin() {
             <span className="logo-icon">⚡</span>
             <span className="logo-text">HSC Power</span>
           </div>
-          <h1>Student Login</h1>
-          <p>Welcome back! Please login to your student account</p>
+          <h1>Admin Login</h1>
+          <p>Welcome back! Please login to your administrator account</p>
         </div>
 
         <form className="auth-form" onSubmit={handleSubmit}>
@@ -79,7 +71,7 @@ function StudentLogin() {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="student@school.edu.au"
+              placeholder="admin@school.edu.au"
               required
             />
           </div>
@@ -113,22 +105,21 @@ function StudentLogin() {
         </form>
 
         <div className="auth-footer">
-          <p>
-            Don't have an account?{' '}
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register/student'); }} className="link">
-              Register here
-            </a>
-          </p>
+          <div className="info-box">
+            <p className="info-title">🔒 Admin Access</p>
+            <p className="info-text">
+              This is a secure administrator portal for managing student and teacher accounts. 
+              Only authorized personnel can access this area.
+            </p>
+          </div>
           <p className="switch-role">
-            Are you a teacher?{' '}
+            Need a different account?{' '}
             <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/teacher'); }} className="link">
               Teacher Login
             </a>
-          </p>
-          <p className="switch-role">
-            Are you a parent?{' '}
-            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/parent'); }} className="link">
-              Parent Login
+            {' or '}
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/student'); }} className="link">
+              Student Login
             </a>
           </p>
         </div>
@@ -143,5 +134,5 @@ function StudentLogin() {
   )
 }
 
-export default StudentLogin
+export default AdminLogin
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { weeklyStudyData, generateWeeklyReport, enrolledClasses, recentGrades, upcomingAssignments } from './mockData'
+import * as studentApi from '../../services/studentApi'
 
-function WeeklyReportView() {
+function WeeklyReportView({ enrolledClasses = [], recentGrades = [], upcomingAssignments = [] }) {
   const [report, setReport] = useState(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [showPrintModal, setShowPrintModal] = useState(false)
@@ -15,12 +15,14 @@ function WeeklyReportView() {
 
   const generateReport = () => {
     setIsGenerating(true)
-    // Simulate report generation delay
-    setTimeout(() => {
-      const generatedReport = generateWeeklyReport(weeklyStudyData)
-      setReport(generatedReport)
-      setIsGenerating(false)
-    }, 1000)
+    studentApi.getWeeklyReport()
+      .then((res) => {
+        setReport(res.report)
+      })
+      .catch(() => {
+        setReport(null)
+      })
+      .finally(() => setIsGenerating(false))
   }
 
   const handlePrint = () => {
@@ -34,15 +36,12 @@ function WeeklyReportView() {
 
   const handleEmail = () => {
     setShowEmailModal(true)
-    // In a real app, this would open an email client or send via API
     setTimeout(() => {
       setShowEmailModal(false)
-      alert('Weekly report has been sent to your email!')
-    }, 1000)
+    }, 800)
   }
 
   const handleSubjectClick = (subjectName) => {
-    // Find the subject data from enrolled classes
     const subjectData = enrolledClasses.find(cls => cls.name === subjectName)
     if (subjectData) {
       setSelectedSubject(subjectData)
@@ -51,11 +50,11 @@ function WeeklyReportView() {
   }
 
   const getSubjectGrades = (subjectName) => {
-    return recentGrades.filter(grade => grade.class === subjectName)
+    return (recentGrades || []).filter(grade => (grade.class || grade.className) === subjectName)
   }
 
   const getSubjectAssignments = (subjectName) => {
-    return upcomingAssignments.filter(assignment => assignment.class === subjectName)
+    return (upcomingAssignments || []).filter(assignment => assignment.class === subjectName)
   }
 
   const getPriorityColor = (priority) => {
@@ -82,7 +81,7 @@ function WeeklyReportView() {
         <div className="generating-report">
           <div className="loading-spinner"></div>
           <h3>Generating Your Weekly Report...</h3>
-          <p>Analyzing your study patterns and performance</p>
+          <p>Compiling your recent study activity</p>
         </div>
       </div>
     )
@@ -152,43 +151,43 @@ function WeeklyReportView() {
         </div>
       </div>
 
-      {/* Study Time Summary */}
+      {/* Study Activity Summary */}
       <div className="report-section">
-        <h3>⏰ Study Time Summary</h3>
+        <h3>⏰ Study Activity Summary</h3>
         <div className="study-summary">
           <div className="summary-stats">
             <div className="stat-card">
               <div className="stat-icon">📚</div>
               <div className="stat-content">
-                <span className="stat-value">{report.studySummary.totalHours}h</span>
-                <span className="stat-label">Total Study Time</span>
+                <span className="stat-value">{report.studySummary.totalSessions}</span>
+                <span className="stat-label">Total Sessions</span>
               </div>
             </div>
             <div className="stat-card">
               <div className="stat-icon">🎯</div>
               <div className="stat-content">
-                <span className="stat-value">{report.studySummary.completionRate}%</span>
-                <span className="stat-label">Target Completion</span>
+                <span className="stat-value">{report.studySummary.assignmentsCompleted}</span>
+                <span className="stat-label">Assignments Completed</span>
               </div>
             </div>
             <div className="stat-card">
               <div className="stat-icon">⚡</div>
               <div className="stat-content">
-                <span className="stat-value">{report.studySummary.averageSession}h</span>
-                <span className="stat-label">Avg Session Length</span>
+                <span className="stat-value">{report.studySummary.practiceAttempts}</span>
+                <span className="stat-label">Practice Attempts</span>
               </div>
             </div>
           </div>
           
           <div className="progress-section">
             <div className="progress-header">
-              <span>Weekly Study Progress</span>
-              <span>{report.studySummary.totalHours}/{report.studySummary.targetHours} hours</span>
+              <span>Weekly Completion</span>
+              <span>{report.studySummary.completionRate != null ? `${report.studySummary.completionRate}%` : 'N/A'}</span>
             </div>
             <div className="progress-bar">
               <div 
                 className="progress-fill"
-                style={{ width: `${Math.min(report.studySummary.completionRate, 100)}%` }}
+                style={{ width: `${Math.min(report.studySummary.completionRate || 0, 100)}%` }}
               ></div>
             </div>
             <p className="progress-recommendation">{report.studySummary.recommendation}</p>
@@ -227,7 +226,9 @@ function WeeklyReportView() {
                 >
                   {subject.name}
                 </h4>
-                <span className="study-time">{subject.studyTime}h</span>
+                  {typeof subject.sessions === 'number' && (
+                    <span className="study-time">{subject.sessions} sessions</span>
+                  )}
               </div>
               <div className="subject-details">
                 <div className="detail-item">
@@ -236,7 +237,7 @@ function WeeklyReportView() {
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Last Studied:</span>
-                  <span className="detail-value">{new Date(subject.lastStudied).toLocaleDateString()}</span>
+                  <span className="detail-value">{subject.lastStudied ? new Date(subject.lastStudied).toLocaleDateString() : '—'}</span>
                 </div>
                 <div className="detail-item">
                   <span className="detail-label">Progress:</span>
@@ -246,7 +247,7 @@ function WeeklyReportView() {
               <div className="topics-list">
                 <span className="topics-label">Topics covered:</span>
                 <div className="topics-tags">
-                  {subject.topics.map((topic, topicIndex) => (
+                  {(subject.topics || []).map((topic, topicIndex) => (
                     <span key={topicIndex} className="topic-tag">{topic}</span>
                   ))}
                 </div>
@@ -268,7 +269,9 @@ function WeeklyReportView() {
               </div>
               <div className="assignment-details">
                 <span className="assignment-grade">{assignment.grade || 'Pending'}</span>
-                <span className="assignment-time">{assignment.timeSpent}h spent</span>
+                {assignment.submittedAt && (
+                  <span className="assignment-time">Submitted {new Date(assignment.submittedAt).toLocaleDateString()}</span>
+                )}
               </div>
             </div>
           ))}

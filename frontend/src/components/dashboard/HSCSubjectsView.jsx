@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
-import { hscSubjects, studyPlan, addSubjectToPlan, removeSubjectFromPlan, getPlanWarnings } from './mockData'
+import { useState, useMemo, useEffect } from 'react'
+import * as studentApi from '../../services/studentApi'
+import './HSCSubjectsView.css'
 
 function HSCSubjectsView() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -7,15 +8,50 @@ function HSCSubjectsView() {
   const [selectedUnits, setSelectedUnits] = useState('All')
   const [selectedDifficulty, setSelectedDifficulty] = useState('All')
   const [sortBy, setSortBy] = useState('name')
-  const [currentPlan, setCurrentPlan] = useState(studyPlan)
+  const [currentPlan, setCurrentPlan] = useState({ subjects: [], totalUnits: 0, maxUnits: 12 })
   const [showPlanModal, setShowPlanModal] = useState(false)
   const [notification, setNotification] = useState(null)
   const [selectedSubject, setSelectedSubject] = useState(null)
-
-  // Get unique categories for filter
-  const categories = ['All', ...new Set(hscSubjects.map(subject => subject.category))]
-  const units = ['All', ...new Set(hscSubjects.map(subject => subject.units))]
-  const difficulties = ['All', ...new Set(hscSubjects.map(subject => subject.difficulty))]
+  const [hscSubjects, setHscSubjects] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [categories, setCategories] = useState(['All'])
+  const [units, setUnits] = useState(['All'])
+  const [difficulties, setDifficulties] = useState(['All'])
+  
+  // Fetch HSC subjects and study plan on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true)
+        
+        // Fetch subjects and study plan in parallel
+        const [subjectsRes, planRes] = await Promise.all([
+          studentApi.getHSCSubjects().catch(() => ({ subjects: [], categories: ['All'], units: ['All'], difficulties: ['All'] })),
+          studentApi.getHSCStudyPlan().catch(() => ({ plan: { subjects: [], totalUnits: 0, plan_name: 'My HSC Plan' } }))
+        ])
+        
+        setHscSubjects(subjectsRes.subjects || [])
+        setCategories(subjectsRes.categories || ['All'])
+        setUnits(subjectsRes.units || ['All'])
+        setDifficulties(subjectsRes.difficulties || ['All'])
+        
+        // Set study plan
+        const plan = planRes.plan || {}
+        setCurrentPlan({
+          subjects: plan.subjects || [],
+          totalUnits: plan.total_units || 0,
+          maxUnits: 12,
+          planName: plan.plan_name || 'My HSC Plan'
+        })
+      } catch (error) {
+        console.error('Failed to fetch HSC data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchData()
+  }, [])
 
   // Filter and sort subjects
   const filteredSubjects = useMemo(() => {
@@ -52,37 +88,100 @@ function HSCSubjectsView() {
     return filtered
   }, [searchTerm, selectedCategory, selectedUnits, selectedDifficulty, sortBy])
 
-  const handleAddToPlan = (subject) => {
-    const result = addSubjectToPlan(currentPlan, subject)
-    if (result.success) {
-      setCurrentPlan(result.plan)
+  const handleAddToPlan = async (subject) => {
+    // Check if already in plan
+    if (isSubjectInPlan(subject.id)) {
+      setNotification({
+        type: 'error',
+        message: 'Subject already in your plan'
+      })
+      setTimeout(() => setNotification(null), 5000)
+      return
+    }
+    
+    // Check if adding would exceed max units
+    const newTotalUnits = currentPlan.totalUnits + subject.units
+    if (newTotalUnits > currentPlan.maxUnits) {
+      setNotification({
+        type: 'error',
+        message: `Cannot add subject: Would exceed maximum ${currentPlan.maxUnits} units`
+      })
+      setTimeout(() => setNotification(null), 5000)
+      return
+    }
+    
+    // Update plan locally and save to backend
+    const newSubjects = [...currentPlan.subjects, subject]
+    const newPlan = {
+      ...currentPlan,
+      subjects: newSubjects,
+      totalUnits: newTotalUnits
+    }
+    setCurrentPlan(newPlan)
+    
+    try {
+      await studentApi.saveHSCStudyPlan({
+        subjects: newSubjects,
+        plan_name: currentPlan.planName
+      })
+      
       setNotification({
         type: 'success',
         message: `${subject.name} has been added to your study plan!`
       })
-    } else {
+    } catch (error) {
+      console.error('Failed to save study plan:', error)
+      // Revert on error
+      setCurrentPlan(currentPlan)
       setNotification({
         type: 'error',
-        message: result.error
+        message: 'Failed to save study plan. Please try again.'
       })
     }
+    
     setTimeout(() => setNotification(null), 5000)
   }
 
-  const handleRemoveFromPlan = (subjectId) => {
-    const result = removeSubjectFromPlan(currentPlan, subjectId)
-    if (result.success) {
-      setCurrentPlan(result.plan)
+  const handleRemoveFromPlan = async (subjectId) => {
+    const subjectToRemove = currentPlan.subjects.find(s => s.id === subjectId)
+    if (!subjectToRemove) {
+      setNotification({
+        type: 'error',
+        message: 'Subject not found in plan'
+      })
+      setTimeout(() => setNotification(null), 5000)
+      return
+    }
+    
+    // Update plan locally and save to backend
+    const newSubjects = currentPlan.subjects.filter(s => s.id !== subjectId)
+    const newPlan = {
+      ...currentPlan,
+      subjects: newSubjects,
+      totalUnits: currentPlan.totalUnits - subjectToRemove.units
+    }
+    setCurrentPlan(newPlan)
+    
+    try {
+      await studentApi.saveHSCStudyPlan({
+        subjects: newSubjects,
+        plan_name: currentPlan.planName
+      })
+      
       setNotification({
         type: 'success',
         message: 'Subject removed from your study plan'
       })
-    } else {
+    } catch (error) {
+      console.error('Failed to save study plan:', error)
+      // Revert on error
+      setCurrentPlan(currentPlan)
       setNotification({
         type: 'error',
-        message: result.error
+        message: 'Failed to save study plan. Please try again.'
       })
     }
+    
     setTimeout(() => setNotification(null), 5000)
   }
 
@@ -91,7 +190,23 @@ function HSCSubjectsView() {
   }
 
   const getPlanWarningsList = () => {
-    return getPlanWarnings(currentPlan)
+    const warnings = []
+    
+    if (currentPlan.totalUnits < 10) {
+      warnings.push('You need at least 10 units to complete the HSC')
+    }
+    
+    if (currentPlan.totalUnits > currentPlan.maxUnits) {
+      warnings.push(`You have exceeded the maximum ${currentPlan.maxUnits} units`)
+    }
+    
+    // Check for English requirement (must have at least 1 English subject)
+    const hasEnglish = currentPlan.subjects.some(s => s.category === 'English')
+    if (!hasEnglish && currentPlan.subjects.length > 0) {
+      warnings.push('You must include at least one English subject')
+    }
+    
+    return warnings
   }
 
   const getDifficultyColor = (difficulty) => {
@@ -128,6 +243,18 @@ function HSCSubjectsView() {
 
   const handleCloseSubjectDetail = () => {
     setSelectedSubject(null)
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="hsc-subjects-container">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
+          <div className="loading-spinner"></div>
+          <p style={{ marginLeft: '10px' }}>Loading HSC subjects...</p>
+        </div>
+      </div>
+    )
   }
 
   // Subject Detail Modal

@@ -1,13 +1,17 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Landing from './pages/Landing'
 import StudentLogin from './pages/StudentLogin'
 import StudentRegister from './pages/StudentRegister'
 import TeacherLogin from './pages/TeacherLogin'
+import ParentLogin from './pages/ParentLogin'
 import AccountRecovery from './pages/AccountRecovery'
 import StudentDashboard from './pages/StudentDashboard'
 import CareerResultPage from './pages/CareerResultPage'
 import TeacherDashboard from './pages/TeacherDashboard'
 import StudentGradesView from './components/teacher/StudentGradesView'
+import ParentDashboard from './pages/ParentDashboard'
+import AdminLogin from './pages/AdminLogin'
+import AdminDashboard from './pages/AdminDashboard'
 import ProtectedRoute from './components/ProtectedRoute'
 import './App.css'
 
@@ -18,6 +22,9 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login/student" element={<StudentLogin />} />
         <Route path="/login/teacher" element={<TeacherLogin />} />
+        <Route path="/login/parent" element={<ParentLogin />} />
+        <Route path="/login/admin" element={<AdminLogin />} />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
         <Route path="/register/student" element={<StudentRegister />} />
         <Route path="/recover" element={<AccountRecovery />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
@@ -83,6 +90,38 @@ function App() {
           element={
             <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
               <TeacherDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/parent/dashboard" 
+          element={
+            <ProtectedRoute requiredRole="parent" redirectTo="/login/parent">
+              <ParentDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route
+          path="/admin/dashboard" 
+          element={
+            <ProtectedRoute requiredRole="admin" redirectTo="/login/admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/students" 
+          element={
+            <ProtectedRoute requiredRole="admin" redirectTo="/login/admin">
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/admin/teachers" 
+          element={
+            <ProtectedRoute requiredRole="admin" redirectTo="/login/admin">
+              <AdminDashboard />
             </ProtectedRoute>
           } 
         />

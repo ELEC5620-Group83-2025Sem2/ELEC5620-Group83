@@ -8,8 +8,13 @@ import { ErrorResponse } from '../utils/errorResponse.js';
 export const verifyAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
+    console.log('[Auth.verifyAuth] start', {
+      path: req.originalUrl,
+      hasAuthHeader: !!authHeader
+    });
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.warn('[Auth.verifyAuth] Missing or malformed Authorization header');
       return ErrorResponse.unauthorized('No token provided').send(res);
     }
 
@@ -20,11 +25,16 @@ export const verifyAuth = async (req, res, next) => {
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
+      console.warn('[Auth.verifyAuth] Token invalid or expired', {
+        path: req.originalUrl,
+        error: error?.message
+      });
       return ErrorResponse.unauthorized('Invalid or expired token').send(res);
     }
 
     // Attach user to request object
     req.user = user;
+    console.log('[Auth.verifyAuth] success', { userId: user.id, path: req.originalUrl });
     next();
   } catch (err) {
     console.error('Auth middleware error:', err);
@@ -48,25 +58,71 @@ export const requireRole = (allowedRoles) => {
       // Fetch user's roles
       const { data: userRoles, error } = await supabase
         .from('profile_roles')
-        .select('role')
+        .select('role, profile_id')
         .eq('profile_id', req.user.id);
 
       if (error) {
         console.error('Role check error:', error);
-        return ErrorResponse.internalServerError('Failed to verify user role').send(res);
+        console.error('Error details:', error.message, error.code, error.details);
+        return ErrorResponse.internalServerError(`Failed to verify user role: ${error.message}`).send(res);
       }
+      
+      console.log(`[Auth] Found ${userRoles?.length || 0} roles for user ${req.user.id}`);
 
-      const roles = userRoles?.map(r => r.role) || [];
+      // Map roles and normalize them to strings (handle enum types)
+      const roles = (userRoles || []).map(r => String(r.role).toLowerCase().trim());
+      const allowedRolesLower = allowedRoles.map(r => String(r).toLowerCase().trim());
+      
+      console.log(`[Auth] User ${req.user.id} roles:`, roles);
+      console.log(`[Auth] Required roles:`, allowedRolesLower);
+      
+      let effectiveRoles = new Set(roles);
+      
+      // Fallback: If route allows 'student' and user is enrolled but missing role, backfill it
+      if (allowedRolesLower.includes('student') && !effectiveRoles.has('student')) {
+        try {
+          const { data: enrollmentRows, error: enrollmentError } = await supabase
+            .from('enrollments')
+            .select('class_id')
+            .eq('student_id', req.user.id)
+            .limit(1);
+
+          if (!enrollmentError && Array.isArray(enrollmentRows) && enrollmentRows.length > 0) {
+            // Attempt to backfill the missing role
+            const { error: backfillError } = await supabase
+              .from('profile_roles')
+              .insert({ profile_id: req.user.id, role: 'student' });
+
+            if (backfillError) {
+              const isConflict =
+                (backfillError.message || '').toLowerCase().includes('duplicate key') ||
+                (backfillError.code === '23505');
+              if (!isConflict) {
+                console.warn('Role backfill insert failed:', backfillError);
+              }
+            }
+
+            effectiveRoles.add('student');
+            console.log('[Auth.requireRole] backfilled student role based on enrollments', {
+              userId: req.user.id
+            });
+          }
+        } catch (fallbackErr) {
+          console.warn('Role fallback check failed:', fallbackErr);
+        }
+      }
       
       // Check if user has any of the allowed roles
-      const hasPermission = allowedRoles.some(role => roles.includes(role));
+      const hasPermission = allowedRolesLower.some(reqRole => effectiveRoles.has(reqRole));
 
       if (!hasPermission) {
-        return ErrorResponse.forbidden('Insufficient permissions').send(res);
+        console.error(`[Auth] Permission denied. User roles: [${Array.from(effectiveRoles).join(', ')}], Required: [${allowedRolesLower.join(', ')}]`);
+        return ErrorResponse.forbidden(`Insufficient permissions. Your roles: [${Array.from(effectiveRoles).join(', ')}]. Required: [${allowedRolesLower.join(', ')}]`).send(res);
       }
 
+      console.log(`[Auth] Permission granted for user ${req.user.id}`);
       // Attach roles to request object
-      req.userRoles = roles;
+      req.userRoles = Array.from(effectiveRoles);
       next();
     } catch (err) {
       console.error('Role middleware error:', err);
@@ -74,4 +130,5 @@ export const requireRole = (allowedRoles) => {
     }
   };
 };
+
 

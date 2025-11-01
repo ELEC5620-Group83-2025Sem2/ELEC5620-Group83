@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import './Auth.css'
+import authService from '../services/authService.js'
 
 function TeacherLogin() {
   const navigate = useNavigate()
@@ -10,6 +11,13 @@ function TeacherLogin() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (authService.isAuthenticated()) {
+      navigate('/teacher/dashboard')
+    }
+  }, [])
 
   const handleChange = (e) => {
     setFormData({
@@ -116,6 +124,12 @@ function TeacherLogin() {
             Are you a student?{' '}
             <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/student'); }} className="link">
               Student Login
+            </a>
+          </p>
+          <p className="switch-role">
+            Are you a parent?{' '}
+            <a href="#" onClick={(e) => { e.preventDefault(); navigate('/login/parent'); }} className="link">
+              Parent Login
             </a>
           </p>
         </div>
