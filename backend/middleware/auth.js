@@ -8,13 +8,8 @@ import { ErrorResponse } from '../utils/errorResponse.js';
 export const verifyAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    console.log('[Auth.verifyAuth] start', {
-      path: req.originalUrl,
-      hasAuthHeader: !!authHeader
-    });
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.warn('[Auth.verifyAuth] Missing or malformed Authorization header');
       return ErrorResponse.unauthorized('No token provided').send(res);
     }
 
@@ -25,16 +20,11 @@ export const verifyAuth = async (req, res, next) => {
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-      console.warn('[Auth.verifyAuth] Token invalid or expired', {
-        path: req.originalUrl,
-        error: error?.message
-      });
       return ErrorResponse.unauthorized('Invalid or expired token').send(res);
     }
 
     // Attach user to request object
     req.user = user;
-    console.log('[Auth.verifyAuth] success', { userId: user.id, path: req.originalUrl });
     next();
   } catch (err) {
     console.error('Auth middleware error:', err);
@@ -122,7 +112,7 @@ export const requireRole = (allowedRoles) => {
 
       console.log(`[Auth] Permission granted for user ${req.user.id}`);
       // Attach roles to request object
-      req.userRoles = Array.from(effectiveRoles);
+      req.userRoles = roles;
       next();
     } catch (err) {
       console.error('Role middleware error:', err);
