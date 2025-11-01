@@ -1,5 +1,18 @@
 import { useState, useEffect } from 'react'
 import teacherApi from '../../services/teacherApi'
+import './AssignmentsView.css'
+
+const formatAssignmentType = (value) => {
+  if (!value) return ''
+  return value
+    .toString()
+    .trim()
+    .replace(/[_-]+/g, ' ')
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
 
 function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignment }) {
   const [assignments, setAssignments] = useState([])
@@ -23,7 +36,6 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
         setLoading(false)
       }
     }
-
     fetchData()
   }, [])
 
@@ -32,21 +44,21 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
       published: 'status-published',
       draft: 'status-draft',
       grading: 'status-grading',
-      graded: 'status-graded'
+      graded: 'status-graded',
     }
     return statusMap[status] || 'status-draft'
   }
 
-  const filteredAssignments = assignments.filter(assignment => {
-    const matchesStatus = filterStatus === 'all' || assignment.status === filterStatus
-    const matchesClass = filterClass === 'all' || assignment.class_id === filterClass
+  const filteredAssignments = assignments.filter(a => {
+    const matchesStatus = filterStatus === 'all' || a.status === filterStatus
+    const matchesClass = filterClass === 'all' || String(a.class_id) === String(filterClass)
     return matchesStatus && matchesClass
   })
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+      <div style={{ textAlign: 'center', padding: '2rem' }}>
+        <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⏳</div>
         <p>Loading assignments...</p>
       </div>
     )
@@ -54,7 +66,7 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
 
   return (
     <>
-      {/* Header with Create Button */}
+      {/* Header */}
       <div className="assignments-header">
         <button className="btn-create-assignment" onClick={onCreateAssignment}>
           ➕ Create Assignment
@@ -62,9 +74,9 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
       </div>
 
       {/* Filters */}
-      <div className="assignments-filters">
+      <div className="assignments-filters assignments-filters--compact">
         <div className="filter-group">
-          <label>Status:</label>
+          <label>Status</label>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
             <option value="all">All</option>
             <option value="draft">Draft</option>
@@ -73,9 +85,8 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
             <option value="graded">Graded</option>
           </select>
         </div>
-
         <div className="filter-group">
-          <label>Class:</label>
+          <label>Class</label>
           <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)}>
             <option value="all">All Classes</option>
             {classes.map(cls => (
@@ -83,59 +94,100 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
             ))}
           </select>
         </div>
-
-        <div className="filter-results">
-          Showing {filteredAssignments.length} assignments
-        </div>
+        <div className="filter-results">Showing {filteredAssignments.length}</div>
       </div>
 
-      {/* Assignments List */}
-      <div className="assignments-list">
+      {/* Compact table */}
+      <div className="assignments-table">
+        <div className="table-head">
+          <div>Assignment</div>
+          <div>Status</div>
+          <div>Due</div>
+          <div>Points</div>
+          <div className="actions-col">Actions</div>
+        </div>
+
         {filteredAssignments.length > 0 ? (
           filteredAssignments.map(assignment => {
-            const assignmentClass = classes.find(c => c.id === assignment.class_id)
-            
+            const assignmentClass = classes.find(c => String(c.id) === String(assignment.class_id))
+            const dueDate = assignment.due_date ? new Date(assignment.due_date) : null
+
+            let dueDateLabel = 'No due date'
+            let dueDateTooltip
+            if (dueDate) {
+              dueDateLabel = `Due ${dueDate.toLocaleDateString(undefined, {
+                month: 'short', day: 'numeric', year: 'numeric'
+              })}`
+              dueDateTooltip = dueDate.toLocaleString(undefined, {
+                dateStyle: 'full', timeStyle: 'short'
+              })
+            }
+
+            const pointsValue = typeof assignment.total_points === 'number'
+              ? assignment.total_points
+              : Number.parseInt(assignment.total_points, 10)
+            const safePointsValue = Number.isFinite(pointsValue) ? pointsValue : 100
+            const assignmentTypeLabel = formatAssignmentType(assignment.assignment_type || 'homework')
+
             return (
-              <div key={assignment.id} className="assignment-card">
-                <div className="assignment-header">
-                  <div>
-                    <h3>{assignment.title}</h3>
-                    <p className="assignment-class-name">
-                      {assignmentClass?.name || 'Unknown Class'}
-                    </p>
+              <div key={assignment.id} className="assignment-row">
+                {/* Title / class / description (clamped) */}
+                <div className="title-col">
+                  <div className="title-line">
+                    <button
+                      className="link-title"
+                      onClick={() => onAssignmentClick(assignment.id)}
+                      title="Open assignment"
+                    >
+                      {assignment.title}
+                    </button>
                   </div>
+                  <div className="meta-line">
+                    <span className="assignment-class-name">{assignmentClass?.name || 'Unknown Class'}</span>
+                    <span className="dot" aria-hidden="true">•</span>
+                    <span title={dueDateTooltip}>{dueDateLabel}</span>
+                    {assignmentTypeLabel ? (
+                      <>
+                        <span className="dot" aria-hidden="true">•</span>
+                        <span>{assignmentTypeLabel}</span>
+                      </>
+                    ) : null}
+                  </div>
+                  {assignment.description ? (
+                    <div className="desc-line" title={assignment.description}>
+                      {assignment.description}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Status */}
+                <div className="status-col">
                   <span className={`status-badge ${getStatusBadgeClass(assignment.status)}`}>
                     {assignment.status || 'draft'}
                   </span>
                 </div>
 
-                <p className="assignment-description">{assignment.description || 'No description'}</p>
+                {/* Due (short) */}
+                <div className="due-col" title={dueDateTooltip}>{dueDateLabel}</div>
 
-                <div className="assignment-details">
-                  <div className="detail-item">
-                    <span className="detail-icon">📅</span>
-                    <span>Due: {assignment.due_date ? new Date(assignment.due_date).toLocaleDateString() : 'No due date'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-icon">📊</span>
-                    <span>Total Points: {assignment.total_points || 100}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-icon">📝</span>
-                    <span>Type: {assignment.assignment_type || 'homework'}</span>
-                  </div>
-                </div>
+                {/* Points */}
+                <div className="points-col">{safePointsValue}</div>
 
-                <div className="assignment-actions">
-                  <button 
+                {/* Actions */}
+                <div className="actions-col">
+                  <button
                     className="btn-assignment-action btn-view"
                     onClick={() => onAssignmentClick(assignment.id)}
+                    aria-label="View assignment"
+                    title="View"
                   >
                     View
                   </button>
-                  <button 
+                  <button
                     className="btn-assignment-action btn-grade"
                     onClick={() => onGradeAssignment(assignment.id)}
+                    aria-label="Grade assignment"
+                    title="Grade"
                   >
                     Grade
                   </button>
@@ -144,8 +196,8 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
             )
           })
         ) : (
-          <div style={{ textAlign: 'center', padding: '3rem' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
+          <div className="empty-state">
+            <div className="emoji">📝</div>
             <h3>No Assignments</h3>
             <p>Click the button above to create your first assignment</p>
           </div>

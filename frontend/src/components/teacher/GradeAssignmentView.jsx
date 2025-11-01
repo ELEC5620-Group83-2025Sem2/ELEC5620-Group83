@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import teacherApi from '../../services/teacherApi'
+import './GradeAssignmentView.css'
 
 function GradeAssignmentView({ assignmentId, onBack }) {
   const [assignment, setAssignment] = useState(null)

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import teacherApi from '../../services/teacherApi'
+import './StudentGradesView.css'
 
 function StudentGradesView() {
   const { studentId } = useParams()
@@ -31,7 +32,7 @@ function StudentGradesView() {
       setClasses(uniqueClasses)
     } catch (error) {
       console.error('Failed to fetch student grades:', error)
-      alert('获取学生成绩失败')
+      alert('Failed to fetch student grades')
     } finally {
       setLoading(false)
     }
@@ -39,10 +40,10 @@ function StudentGradesView() {
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      submitted: { label: '已提交', color: '#3b82f6' },
-      graded: { label: '已评分', color: '#10b981' },
-      not_submitted: { label: '未提交', color: '#ef4444' },
-      late: { label: '迟交', color: '#f59e0b' }
+      submitted: { label: 'Submitted', color: '#3b82f6' },
+      graded: { label: 'Graded', color: '#10b981' },
+      not_submitted: { label: 'Not Submitted', color: '#ef4444' },
+      late: { label: 'Late', color: '#f59e0b' }
     }
     const statusInfo = statusMap[status] || statusMap.not_submitted
     return (
@@ -65,7 +66,7 @@ function StudentGradesView() {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-        <p>加载中...</p>
+        <p>Loading...</p>
       </div>
     )
   }
@@ -74,7 +75,7 @@ function StudentGradesView() {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
-        <p>未找到学生</p>
+        <p>Student not found</p>
         <button className="btn-secondary" onClick={() => navigate('/teacher/students')}>
           返回学生列表
         </button>
@@ -87,7 +88,7 @@ function StudentGradesView() {
       {/* Header */}
       <div className="grades-header">
         <button className="btn-back" onClick={() => navigate('/teacher/students')}>
-          ← 返回学生列表
+          ← Back to Students
         </button>
         
         <div className="student-info-card">
@@ -110,39 +111,39 @@ function StudentGradesView() {
       {/* Statistics Cards */}
       <div className="grades-stats-grid">
         <div className="stat-card">
-          <h3>总成绩</h3>
+          <h3>Overall Grade</h3>
           <p className="stat-value" style={{ color: getGradeColor(stats.overallGrade) }}>
             {stats.overallGrade !== null ? `${stats.overallGrade}%` : 'N/A'}
           </p>
-          <p className="stat-label">加权平均分</p>
+          <p className="stat-label">Weighted Average</p>
         </div>
         
         <div className="stat-card">
-          <h3>已评分作业</h3>
+          <h3>Graded Assignments</h3>
           <p className="stat-value">{stats.gradedAssignments}/{stats.totalAssignments}</p>
           <p className="stat-label">
             {stats.totalAssignments > 0 
-              ? `${Math.round((stats.gradedAssignments / stats.totalAssignments) * 100)}% 已评分`
-              : '无作业'}
+              ? `${Math.round((stats.gradedAssignments / stats.totalAssignments) * 100)}% graded`
+              : 'No assignments'}
           </p>
         </div>
         
         <div className="stat-card">
-          <h3>提交率</h3>
+          <h3>Submission Rate</h3>
           <p className="stat-value">{stats.submittedCount}/{stats.totalAssignments}</p>
           <p className="stat-label">
             {stats.totalAssignments > 0 
-              ? `${Math.round((stats.submittedCount / stats.totalAssignments) * 100)}% 已提交`
-              : '无作业'}
+              ? `${Math.round((stats.submittedCount / stats.totalAssignments) * 100)}% submitted`
+              : 'No assignments'}
           </p>
         </div>
       </div>
 
       {/* Filter */}
       <div className="grades-filter">
-        <label>筛选课程：</label>
+        <label>Filter class:</label>
         <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
-          <option value="all">所有课程</option>
+          <option value="all">All classes</option>
           {classes.map(cls => (
             <option key={cls.code} value={cls.code}>{cls.name}</option>
           ))}
@@ -154,21 +155,21 @@ function StudentGradesView() {
         <table className="grades-table">
           <thead>
             <tr>
-              <th>作业名称</th>
-              <th>课程</th>
-              <th>截止日期</th>
-              <th>总分</th>
-              <th>得分</th>
-              <th>百分比</th>
-              <th>权重</th>
-              <th>状态</th>
+              <th>Assignment</th>
+              <th>Class</th>
+              <th>Due Date</th>
+              <th>Total Points</th>
+              <th>Score</th>
+              <th>Percentage</th>
+              <th>Weight</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             {grades.length === 0 ? (
               <tr>
-                <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>
-                  暂无成绩数据
+                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>
+                  No grade data
                 </td>
               </tr>
             ) : (
@@ -192,7 +193,7 @@ function StudentGradesView() {
                   </td>
                   <td>
                     {grade.dueDate 
-                      ? `${new Date(grade.dueDate).toLocaleDateString('zh-CN')} ${grade.dueTime || ''}`
+                      ? `${new Date(grade.dueDate).toLocaleDateString('en-AU')} ${grade.dueTime || ''}`
                       : 'N/A'}
                   </td>
                   <td>{grade.totalPoints || 'N/A'}</td>

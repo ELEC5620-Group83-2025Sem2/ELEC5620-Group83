@@ -1,11 +1,18 @@
 import { getSupabaseClient } from '../../clients/supabaseClient.js';
 import { ErrorResponse } from '../../utils/errorResponse.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Note: OpenAI integration requires OPENAI_API_KEY (or compatible alias) in environment
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY
   || process.env.OPENAI_KEY
   || process.env.VITE_OPENAI_API_KEY
   || '').trim();
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
 /**
  * UC10: AI-Generated Assessment Rubric
@@ -36,38 +43,20 @@ export const generateRubric = async (req, res) => {
       });
     }
 
-    // Call OpenAI API to generate rubric
-    const prompt = `Generate a detailed grading rubric for the following assignment:
-
-Title: ${assignment_title}
-Description: ${assignment_description || 'Not provided'}
-Type: ${submission_type || 'General assignment'}
-Total Points: ${total_points || 100}
-Learning Objectives: ${learning_objectives || 'Not specified'}
-
-Create a comprehensive rubric with 4-6 criteria. For each criterion, provide:
-1. Criterion name
-2. Description of what is being evaluated
-3. Point value
-4. Levels of achievement (Excellent, Good, Fair, Poor)
-
-Format as JSON array with structure:
-[
-  {
-    "criteria": "string",
-    "description": "string",
-    "points": number,
-    "levels": {
-      "excellent": "string",
-      "good": "string",
-      "fair": "string",
-      "poor": "string"
+    // Load instruction from file
+    const instructionPath = path.join(__dirname, '../../instructions/assignment-rubric-instruction.md');
+    let instruction = '';
+    try {
+      instruction = fs.readFileSync(instructionPath, 'utf-8');
+    } catch (error) {
+      instruction = 'You are an educational assessment expert. Generate a rubric JSON array with criteria, description, points, and levels.';
     }
-  }
-]`;
+
+    // Prepare details for user message
+    const prompt = `Generate a rubric for this assignment:\n\nTitle: ${assignment_title}\nDescription: ${assignment_description || 'Not provided'}\nType: ${submission_type || 'General assignment'}\nTotal Points: ${total_points || 100}\nLearning Objectives: ${Array.isArray(learning_objectives) ? learning_objectives.join(', ') : (learning_objectives || 'Not specified')}\n\nReturn ONLY the JSON array.`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,7 +67,7 @@ Format as JSON array with structure:
           messages: [
             {
               role: 'system',
-              content: 'You are an educational assessment expert. Generate detailed, fair, and comprehensive grading rubrics.'
+              content: instruction
             },
             {
               role: 'user',
@@ -105,7 +94,7 @@ Format as JSON array with structure:
         rubric = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : rubricText);
       } catch (parseError) {
         console.error('Failed to parse AI rubric:', parseError);
-        rubric = generateMockRubric(assignment_title, points_possible || 100);
+        rubric = generateMockRubric(assignment_title, total_points || 100);
       }
 
       return res.json({
@@ -127,6 +116,86 @@ Format as JSON array with structure:
 
   } catch (err) {
     console.error('Generate rubric error:', err);
+    return ErrorResponse.internalServerError(err.message).send(res);
+  }
+};
+
+/**
+ * UC13: AI-Generated Assignment
+ * Generate a complete assignment spec (title, description, questions, rubric)
+ */
+export const generateAssignment = async (req, res) => {
+  try {
+    const {
+      subject,
+      topic,
+      difficulty,
+      assignment_type,
+      question_count
+    } = req.body || {};
+
+    // If no API key, return a mock assignment
+    if (!OPENAI_API_KEY) {
+      const mock = buildMockAssignment(subject || 'General', topic || 'Sample Topic', assignment_type || 'quiz', question_count || 5);
+      return res.json({ assignment: mock, ai_generated: true, mock: true, message: 'OpenAI API key not configured, returning mock assignment' });
+    }
+
+    // Load instruction from file
+    const instructionPath = path.join(__dirname, '../../instructions/assignment-generation-instruction.md');
+    let instruction = '';
+    try {
+      instruction = fs.readFileSync(instructionPath, 'utf-8');
+    } catch (error) {
+      instruction = 'You generate complete assignments with questions and rubric. Return a JSON object as specified.';
+    }
+
+    const details = {
+      subject: subject || 'General Studies',
+      topic: topic || 'Core Concepts',
+      difficulty: difficulty || 'medium',
+      assignment_type: assignment_type || 'quiz',
+      question_count: Number(question_count) || 5
+    };
+
+    const userPrompt = `Generate an assignment using these details:\n${JSON.stringify(details, null, 2)}\n\nReturn ONLY the JSON object.`;
+
+    try {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4',
+          messages: [
+            { role: 'system', content: instruction },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 1800
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const text = data.choices[0].message.content;
+
+      // Parse JSON from response
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+      const assignment = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : text);
+
+      return res.json({ assignment, ai_generated: true, mock: false });
+    } catch (apiError) {
+      console.error('OpenAI assignment generation failed:', apiError);
+      const mock = buildMockAssignment(details.subject, details.topic, details.assignment_type, details.question_count);
+      return res.json({ assignment: mock, ai_generated: true, mock: true, message: 'AI generation failed, returning mock assignment' });
+    }
+  } catch (err) {
+    console.error('Generate assignment error:', err);
     return ErrorResponse.internalServerError(err.message).send(res);
   }
 };
@@ -157,7 +226,7 @@ ${content}
 Provide a clear, informative summary that captures the main points.`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -316,7 +385,7 @@ Format as JSON:
     try {
       console.log(`[AI Auto-Grade] Calling OpenAI API with key: ${OPENAI_API_KEY.substring(0, 7)}...${OPENAI_API_KEY.slice(-4)}`);
       
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -456,7 +525,7 @@ Format as JSON:
 }`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -578,6 +647,43 @@ function generateMockRubric(title, totalPoints) {
   ];
 
   return criteria;
+}
+
+function buildMockAssignment(subject, topic, type, questionCount) {
+  const count = Math.max(4, Math.min(8, Number(questionCount) || 5));
+  const pointsPer = Math.floor(100 / count);
+  const remaining = 100 - (pointsPer * (count - 1));
+  const questions = Array.from({ length: count }).map((_, idx) => {
+    if (idx % 2 === 0) {
+      return {
+        type: 'multiple_choice',
+        question: `(${subject}) ${topic}: Which statement is correct?`,
+        points: idx === count - 1 ? remaining : pointsPer,
+        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        answer: 'Option B',
+        explanation: 'Mock explanation for correct choice.'
+      };
+    }
+    return {
+      type: 'short_answer',
+      question: `(${subject}) ${topic}: Briefly explain the core idea.`,
+      points: idx === count - 1 ? remaining : pointsPer,
+      expected_answer: 'A concise explanation covering the key concept.'
+    };
+  });
+
+  return {
+    title: `${topic} ${type === 'quiz' ? 'Quiz' : 'Assignment'}`,
+    description: `This ${type} assesses understanding of ${topic}.`,
+    submission_type: type === 'project' ? 'project' : (type === 'quiz' ? 'quiz' : 'online'),
+    total_points: 100,
+    questions,
+    rubric: generateMockRubric(`${topic} ${type}`, 100),
+    resources: [
+      { name: 'Textbook Chapter', type: 'reference', value: topic },
+      { name: 'Practice Set', type: 'link', value: 'Provide relevant practice materials' }
+    ]
+  };
 }
 
 

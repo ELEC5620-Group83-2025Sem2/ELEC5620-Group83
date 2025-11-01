@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import teacherApi from '../../services/teacherApi'
+import './MyClassesView.css'
 
 function MyClassesView({ onClassClick }) {
   const [classes, setClasses] = useState([])
