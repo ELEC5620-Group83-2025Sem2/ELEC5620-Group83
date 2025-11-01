@@ -1,5 +1,17 @@
 import { useState } from 'react'
-import { getDaysUntilDue } from './mockData'
+
+// Helper function to calculate days until due
+function getDaysUntilDue(dueDate) {
+  const due = new Date(dueDate)
+  const now = new Date()
+  const diffTime = due - now
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays < 0) return 'Overdue'
+  if (diffDays === 0) return 'Due today'
+  if (diffDays === 1) return 'Due tomorrow'
+  return `Due in ${diffDays} days`
+}
 
 function AssignmentDetailPage({ assignmentData, onBack }) {
   const [submissionText, setSubmissionText] = useState('')
