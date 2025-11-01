@@ -5,6 +5,7 @@ import DashboardOverview from '../components/teacher/DashboardOverview'
 import MyClassesView from '../components/teacher/MyClassesView'
 import ClassDetailView from '../components/teacher/ClassDetailView'
 import AssignmentsView from '../components/teacher/AssignmentsView'
+import AssignmentDetailView from '../components/teacher/AssignmentDetailView'
 import CreateAssignmentView from '../components/teacher/CreateAssignmentView'
 import GradeAssignmentView from '../components/teacher/GradeAssignmentView'
 import StudentsView from '../components/teacher/StudentsView'
@@ -119,6 +120,16 @@ function TeacherDashboard() {
       )
     }
 
+    // Assignment detail view
+    if (selectedAssignmentId && !isCreatingAssignment && !isGradingAssignment) {
+      return (
+        <AssignmentDetailView
+          assignmentId={selectedAssignmentId}
+          onBack={handleBackToAssignments}
+        />
+      )
+    }
+
     if (isCreatingAssignment) {
       return (
         <CreateAssignmentView
@@ -177,6 +188,7 @@ function TeacherDashboard() {
 
   const getPageTitle = () => {
     if (selectedClassId) return 'Class Details'
+    if (selectedAssignmentId && !isCreatingAssignment && !isGradingAssignment) return 'Assignment Details'
     if (isCreatingAssignment) return selectedAssignmentId ? 'Edit Assignment' : 'Create Assignment'
     if (isGradingAssignment) return 'Grade Assignment'
     

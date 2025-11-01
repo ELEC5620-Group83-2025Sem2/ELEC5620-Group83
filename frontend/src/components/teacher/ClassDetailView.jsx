@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import teacherApi from '../../services/teacherApi'
+import './ClassDetailView.css'
 
 function ClassDetailView({ classId, onBack, onCreateAssignment }) {
   const [classData, setClassData] = useState(null)

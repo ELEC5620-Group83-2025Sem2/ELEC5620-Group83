@@ -178,6 +178,14 @@ class TeacherAPI {
     return response
   }
 
+  async generateAssignment(params) {
+    const response = await authService.authenticatedRequest(`${API_URL}/ai/generate-assignment`, {
+      method: 'POST',
+      body: JSON.stringify(params)
+    })
+    return response
+  }
+
   async analyzeClassPerformance(classId) {
     const response = await authService.authenticatedRequest(`${API_URL}/ai/analyze-class`, {
       method: 'POST',

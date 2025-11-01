@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import teacherApi from '../../services/teacherApi'
+import './StudentsView.css'
 
 function StudentsView() {
   const navigate = useNavigate()

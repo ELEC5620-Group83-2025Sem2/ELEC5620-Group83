@@ -39,7 +39,8 @@ import {
   generateRubric,
   summarizeContent,
   autoGradeSubmission,
-  analyzeClassPerformance
+  analyzeClassPerformance,
+  generateAssignment
 } from '../controllers/teacher/aiFeatures.js';
 
 const router = express.Router();
@@ -159,6 +160,9 @@ router.post('/ai/auto-grade', autoGradeSubmission);
 
 // POST /api/teacher/ai/generate-rubric - Generate rubric with AI
 router.post('/ai/generate-rubric', generateRubric);
+
+// POST /api/teacher/ai/generate-assignment - Generate assignment with AI
+router.post('/ai/generate-assignment', generateAssignment);
 
 // POST /api/teacher/ai/analyze-class - Analyze class performance
 router.post('/ai/analyze-class', analyzeClassPerformance);

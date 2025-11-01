@@ -238,11 +238,13 @@ export const createAssignment = async (req, res) => {
       title,
       description,
       instructions,
+      requirements,
+      resources,
       dueDate,
       totalPoints,
       rubric,
       questions,
-      resources,
+      submission_type
     } = req.body;
 
     const supabase = getSupabaseClient();
@@ -264,28 +266,138 @@ export const createAssignment = async (req, res) => {
       return ErrorResponse.badRequest('Missing required fields: title, classId, dueDate').send(res);
     }
 
-    // Create assignment
+    // Parse due_date (date) and due_time (time) from combined datetime if provided
+    let due_date_value = null;
+    let due_time_value = null;
+    if (dueDate) {
+      if (typeof dueDate === 'string' && dueDate.includes('T')) {
+        const [d, t] = dueDate.split('T');
+        due_date_value = d;
+        if (t) {
+          const hm = t.trim().slice(0,5); // HH:MM
+          due_time_value = hm ? `${hm}:00` : null;
+        }
+      } else {
+        due_date_value = dueDate;
+      }
+    }
+
+    // Create base assignment row (columns that actually exist)
+    const baseInsert = {
+      class_id: classId,
+      title,
+      description,
+      due_date: due_date_value,
+      due_time: due_time_value,
+      total_points: totalPoints || 100,
+      submission_type: submission_type || null,
+      status: 'pending',
+      created_by: teacherId,
+    };
+
     const { data: assignment, error: createError } = await supabase
       .from('assignments')
-      .insert([{
-        class_id: classId,
-        title,
-        description,
-        instructions: instructions || [],
-        due_date: dueDate,
-        total_points: totalPoints || 100,
-        rubric: rubric || [],
-        questions: questions || [],
-        resources: resources || [],
-        status: 'draft',
-        created_by: teacherId,
-      }])
+      .insert([baseInsert])
       .select()
       .single();
 
     if (createError) {
       console.error('Error creating assignment:', createError);
       return ErrorResponse.internalServerError('Failed to create assignment').send(res);
+    }
+
+    // Insert optional related data into their respective tables
+    const createdId = assignment.id;
+
+    // Instructions: can be string or array; store as ordered rows
+    let instructionsArr = [];
+    if (Array.isArray(instructions)) instructionsArr = instructions.filter(Boolean);
+    else if (typeof instructions === 'string') instructionsArr = instructions.split('\n').map(s => s.trim()).filter(Boolean);
+    if (instructionsArr.length > 0) {
+      const rows = instructionsArr.map((text, idx) => ({ assignment_id: createdId, position: idx + 1, text }));
+      const { error: instrError } = await supabase.from('assignment_instructions').insert(rows);
+      if (instrError) console.error('Error inserting assignment_instructions:', instrError);
+    }
+
+    // Requirements (similar handling if provided)
+    let requirementsArr = [];
+    if (Array.isArray(requirements)) requirementsArr = requirements.filter(Boolean);
+    else if (typeof requirements === 'string') requirementsArr = requirements.split('\n').map(s => s.trim()).filter(Boolean);
+    if (requirementsArr.length > 0) {
+      const rows = requirementsArr.map((text, idx) => ({ assignment_id: createdId, position: idx + 1, text }));
+      const { error: reqError } = await supabase.from('assignment_requirements').insert(rows);
+      if (reqError) console.error('Error inserting assignment_requirements:', reqError);
+    }
+
+    // Resources (name, optional type/url)
+    if (Array.isArray(resources) && resources.length > 0) {
+      const rows = resources.map((r) => {
+        const name = r?.name || (typeof r === 'string' ? r : 'Resource');
+        const value = r?.value || '';
+        const isUrl = typeof value === 'string' && /^(https?:)?\/\//i.test(value);
+        return {
+          assignment_id: createdId,
+          name,
+          type: r?.type || (isUrl ? 'link' : 'text'),
+          url: isUrl ? value : null,
+        };
+      });
+      const { error: resError } = await supabase.from('assignment_resources').insert(rows);
+      if (resError) console.error('Error inserting assignment_resources:', resError);
+    }
+
+    // Rubric items (criteria, points)
+    if (Array.isArray(rubric) && rubric.length > 0) {
+      const rows = rubric.map((item) => ({
+        assignment_id: createdId,
+        criteria: item?.criteria || 'Criteria',
+        points: Number(item?.points) || 0,
+      }));
+      const { error: rubError } = await supabase.from('assignment_rubric_items').insert(rows);
+      if (rubError) console.error('Error inserting assignment_rubric_items:', rubError);
+    }
+
+    // Questions and options (for MCQ)
+    if (Array.isArray(questions) && questions.length > 0) {
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i] || {};
+        const qType = q.type || 'text';
+        const qText = q.question || q.prompt || '';
+        const qPoints = Number(q.points) || 0;
+
+        const { data: qRow, error: qError } = await supabase
+          .from('assignment_questions')
+          .insert([{ assignment_id: createdId, position: i + 1, type: qType, question: qText, points: qPoints }])
+          .select()
+          .single();
+        if (qError) {
+          console.error('Error inserting assignment_question:', qError);
+          continue;
+        }
+
+        // For MCQ, insert options
+        if (qType === 'multiple_choice' && Array.isArray(q.options)) {
+          const options = q.options;
+          const correct = q.answer; // can be value or key
+          const keyFromIndex = (idx) => String.fromCharCode('A'.charCodeAt(0) + idx);
+
+          const rows = options.map((opt, idx) => ({
+            question_id: qRow.id,
+            option_key: keyFromIndex(idx),
+            text: typeof opt === 'string' ? opt : (opt?.text || ''),
+            is_correct: (() => {
+              if (typeof correct === 'number') return idx === correct;
+              if (typeof correct === 'string') {
+                // match by option text or key
+                return correct === options[idx] || correct.toUpperCase() === keyFromIndex(idx);
+              }
+              return false;
+            })()
+          }));
+          const { error: optError } = await supabase.from('assignment_question_options').insert(rows);
+          if (optError) console.error('Error inserting assignment_question_options:', optError);
+        }
+      }
     }
 
     res.status(201).json({
