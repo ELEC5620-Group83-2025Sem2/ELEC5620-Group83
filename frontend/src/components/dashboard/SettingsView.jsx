@@ -48,8 +48,8 @@ function SettingsView({ studentData, userProfile, onProfileUpdate }) {
 
       const response = await authService.updateProfile(updateData)
       
-      if (response.data) {
-        onProfileUpdate(response.data)
+      if (response) {
+        onProfileUpdate(response)
         setMessage({ type: 'success', text: 'Profile updated successfully!' })
         
         // Update localStorage
@@ -57,8 +57,8 @@ function SettingsView({ studentData, userProfile, onProfileUpdate }) {
         if (currentUser) {
           localStorage.setItem('user', JSON.stringify({
             ...currentUser,
-            first_name: response.data.first_name,
-            last_name: response.data.last_name
+            first_name: response.first_name,
+            last_name: response.last_name
           }))
         }
       }

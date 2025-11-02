@@ -253,13 +253,12 @@ function StudentDashboard() {
     // Show Class Detail Page if a class is selected
     if (selectedClassId) {
       const classData = enrolledClasses.find(c => c.id === selectedClassId)
-      return <ClassDetailPage classData={classData} onBack={handleBackToClasses} />
+      return <ClassDetailPage classData={classData} onBack={handleBackToClasses} onAssignmentClick={handleAssignmentClick} />
     }
 
     // Show Assignment Detail Page if an assignment is selected
     if (selectedAssignmentId) {
-      const assignmentData = upcomingAssignments.find(a => a.id === selectedAssignmentId)
-      return <AssignmentDetailPage assignmentData={assignmentData} onBack={handleBackToAssignments} />
+      return <AssignmentDetailPage assignmentId={selectedAssignmentId} onBack={handleBackToAssignments} />
     }
 
     // Otherwise show the normal tab content

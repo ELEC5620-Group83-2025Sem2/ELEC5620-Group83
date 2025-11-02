@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import studentApi from '../../services/studentApi'
 import './ClassDetailPage.css'
 
-function ClassDetailPage({ classData, onBack }) {
+function ClassDetailPage({ classData, onBack, onAssignmentClick }) {
   const [activeSection, setActiveSection] = useState('overview')
   const [modules, setModules] = useState([])
   const [loadingModules, setLoadingModules] = useState(false)
+  const [assignments, setAssignments] = useState([])
+  const [loadingAssignments, setLoadingAssignments] = useState(false)
 
   const fetchModules = async () => {
     if (!classData?.id) return
@@ -20,9 +22,26 @@ function ClassDetailPage({ classData, onBack }) {
     }
   }
 
+  const fetchAssignments = async () => {
+    if (!classData?.id) return
+    setLoadingAssignments(true)
+    try {
+      const res = await studentApi.getAssignments()
+      // Filter assignments for this specific class
+      const classAssignments = (res.assignments || []).filter(a => a.classId === classData.id)
+      setAssignments(classAssignments)
+    } catch (e) {
+      console.error('Failed to load assignments', e)
+    } finally {
+      setLoadingAssignments(false)
+    }
+  }
+
   useEffect(() => {
     if (activeSection === 'materials') {
       fetchModules()
+    } else if (activeSection === 'assignments') {
+      fetchAssignments()
     }
   }, [activeSection, classData?.id])
 
@@ -171,29 +190,42 @@ function ClassDetailPage({ classData, onBack }) {
 
         {activeSection === 'assignments' && (
           <div className="assignments-section">
-            {classData.assignmentsList?.map(assignment => (
-              <div key={assignment.id} className="assignment-detail-card">
-                <div className="assignment-detail-header">
-                  <h3>{assignment.title}</h3>
-                  <span className={`status-badge ${assignment.status}`}>
-                    {assignment.status}
-                  </span>
+            <div className="detail-card">
+              <h2>Class Assignments</h2>
+              {loadingAssignments ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                  <p>Loading assignments...</p>
                 </div>
-                <div className="assignment-detail-info">
-                  <div className="info-row">
-                    <span className="info-icon">📅</span>
-                    <span>Due: {assignment.dueDate} at {assignment.dueTime}</span>
-                  </div>
-                  <div className="info-row">
-                    <span className="info-icon">📊</span>
-                    <span>Weight: {assignment.weight}%</span>
-                  </div>
+              ) : assignments.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
+                  <p>No assignments yet for this class</p>
                 </div>
-                <button className="btn-view-assignment" style={{ borderColor: classData.color, color: classData.color }}>
-                  View Details
-                </button>
-              </div>
-            ))}
+              ) : (
+                <div>
+                  {assignments.map(assignment => (
+                    <div key={assignment.id} className="assignment-detail-card">
+                      <div className="assignment-detail-header">
+                        <h3>{assignment.title}</h3>
+                        <span className={`status-badge ${assignment.status}`}>
+                          {assignment.status}
+                        </span>
+                      </div>
+                      <div className="assignment-detail-info">
+                        <div className="info-row">
+                          <span className="info-icon">📅</span>
+                          <span>Due: {assignment.dueDate} at {assignment.dueTime}</span>
+                        </div>
+                      </div>
+                      <button className="btn-view-assignment" style={{ borderColor: classData.color, color: classData.color }} onClick={() => onAssignmentClick && onAssignmentClick(assignment.id)}>
+                        View Details
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

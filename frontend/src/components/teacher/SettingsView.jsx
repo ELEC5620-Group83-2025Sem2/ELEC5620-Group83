@@ -36,12 +36,12 @@ function SettingsView({ teacherProfile: initialProfile }) {
       
       // Update localStorage with new profile data
       const currentUser = authService.getCurrentUser()
-      if (currentUser && response.data) {
+      if (currentUser && response) {
         const updatedUser = {
           ...currentUser,
-          first_name: response.data.first_name,
-          last_name: response.data.last_name,
-          avatar: response.data.avatar
+          first_name: response.first_name,
+          last_name: response.last_name,
+          avatar: response.avatar
         }
         localStorage.setItem('user', JSON.stringify(updatedUser))
       }
