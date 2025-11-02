@@ -100,40 +100,72 @@ export const submitPracticeAnswer = async (req, res) => {
       return res.status(500).json({ error: 'Failed to save answer' })
     }
 
-    // 仅当答错时写入错题表（最小字段集合，保证能落库）
+    // 仅当答错时写入错题表（完整字段）
     if (!isCorrect) {
+      // 准备选项数据（转换为JSON格式）
+      const options = question.practice_question_options?.map(opt => ({
+        id: opt.id,
+        text: opt.option_text,
+        isCorrect: opt.is_correct,
+        position: opt.position
+      })) || []
+
       const incorrectPayload = {
         student_id: studentId,
         question_id: questionId,
-        answer_text: answer ?? null,
-        is_correct: false
+        question: question.question,
+        type: question.type,
+        subject: question.subject || null,
+        subject_code: question.subject_code || null,
+        points: question.points || 10,
+        student_answer: answer || '',
+        correct_answer: question.correct_answer || '',
+        explanation: question.explanation || '',
+        options: options.length > 0 ? options : null,
+        first_answered_at: new Date().toISOString(),
+        last_reviewed_at: new Date().toISOString()
       }
+
+      console.log('[Incorrect Questions] Saving to incorrect_questions table:', {
+        studentId,
+        questionId,
+        subject: incorrectPayload.subject
+      })
 
       // 优先 upsert（需要唯一约束 student_id+question_id），失败则删后插兜底
       let dbErr = null
       const { error: upsertErr } = await supabase
         .from('incorrect_questions')
         .upsert(incorrectPayload, { onConflict: 'student_id,question_id' })
+      
       if (upsertErr) {
         console.error('[incorrect_questions upsert]', upsertErr)
         dbErr = upsertErr
+        
+        // 尝试先删除后插入
         await supabase.from('incorrect_questions')
           .delete()
           .eq('student_id', studentId)
           .eq('question_id', questionId)
+        
         const { error: insertErr } = await supabase
           .from('incorrect_questions')
           .insert(incorrectPayload)
+        
         if (insertErr) {
           console.error('[incorrect_questions insert]', insertErr)
           dbErr = insertErr
         } else {
+          console.log('[Incorrect Questions] ✅ Successfully saved to incorrect_questions')
           dbErr = null
         }
+      } else {
+        console.log('[Incorrect Questions] ✅ Successfully upserted to incorrect_questions')
       }
 
       if (dbErr) {
-        // 不阻断主流程，但把原因回给前端，便于排查（RLS/类型不匹配都会显示出来）
+        // 不阻断主流程，但把原因回给前端，便于排查
+        console.error('[Incorrect Questions] ❌ Failed to save:', dbErr)
         return res.status(200).json({
           success: true,
           correct: isCorrect,
