@@ -10,8 +10,70 @@ export const getStudentGrades = async (req, res) => {
     const studentId = req.user.id;
     const supabase = getSupabaseClient();
     
-    // Get all grades from class_grade_history
-    const { data: grades, error: gradeError } = await supabase
+    // 1) Pull grades from assignment_submissions (what teachers update when grading)
+    const { data: submissions, error: submissionsError } = await supabase
+      .from('assignment_submissions')
+      .select(`
+        id,
+        grade,
+        feedback,
+        status,
+        created_at,
+        updated_at,
+        assignment_id,
+        assignments:assignment_id (
+          id,
+          title,
+          total_points,
+          weight,
+          class_id,
+          due_date,
+          due_time,
+          classes:class_id (
+            id,
+            name,
+            code,
+            color
+          )
+        )
+      `)
+      .eq('student_id', studentId)
+      .order('updated_at', { ascending: false });
+    
+    if (submissionsError) {
+      console.error('Error fetching assignment submissions for grades:', submissionsError);
+    }
+    
+    const submissionGrades = (submissions || [])
+      // Prefer showing only graded items to avoid blanks
+      .filter(s => s.grade != null || s.status === 'graded')
+      .map(s => {
+        const maxScore = s.assignments?.total_points ?? 0;
+        const score = s.grade ?? 0;
+        const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+        let letterGrade = 'F';
+        if (percentage >= 90) letterGrade = 'A';
+        else if (percentage >= 80) letterGrade = 'B';
+        else if (percentage >= 70) letterGrade = 'C';
+        else if (percentage >= 60) letterGrade = 'D';
+        return {
+          id: s.id,
+          assignment: s.assignments?.title || 'Assignment',
+          class: s.assignments?.classes?.name || 'Unknown Class',
+          classCode: s.assignments?.classes?.code || '',
+          classColor: s.assignments?.classes?.color || '#6366f1',
+          score: score,
+          maxScore: maxScore,
+          weight: s.assignments?.weight ?? null,
+          percentage: percentage,
+          grade: s.grade != null ? letterGrade : '-',
+          date: s.updated_at || s.created_at,
+          classId: s.assignments?.class_id
+        };
+      });
+
+    // 2) Also include any historical manual grades from class_grade_history (if used anywhere)
+    const { data: gradeHistory, error: gradeHistoryError } = await supabase
       .from('class_grade_history')
       .select(`
         id,
@@ -30,26 +92,20 @@ export const getStudentGrades = async (req, res) => {
       `)
       .eq('student_id', studentId)
       .order('created_at', { ascending: false });
-    
-    if (gradeError) {
-      console.error('Error fetching grades:', gradeError);
-      return ErrorResponse.internalServerError('Failed to fetch student grades').send(res);
+
+    if (gradeHistoryError) {
+      console.error('Error fetching class grade history:', gradeHistoryError);
     }
-    
-    // Transform grades to match frontend format
-    const transformedGrades = (grades || []).map(grade => {
-      // Calculate percentage
-      const percentage = grade.max_score > 0 
-        ? Math.round((grade.score / grade.max_score) * 100) 
+
+    const historyGrades = (gradeHistory || []).map(grade => {
+      const percentage = grade.max_score > 0
+        ? Math.round((grade.score / grade.max_score) * 100)
         : 0;
-      
-      // Calculate letter grade
       let letterGrade = 'F';
       if (percentage >= 90) letterGrade = 'A';
       else if (percentage >= 80) letterGrade = 'B';
       else if (percentage >= 70) letterGrade = 'C';
       else if (percentage >= 60) letterGrade = 'D';
-      
       return {
         id: grade.id,
         assignment: grade.assessment,
@@ -65,10 +121,14 @@ export const getStudentGrades = async (req, res) => {
         classId: grade.class_id
       };
     });
+
+    // Merge, sort by date desc, and return
+    const merged = [...submissionGrades, ...historyGrades]
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
     
     return res.status(200).json({
       success: true,
-      grades: transformedGrades
+      grades: merged
     });
     
   } catch (error) {
