@@ -174,7 +174,6 @@ function ReviewIncorrectQuestions() {
   if (selectedQuestion) {
     return (
       <div className="question-detail-modal">
-        //<div className="modal-overlay" onClick={handleCloseQuestionDetail}></div>
         <div className="modal-content">
           <div className="modal-header">
             <h2>Question Review</h2>
