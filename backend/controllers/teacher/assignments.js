@@ -171,16 +171,59 @@ export const getAssignmentDetails = async (req, res) => {
     })) || [];
 
     // Get rubric items
-    const { data: rubricItems } = await supabase
+    const { data: rubric, error: rubricError } = await supabase
       .from('assignment_rubric_items')
       .select('*')
       .eq('assignment_id', assignmentId)
-      .order('created_at', { ascending: true });
+      .order('position', { ascending: true });
+    
+    if (rubricError && rubricError.code !== 'PGRST116') {
+      console.error('Error fetching rubric:', rubricError);
+    }
+
+    // Get assignment questions
+    const { data: questions, error: qError } = await supabase
+      .from('assignment_questions')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .order('position', { ascending: true });
+    
+    if (qError && qError.code !== 'PGRST116') {
+      console.error('Error fetching questions:', qError);
+    }
+
+    // Get options for each question
+    let questionsWithOptions = [];
+    if (questions && questions.length > 0) {
+      for (const question of questions) {
+        const { data: options, error: optError } = await supabase
+          .from('assignment_question_options')
+          .select('*')
+          .eq('question_id', question.id)
+          .order('option_key', { ascending: true });
+        
+        if (optError && optError.code !== 'PGRST116') {
+          console.error('Error fetching question options:', optError);
+        }
+        
+        questionsWithOptions.push({
+          id: question.id,
+          assignment_id: question.assignment_id,
+          position: question.position,
+          type: question.type,
+          question: question.question,
+          points: question.points,
+          subject: question.subject,
+          subject_code: question.subject_code,
+          options: options || []
+        });
+      }
+    }
 
     // Get due_date - try multiple possible field names
     const dueDate = assignment.due_date || assignment.dueDate || assignment.due || null;
 
-    res.status(200).json({
+    const response = {
       assignment: {
         id: assignment.id,
         title: assignment.title,
@@ -196,9 +239,19 @@ export const getAssignmentDetails = async (req, res) => {
         created_at: assignment.created_at,
         createdAt: assignment.created_at,
         submissions: enrichedSubmissions,
-        rubric: rubricItems || [],
+        rubric: rubric?.map(r => ({
+          id: r.id,
+          criteria: r.criteria,
+          points: r.points,
+          position: r.position,
+          description: r.description
+        })) || [],
+        questions: questionsWithOptions,
+        hasQuestions: questionsWithOptions.length > 0,
       }
-    });
+    }
+    console.log('Response:', response);
+    res.status(200).json(response);
   } catch (err) {
     console.error('Error in getAssignmentDetails:', err);
     return ErrorResponse.internalServerError('An error occurred while fetching assignment details').send(res);
@@ -340,13 +393,17 @@ export const createAssignment = async (req, res) => {
     if (Array.isArray(questions) && questions.length > 0) {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i] || {};
-        const qType = q.type || 'text';
+        let qType = q.type || 'short-answer';
+        if (qType === 'text') {
+          qType = 'short-answer';
+        }
         const qText = q.question || q.prompt || '';
         const qPoints = Number(q.points) || 0;
-
+        let question = { assignment_id: createdId, position: i + 1, type: qType, question: qText, points: qPoints }
+        console.log('Question:', question);
         const { data: qRow, error: qError } = await supabase
           .from('assignment_questions')
-          .insert([{ assignment_id: createdId, position: i + 1, type: qType, question: qText, points: qPoints }])
+          .insert([question])
           .select()
           .single();
         if (qError) {
@@ -355,7 +412,7 @@ export const createAssignment = async (req, res) => {
         }
 
         // For MCQ, insert options
-        if (qType === 'multiple_choice' && Array.isArray(q.options)) {
+        if (qType === 'multiple-choice' && Array.isArray(q.options)) {
           const options = q.options;
           const correct = q.answer; // can be value or key
           const keyFromIndex = (idx) => String.fromCharCode('A'.charCodeAt(0) + idx);

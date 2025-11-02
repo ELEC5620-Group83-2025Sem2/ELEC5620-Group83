@@ -694,7 +694,7 @@ function buildMockAssignment(subject, topic, type, questionCount, totalPoints = 
   const questions = Array.from({ length: count }).map((_, idx) => {
     if (idx % 2 === 0) {
       return {
-        type: 'multiple_choice',
+        type: 'multiple-choice',
         question: `(${subject}) ${topic}: Which statement is correct?`,
         points: idx === count - 1 ? remaining : pointsPer,
         options: ['Option A', 'Option B', 'Option C', 'Option D'],
@@ -703,7 +703,7 @@ function buildMockAssignment(subject, topic, type, questionCount, totalPoints = 
       };
     }
     return {
-      type: 'short_answer',
+      type: 'short-answer',
       question: `(${subject}) ${topic}: Briefly explain the core idea.`,
       points: idx === count - 1 ? remaining : pointsPer,
       expected_answer: 'A concise explanation covering the key concept.'
@@ -834,7 +834,7 @@ async function generateAssignmentFromDatabase({ req, subject, topic, difficulty,
       .in('assignment_id', templateAssignmentIds);
     const typeCounts = {};
     (questionRows || []).forEach(q => {
-      const t = q.type || 'multiple_choice';
+      const t = q.type || 'multiple-choice';
       if (!typeCounts[t]) typeCounts[t] = { type: t, count: 0, avgPoints: 0, totalPoints: 0 };
       typeCounts[t].count += 1;
       typeCounts[t].totalPoints += Number(q.points) || 0;
@@ -843,14 +843,14 @@ async function generateAssignmentFromDatabase({ req, subject, topic, difficulty,
     const sortedTypes = Object.values(typeCounts).sort((a,b) => b.count - a.count);
     const desired = Math.max(1, Number(question_count) || 6);
     for (let i = 0; i < desired; i++) {
-      const t = (sortedTypes[i % sortedTypes.length]?.type) || 'multiple_choice';
+      const t = (sortedTypes[i % sortedTypes.length]?.type) || 'multiple-choice';
       questionTemplates.push({ type: t, points: sortedTypes[0]?.avgPoints || 5 });
     }
   }
   if (questionTemplates.length === 0) {
     const desired = Math.max(1, Number(question_count) || 6);
     for (let i = 0; i < desired; i++) {
-      const t = i % 2 === 0 ? 'multiple_choice' : 'short_answer';
+      const t = i % 2 === 0 ? 'multiple-choice' : 'short-answer';
       questionTemplates.push({ type: t, points: 5 });
     }
   }
@@ -861,7 +861,7 @@ async function generateAssignmentFromDatabase({ req, subject, topic, difficulty,
   // For quiz: all MCQ; For homework/project: all text coding tasks
   let baseTemplates;
   if (normalizedType === 'quiz') {
-    baseTemplates = Array.from({ length: desiredCount }).map((_, i) => ({ type: 'multiple_choice', points: 1 }));
+    baseTemplates = Array.from({ length: desiredCount }).map((_, i) => ({ type: 'multiple-choice', points: 1 }));
   } else {
     baseTemplates = Array.from({ length: desiredCount }).map((_, i) => ({ type: 'text', points: 1 }));
   }
@@ -930,7 +930,7 @@ async function generateAssignmentFromDatabase({ req, subject, topic, difficulty,
       else options.push(distractors[dIdx++]);
     }
     return {
-      type: 'multiple_choice',
+      type: 'multiple-choice',
       question: qText,
       points: pts,
       options,
@@ -939,7 +939,7 @@ async function generateAssignmentFromDatabase({ req, subject, topic, difficulty,
   };
 
   const scaledQuestions = scaledBase.map((q, idx) => {
-    if (q.type === 'multiple_choice') {
+    if (q.type === 'multiple-choice') {
       return buildMcq(idx, q.points);
     }
     // coding/text task for homework/project
