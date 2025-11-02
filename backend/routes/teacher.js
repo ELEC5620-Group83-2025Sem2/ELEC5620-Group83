@@ -42,6 +42,17 @@ import {
   analyzeClassPerformance,
   generateAssignment
 } from '../controllers/teacher/aiFeatures.js';
+import multer from 'multer';
+import {
+  listClassModules,
+  createClassModule,
+  updateModule,
+  deleteModule,
+  createModuleItem,
+  updateModuleItem,
+  deleteModuleItem,
+  uploadModuleItemFile
+} from '../controllers/teacher/modules.js';
 
 const router = express.Router();
 
@@ -74,6 +85,26 @@ router.get('/classes/:id/students', getClassStudents);
 
 // GET /api/teacher/classes/:id/analytics - Get class analytics
 router.get('/classes/:id/analytics', getClassAnalytics);
+
+// ===================
+// Modules Routes (must come after classes routes but before generic params)
+// ===================
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+// List modules for a class
+router.get('/classes/:classId/modules', listClassModules);
+// Create module for a class
+router.post('/classes/:classId/modules', createClassModule);
+// Update/Delete a module
+router.put('/modules/:moduleId', updateModule);
+router.delete('/modules/:moduleId', deleteModule);
+// Items CRUD
+router.post('/modules/:moduleId/items', createModuleItem);
+router.put('/modules/:moduleId/items/:itemId', updateModuleItem);
+router.delete('/modules/:moduleId/items/:itemId', deleteModuleItem);
+// File upload for item
+router.post('/modules/:moduleId/items/:itemId/file', upload.single('file'), uploadModuleItemFile);
 
 // ===================
 // Assignments Routes

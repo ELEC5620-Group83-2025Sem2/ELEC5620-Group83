@@ -107,6 +107,19 @@ const studentApi = {
     });
   }
 
+  ,
+  // Modules
+  async getClassModules(classId) {
+    return authenticatedRequest(`/student/classes/${classId}/modules`, {
+      method: 'GET'
+    });
+  },
+  async getModule(moduleId) {
+    return authenticatedRequest(`/student/modules/${moduleId}`, {
+      method: 'GET'
+    });
+  }
+
 };
 
 export default studentApi;
