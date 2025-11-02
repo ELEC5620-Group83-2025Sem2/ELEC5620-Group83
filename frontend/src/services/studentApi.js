@@ -105,6 +105,15 @@ const studentApi = {
         upcoming: upcoming
       }
     });
+  },
+
+  // Grades
+  // Get all grades for student
+  // JWT token is automatically passed in Authorization header
+  async getGrades() {
+    return authenticatedRequest('/student/grades', {
+      method: 'GET'
+    });
   }
 
 };
