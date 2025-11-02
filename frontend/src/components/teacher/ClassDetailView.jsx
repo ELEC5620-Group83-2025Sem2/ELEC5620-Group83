@@ -15,9 +15,12 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
 
   const [expandedModuleId, setExpandedModuleId] = useState(null)
   const [showNewItemFor, setShowNewItemFor] = useState(null)
-  const [newItem, setNewItem] = useState({ item_type: 'link', title: '', link_url: '', content_richtext: '' })
+  const [newItem, setNewItem] = useState({ item_type: 'link', title: '', link_url: '', content_richtext: '', description: '' })
   const [uploadingFileFor, setUploadingFileFor] = useState(null)
   const [selectedFile, setSelectedFile] = useState(null)
+  const [summarizingFor, setSummarizingFor] = useState(null)
+  const [descriptionDrafts, setDescriptionDrafts] = useState({})
+  const [editingDescriptionFor, setEditingDescriptionFor] = useState(null)
 
   useEffect(() => {
     const fetchClassData = async () => {
@@ -274,6 +277,90 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
                                 {it.item_type === 'file' && !it.file_public_url && (
                                   <div style={{ color: '#e53e3e', fontSize: 12, marginTop: 4 }}>⚠ No file uploaded yet</div>
                                 )}
+                                {it.item_type === 'file' && (
+                                  <div className="file-description-section">
+                                    {editingDescriptionFor === it.id ? (
+                                      <div className="description-edit-mode">
+                                        <label className="description-label">Description</label>
+                                        <textarea
+                                          className="description-textarea"
+                                          rows="3"
+                                          value={(descriptionDrafts[it.id] ?? it.description) || ''}
+                                          onChange={e => setDescriptionDrafts(prev => ({ ...prev, [it.id]: e.target.value }))}
+                                          placeholder="Add a short description for this file"
+                                        />
+                                        <div className="description-actions">
+                                          <button
+                                            className="btn-ai-summarize"
+                                            disabled={summarizingFor === it.id || !it.file_public_url || !(it.file_mime_type || '').includes('pdf')}
+                                            title={!it.file_public_url ? 'Upload the PDF first' : (!(it.file_mime_type || '').includes('pdf') ? 'Only PDFs supported' : 'Generate summary')}
+                                            onClick={async () => {
+                                              setSummarizingFor(it.id)
+                                              try {
+                                                const res = await teacherApi.summarizeModuleItem(mod.id, it.id)
+                                                const summary = res.summary || ''
+                                                setDescriptionDrafts(prev => ({ ...prev, [it.id]: summary }))
+                                              } catch (err) {
+                                                console.error('Summarize failed', err)
+                                                alert('Failed to summarize. Ensure OPENAI_BASE_URL and key configured, and the file is a PDF.')
+                                              } finally {
+                                                setSummarizingFor(null)
+                                              }
+                                            }}
+                                          >{summarizingFor === it.id ? '⏳ Summarizing…' : '✨ AI Summarize'}</button>
+                                          <button
+                                            className="btn-save-description"
+                                            onClick={async () => {
+                                              const draft = (descriptionDrafts[it.id] ?? it.description) || ''
+                                              try {
+                                                await teacherApi.updateModuleItem(mod.id, it.id, { description: draft })
+                                                setEditingDescriptionFor(null)
+                                                setDescriptionDrafts(prev => {
+                                                  const newDrafts = { ...prev }
+                                                  delete newDrafts[it.id]
+                                                  return newDrafts
+                                                })
+                                                await fetchModules()
+                                              } catch (e) {
+                                                console.error('Save description failed', e)
+                                                alert('Failed to save description')
+                                              }
+                                            }}
+                                          >💾 Save</button>
+                                          <button
+                                            className="btn-cancel-description"
+                                            onClick={() => {
+                                              setEditingDescriptionFor(null)
+                                              setDescriptionDrafts(prev => {
+                                                const newDrafts = { ...prev }
+                                                delete newDrafts[it.id]
+                                                return newDrafts
+                                              })
+                                            }}
+                                          >Cancel</button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="description-view-mode">
+                                        {it.description ? (
+                                          <>
+                                            <div className="description-label">Description:</div>
+                                            <div className="description-display">{it.description}</div>
+                                            <button
+                                              className="btn-edit-description"
+                                              onClick={() => setEditingDescriptionFor(it.id)}
+                                            >✏️ Edit Description</button>
+                                          </>
+                                        ) : (
+                                          <button
+                                            className="btn-add-description"
+                                            onClick={() => setEditingDescriptionFor(it.id)}
+                                          >➕ Add Description</button>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                               <div className="module-item-actions">
                                 {it.item_type === 'file' && (
@@ -311,7 +398,7 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
                           ))}
 
                           {showNewItemFor === mod.id && (
-                            <div className="new-item-form">
+                              <div className="new-item-form">
                               <div className="new-item-form-grid">
                                 <label>Type</label>
                                 <select value={newItem.item_type} onChange={e => setNewItem(prev => ({ ...prev, item_type: e.target.value }))}>
@@ -353,6 +440,8 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
                                     }} />
                                     {selectedFile && <div className="file-selected-info">✓ Selected: {selectedFile.name} ({(selectedFile.size / (1024 * 1024)).toFixed(2)}MB)</div>}
                                   </div>
+                                    <label>Description</label>
+                                    <textarea rows="3" value={newItem.description} onChange={e => setNewItem(prev => ({ ...prev, description: e.target.value }))} placeholder="Add a short description (or generate after upload)" />
                                 </>)}
                               </div>
                               <div className="new-item-actions">
@@ -365,6 +454,7 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
                                     const payload = {
                                       item_type: newItem.item_type,
                                       title: newItem.title,
+                                        description: newItem.item_type === 'file' ? newItem.description : '',
                                       link_url: newItem.item_type === 'link' ? newItem.link_url : null,
                                       content_richtext: newItem.item_type === 'rich_text' ? newItem.content_richtext : null
                                     }
@@ -373,7 +463,7 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
                                     if (newItem.item_type === 'file' && selectedFile) {
                                       await teacherApi.uploadModuleFile(mod.id, created.item.id, selectedFile)
                                     }
-                                    setNewItem({ item_type: 'link', title: '', link_url: '', content_richtext: '' })
+                                      setNewItem({ item_type: 'link', title: '', link_url: '', content_richtext: '', description: '' })
                                     setSelectedFile(null)
                                     setShowNewItemFor(null)
                                     await fetchModules()

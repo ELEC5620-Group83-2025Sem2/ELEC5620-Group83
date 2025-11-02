@@ -51,7 +51,8 @@ import {
   createModuleItem,
   updateModuleItem,
   deleteModuleItem,
-  uploadModuleItemFile
+  uploadModuleItemFile,
+  summarizeModuleItemFile
 } from '../controllers/teacher/modules.js';
 
 const router = express.Router();
@@ -105,6 +106,8 @@ router.put('/modules/:moduleId/items/:itemId', updateModuleItem);
 router.delete('/modules/:moduleId/items/:itemId', deleteModuleItem);
 // File upload for item
 router.post('/modules/:moduleId/items/:itemId/file', upload.single('file'), uploadModuleItemFile);
+// AI summarize a PDF file item
+router.post('/modules/:moduleId/items/:itemId/summarize', summarizeModuleItemFile);
 
 // ===================
 // Assignments Routes

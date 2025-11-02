@@ -124,6 +124,18 @@
   flex: 1;
 }
 
+.student-module-item-description {
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border-left: 3px solid #667eea;
+  border-radius: 6px;
+  color: #4a5568;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
 .student-module-item-type {
   font-size: 0.75rem;
   padding: 0.25rem 0.625rem;
