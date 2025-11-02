@@ -177,9 +177,9 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
     }))
   }
 
-  const handleAddQuestion = (type = 'multiple_choice') => {
-    const base = type === 'multiple_choice'
-      ? { type: 'multiple_choice', question: '', points: 0, options: [''], answer: '' }
+  const handleAddQuestion = (type = 'multiple-choice') => {
+    const base = type === 'multiple-choice'
+      ? { type: 'multiple-choice', question: '', points: 0, options: [''], answer: '' }
       : { type: 'text', prompt: '', points: 0, expected_answer: '' }
     setFormData(prev => ({ ...prev, questions: [...(prev.questions || []), base] }))
   }
@@ -205,15 +205,6 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
     })
   }
 
-  const handleAddMCQOption = (qIndex) => {
-    setFormData(prev => {
-      const questions = [...(prev.questions || [])]
-      const q = { ...(questions[qIndex] || {}) }
-      q.options = [...(q.options || []), '']
-      questions[qIndex] = q
-      return { ...prev, questions }
-    })
-  }
 
   const handleRemoveQuestion = (index) => {
     setFormData(prev => ({ ...prev, questions: (prev.questions || []).filter((_, i) => i !== index) }))
@@ -484,7 +475,6 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
         <div className="form-section">
           <h3>Questions</h3>
           <div className="form-row">
-            <button type="button" className="btn-secondary" onClick={() => handleAddQuestion('multiple_choice')}>Add MCQ</button>
             <button type="button" className="btn-secondary" onClick={() => handleAddQuestion('text')}>Add Text/Short Answer</button>
           </div>
           {(formData.questions || []).map((q, idx) => (
@@ -493,9 +483,7 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
                 <div className="form-group">
                   <label>Type</label>
                   <select value={q.type} onChange={(e) => handleUpdateQuestion(idx, 'type', e.target.value)}>
-                    <option value="multiple_choice">Multiple Choice</option>
-                    <option value="short_answer">Short Answer</option>
-                    <option value="text">Text</option>
+                    <option value="short-answer">Short Answer</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -507,7 +495,7 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
                 </div>
               </div>
 
-              {q.type === 'multiple_choice' ? (
+              {q.type === 'multiple-choice' ? (
                 <>
                   <div className="form-group">
                     <label>Question</label>
@@ -520,7 +508,6 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
                         <input type="text" value={opt} onChange={(e) => handleMCQOptionChange(idx, oIdx, e.target.value)} />
                       </div>
                     ))}
-                    <button type="button" className="btn-secondary" onClick={() => handleAddMCQOption(idx)}>Add Option</button>
                   </div>
                   <div className="form-group">
                     <label>Correct Answer</label>
