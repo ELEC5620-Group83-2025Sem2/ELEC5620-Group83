@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import authService from '../services/authService'
+import teacherApi from '../services/teacherApi'
 import DashboardOverview from '../components/teacher/DashboardOverview'
 import MyClassesView from '../components/teacher/MyClassesView'
 import ClassDetailView from '../components/teacher/ClassDetailView'
 import AssignmentsView from '../components/teacher/AssignmentsView'
+import AssignmentDetailView from '../components/teacher/AssignmentDetailView'
 import CreateAssignmentView from '../components/teacher/CreateAssignmentView'
 import GradeAssignmentView from '../components/teacher/GradeAssignmentView'
 import StudentsView from '../components/teacher/StudentsView'
+import StudentGradesView from '../components/teacher/StudentGradesView'
 import AnalyticsView from '../components/teacher/AnalyticsView'
 import AnnouncementsView from '../components/teacher/AnnouncementsView'
 import SettingsView from '../components/teacher/SettingsView'
@@ -27,6 +30,7 @@ function TeacherDashboard() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [selectedClassId, setSelectedClassId] = useState(null)
   const [selectedAssignmentId, setSelectedAssignmentId] = useState(null)
+  const [selectedStudentId, setSelectedStudentId] = useState(null)
   const [isCreatingAssignment, setIsCreatingAssignment] = useState(false)
   const [isGradingAssignment, setIsGradingAssignment] = useState(false)
   const [teacherProfile, setTeacherProfile] = useState(null)
@@ -49,13 +53,27 @@ function TeacherDashboard() {
 
     fetchTeacherProfile()
   }, [navigate])
-  
-  // Sync activeTab with URL changes
+
+  // Sync activeTab with URL changes and detect student grades route
   useEffect(() => {
-    if (urlTab !== activeTab && validTabs.includes(urlTab)) {
-      setActiveTab(urlTab)
+    // Check if URL matches student grades pattern: /teacher/students/:studentId/grades
+    const gradesMatch = location.pathname.match(/^\/teacher\/students\/([^/]+)\/grades$/)
+    if (gradesMatch) {
+      const studentId = gradesMatch[1]
+      setSelectedStudentId(studentId)
+      setActiveTab('students')
+    } else {
+      // Clear selectedStudentId if not on grades route
+      setSelectedStudentId(null)
+      // Update activeTab if URL tab changed
+      const pathParts = location.pathname.split('/')
+      const currentUrlTab = pathParts[pathParts.length - 1]
+      const validTabs = ['dashboard', 'classes', 'assignments', 'students', 'analytics', 'announcements', 'settings']
+      if (validTabs.includes(currentUrlTab) && currentUrlTab !== activeTab) {
+        setActiveTab(currentUrlTab)
+      }
     }
-  }, [location.pathname])
+  }, [location.pathname, activeTab])
 
   const handleLogout = async () => {
     try {
@@ -76,9 +94,18 @@ function TeacherDashboard() {
 
   const handleAssignmentClick = (assignmentId) => {
     setSelectedAssignmentId(assignmentId)
+    setSelectedClassId(null)
+    setIsCreatingAssignment(false)
+    setIsGradingAssignment(false)
+    // Route to assignments tab while preserving the selected assignment
+    navigate('/teacher/assignments', { replace: true })
+    setActiveTab('assignments')
   }
 
-  const handleCreateAssignment = () => {
+  const handleCreateAssignment = (assignmentId = null) => {
+    if (assignmentId) {
+      setSelectedAssignmentId(assignmentId)
+    }
     setIsCreatingAssignment(true)
   }
 
@@ -97,6 +124,7 @@ function TeacherDashboard() {
     setActiveTab(tab)
     setSelectedClassId(null)
     setSelectedAssignmentId(null)
+    setSelectedStudentId(null)
     setIsCreatingAssignment(false)
     setIsGradingAssignment(false)
     // Update URL to match the active tab
@@ -107,14 +135,40 @@ function TeacherDashboard() {
     }
   }
 
+  const handleBackToStudents = () => {
+    setSelectedStudentId(null)
+    navigate('/teacher/students', { replace: true })
+  }
+
+
   const renderContent = () => {
     // Priority: Show detail views if selected
+    // Student grades view
+    if (selectedStudentId) {
+      return (
+        <StudentGradesView studentId={selectedStudentId} onBack={handleBackToStudents} />
+      )
+    }
+
     if (selectedClassId) {
       return (
         <ClassDetailView
           classId={selectedClassId}
           onBack={handleBackToClasses}
           onCreateAssignment={handleCreateAssignment}
+          onAssignmentClick={handleAssignmentClick}
+          onEditAssignment={handleCreateAssignment}
+          onGradeAssignment={handleGradeAssignment}
+        />
+      )
+    }
+
+    // Assignment detail view
+    if (selectedAssignmentId && !isCreatingAssignment && !isGradingAssignment) {
+      return (
+        <AssignmentDetailView
+          assignmentId={selectedAssignmentId}
+          onBack={handleBackToAssignments}
         />
       )
     }
@@ -176,7 +230,9 @@ function TeacherDashboard() {
   }
 
   const getPageTitle = () => {
+    if (selectedStudentId) return 'Student Grades'
     if (selectedClassId) return 'Class Details'
+    if (selectedAssignmentId && !isCreatingAssignment && !isGradingAssignment) return 'Assignment Details'
     if (isCreatingAssignment) return selectedAssignmentId ? 'Edit Assignment' : 'Create Assignment'
     if (isGradingAssignment) return 'Grade Assignment'
     
@@ -289,15 +345,12 @@ function TeacherDashboard() {
         <header className="dashboard-header">
           <h1 className="page-title">{getPageTitle()}</h1>
           <div className="header-right">
-            <button className="header-btn">
-              <span className="notification-icon">🔔</span>
-              <span className="notification-badge">3</span>
-            </button>
-
             <div className="user-menu-container">
               <button
                 className="user-profile-btn"
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                onClick={() => {
+                  setUserMenuOpen(!userMenuOpen)
+                }}
               >
                 <span className="user-avatar">👨‍🏫</span>
                 <span className="user-name">{displayName}</span>

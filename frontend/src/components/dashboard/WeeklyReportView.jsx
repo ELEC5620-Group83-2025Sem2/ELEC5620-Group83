@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { generateWeeklyReport, transformWeeklyReport } from '../../services/weeklyReportService.js'
+import { generateWeeklyReport, transformWeeklyReport, emailWeeklyReport } from '../../services/weeklyReportService.js'
 import authService from '../../services/authService.js'
 
 function WeeklyReportView() {
@@ -8,6 +8,10 @@ function WeeklyReportView() {
   const [error, setError] = useState(null)
   const [showPrintModal, setShowPrintModal] = useState(false)
   const [showEmailModal, setShowEmailModal] = useState(false)
+  const [emailAddress, setEmailAddress] = useState('')
+  const [isEmailSending, setIsEmailSending] = useState(false)
+  const [emailError, setEmailError] = useState(null)
+  const [emailSuccess, setEmailSuccess] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [showSubjectModal, setShowSubjectModal] = useState(false)
   const [weekStart, setWeekStart] = useState(() => {
@@ -77,12 +81,46 @@ function WeeklyReportView() {
   }
 
   const handleEmail = () => {
+    const user = authService.getCurrentUser()
+    setEmailAddress(user?.email || '')
+    setEmailError(null)
+    setEmailSuccess(false)
     setShowEmailModal(true)
-    // In a real app, this would open an email client or send via API
-    setTimeout(() => {
-      setShowEmailModal(false)
-      alert('Weekly report has been sent to your email!')
-    }, 1000)
+  }
+
+  const confirmSendEmail = async () => {
+    setIsEmailSending(true)
+    setEmailError(null)
+    setEmailSuccess(false)
+
+    try {
+      const user = authService.getCurrentUser()
+      if (!user || !user.id) {
+        throw new Error('User not authenticated. Please log in again.')
+      }
+      if (!emailAddress || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) {
+        throw new Error('Please enter a valid email address')
+      }
+
+      const response = await emailWeeklyReport({
+        student_id: user.id,
+        report_week_start: weekStart,
+        report_week_end: weekEnd,
+        email: emailAddress
+      })
+
+      if (response?.success && (response?.data?.email_sent || response?.email_sent)) {
+        setEmailSuccess(true)
+        // Keep modal open to show success, auto-close after short delay
+        setTimeout(() => setShowEmailModal(false), 1500)
+      } else {
+        throw new Error(response?.message || 'Email failed to send')
+      }
+    } catch (err) {
+      setEmailError(err.message || 'Failed to send email')
+    } finally {
+      setIsEmailSending(false)
+    }
   }
 
   const handleSubjectClick = (subjectName) => {
@@ -361,15 +399,42 @@ function WeeklyReportView() {
         <div className="modal-overlay">
           <div className="modal">
             <h3>📧 Email Weekly Report</h3>
-            <p>Your weekly report will be sent to your registered email address.</p>
-            <div className="modal-actions">
-              <button className="btn-cancel" onClick={() => setShowEmailModal(false)}>
-                Cancel
-              </button>
-              <button className="btn-confirm" onClick={handleEmail}>
-                Send Report
-              </button>
-            </div>
+            {!emailSuccess && (
+              <>
+                <p>Enter the email address to send your weekly report to.</p>
+                <div className="input-group">
+                  <label>Email Address</label>
+                  <input
+                    type="email"
+                    value={emailAddress}
+                    onChange={(e) => setEmailAddress(e.target.value)}
+                    placeholder="name@example.com"
+                    className="text-input"
+                  />
+                </div>
+                {emailError && (
+                  <p style={{ color: '#e53e3e', marginTop: '8px' }}>{emailError}</p>
+                )}
+                <div className="modal-actions">
+                  <button className="btn-cancel" onClick={() => setShowEmailModal(false)} disabled={isEmailSending}>
+                    Cancel
+                  </button>
+                  <button className="btn-confirm" onClick={confirmSendEmail} disabled={isEmailSending}>
+                    {isEmailSending ? 'Sending...' : 'Send Report'}
+                  </button>
+                </div>
+              </>
+            )}
+            {emailSuccess && (
+              <>
+                <p>Weekly report sent to {emailAddress}.</p>
+                <div className="modal-actions">
+                  <button className="btn-confirm" onClick={() => setShowEmailModal(false)}>
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -43,15 +43,6 @@ export const getTeacherAssignments = async (req, res) => {
 
     // Enrich each assignment with submission stats
     const enrichedAssignments = await Promise.all(assignments.map(async (assignment) => {
-      // Debug: Log assignment data to check for due_date
-      console.log('Assignment data:', {
-        id: assignment.id,
-        title: assignment.title,
-        due_date: assignment.due_date,
-        dueDate: assignment.dueDate,
-        allKeys: Object.keys(assignment)
-      });
-
       // Get submission stats
       const { data: submissions } = await supabase
         .from('assignment_submissions')
@@ -111,8 +102,6 @@ export const getAssignmentDetails = async (req, res) => {
     const { id: assignmentId } = req.params;
     const supabase = getSupabaseClient();
 
-    console.log('getAssignmentDetails called with:', { assignmentId, teacherId });
-
     // Get assignment details
     const { data: assignment, error: assignError } = await supabase
       .from('assignments')
@@ -126,8 +115,6 @@ export const getAssignmentDetails = async (req, res) => {
       `)
       .eq('id', assignmentId)
       .single();
-
-    console.log('Assignment query result:', { assignment: !!assignment, error: assignError });
 
     if (assignError) {
       console.error('Error fetching assignment:', assignError);
@@ -143,15 +130,6 @@ export const getAssignmentDetails = async (req, res) => {
       return ErrorResponse.notFound('Assignment not found').send(res);
     }
 
-    // Debug: Log assignment data to check for due_date
-    console.log('Assignment details:', {
-      id: assignment.id,
-      title: assignment.title,
-      due_date: assignment.due_date,
-      dueDate: assignment.dueDate,
-      allKeys: Object.keys(assignment)
-    });
-
     // Verify teacher has access to this assignment's class
     const { data: access, error: accessError } = await supabase
       .from('class_teachers')
@@ -159,13 +137,6 @@ export const getAssignmentDetails = async (req, res) => {
       .eq('profile_id', teacherId)
       .eq('class_id', assignment.class_id)
       .single();
-
-    console.log('Teacher access check:', {
-      teacherId,
-      classId: assignment.class_id,
-      hasAccess: !!access,
-      error: accessError
-    });
 
     // TEMPORARILY DISABLED for debugging
     // if (!access) {
@@ -199,10 +170,60 @@ export const getAssignmentDetails = async (req, res) => {
       content: sub.content,
     })) || [];
 
+    // Get rubric items
+    const { data: rubric, error: rubricError } = await supabase
+      .from('assignment_rubric_items')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .order('position', { ascending: true });
+    
+    if (rubricError && rubricError.code !== 'PGRST116') {
+      console.error('Error fetching rubric:', rubricError);
+    }
+
+    // Get assignment questions
+    const { data: questions, error: qError } = await supabase
+      .from('assignment_questions')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .order('position', { ascending: true });
+    
+    if (qError && qError.code !== 'PGRST116') {
+      console.error('Error fetching questions:', qError);
+    }
+
+    // Get options for each question
+    let questionsWithOptions = [];
+    if (questions && questions.length > 0) {
+      for (const question of questions) {
+        const { data: options, error: optError } = await supabase
+          .from('assignment_question_options')
+          .select('*')
+          .eq('question_id', question.id)
+          .order('option_key', { ascending: true });
+        
+        if (optError && optError.code !== 'PGRST116') {
+          console.error('Error fetching question options:', optError);
+        }
+        
+        questionsWithOptions.push({
+          id: question.id,
+          assignment_id: question.assignment_id,
+          position: question.position,
+          type: question.type,
+          question: question.question,
+          points: question.points,
+          subject: question.subject,
+          subject_code: question.subject_code,
+          options: options || []
+        });
+      }
+    }
+
     // Get due_date - try multiple possible field names
     const dueDate = assignment.due_date || assignment.dueDate || assignment.due || null;
 
-    res.status(200).json({
+    const response = {
       assignment: {
         id: assignment.id,
         title: assignment.title,
@@ -218,8 +239,19 @@ export const getAssignmentDetails = async (req, res) => {
         created_at: assignment.created_at,
         createdAt: assignment.created_at,
         submissions: enrichedSubmissions,
+        rubric: rubric?.map(r => ({
+          id: r.id,
+          criteria: r.criteria,
+          points: r.points,
+          position: r.position,
+          description: r.description
+        })) || [],
+        questions: questionsWithOptions,
+        hasQuestions: questionsWithOptions.length > 0,
       }
-    });
+    }
+    console.log('Response:', response);
+    res.status(200).json(response);
   } catch (err) {
     console.error('Error in getAssignmentDetails:', err);
     return ErrorResponse.internalServerError('An error occurred while fetching assignment details').send(res);
@@ -238,11 +270,13 @@ export const createAssignment = async (req, res) => {
       title,
       description,
       instructions,
+      requirements,
+      resources,
       dueDate,
       totalPoints,
       rubric,
       questions,
-      resources,
+      submission_type
     } = req.body;
 
     const supabase = getSupabaseClient();
@@ -264,28 +298,142 @@ export const createAssignment = async (req, res) => {
       return ErrorResponse.badRequest('Missing required fields: title, classId, dueDate').send(res);
     }
 
-    // Create assignment
+    // Parse due_date (date) and due_time (time) from combined datetime if provided
+    let due_date_value = null;
+    let due_time_value = null;
+    if (dueDate) {
+      if (typeof dueDate === 'string' && dueDate.includes('T')) {
+        const [d, t] = dueDate.split('T');
+        due_date_value = d;
+        if (t) {
+          const hm = t.trim().slice(0,5); // HH:MM
+          due_time_value = hm ? `${hm}:00` : null;
+        }
+      } else {
+        due_date_value = dueDate;
+      }
+    }
+
+    // Create base assignment row (columns that actually exist)
+    const baseInsert = {
+      class_id: classId,
+      title,
+      description,
+      due_date: due_date_value,
+      due_time: due_time_value,
+      total_points: totalPoints || 100,
+      submission_type: submission_type || null,
+      status: 'pending',
+      created_by: teacherId,
+    };
+
     const { data: assignment, error: createError } = await supabase
       .from('assignments')
-      .insert([{
-        class_id: classId,
-        title,
-        description,
-        instructions: instructions || [],
-        due_date: dueDate,
-        total_points: totalPoints || 100,
-        rubric: rubric || [],
-        questions: questions || [],
-        resources: resources || [],
-        status: 'draft',
-        created_by: teacherId,
-      }])
+      .insert([baseInsert])
       .select()
       .single();
 
     if (createError) {
       console.error('Error creating assignment:', createError);
       return ErrorResponse.internalServerError('Failed to create assignment').send(res);
+    }
+
+    // Insert optional related data into their respective tables
+    const createdId = assignment.id;
+
+    // Instructions: can be string or array; store as ordered rows
+    let instructionsArr = [];
+    if (Array.isArray(instructions)) instructionsArr = instructions.filter(Boolean);
+    else if (typeof instructions === 'string') instructionsArr = instructions.split('\n').map(s => s.trim()).filter(Boolean);
+    if (instructionsArr.length > 0) {
+      const rows = instructionsArr.map((text, idx) => ({ assignment_id: createdId, position: idx + 1, text }));
+      const { error: instrError } = await supabase.from('assignment_instructions').insert(rows);
+      if (instrError) console.error('Error inserting assignment_instructions:', instrError);
+    }
+
+    // Requirements (similar handling if provided)
+    let requirementsArr = [];
+    if (Array.isArray(requirements)) requirementsArr = requirements.filter(Boolean);
+    else if (typeof requirements === 'string') requirementsArr = requirements.split('\n').map(s => s.trim()).filter(Boolean);
+    if (requirementsArr.length > 0) {
+      const rows = requirementsArr.map((text, idx) => ({ assignment_id: createdId, position: idx + 1, text }));
+      const { error: reqError } = await supabase.from('assignment_requirements').insert(rows);
+      if (reqError) console.error('Error inserting assignment_requirements:', reqError);
+    }
+
+    // Resources (name, optional type/url)
+    if (Array.isArray(resources) && resources.length > 0) {
+      const rows = resources.map((r) => {
+        const name = r?.name || (typeof r === 'string' ? r : 'Resource');
+        const value = r?.value || '';
+        const isUrl = typeof value === 'string' && /^(https?:)?\/\//i.test(value);
+        return {
+          assignment_id: createdId,
+          name,
+          type: r?.type || (isUrl ? 'link' : 'text'),
+          url: isUrl ? value : null,
+        };
+      });
+      const { error: resError } = await supabase.from('assignment_resources').insert(rows);
+      if (resError) console.error('Error inserting assignment_resources:', resError);
+    }
+
+    // Rubric items (criteria, points)
+    if (Array.isArray(rubric) && rubric.length > 0) {
+      const rows = rubric.map((item) => ({
+        assignment_id: createdId,
+        criteria: item?.criteria || 'Criteria',
+        points: Number(item?.points) || 0,
+      }));
+      const { error: rubError } = await supabase.from('assignment_rubric_items').insert(rows);
+      if (rubError) console.error('Error inserting assignment_rubric_items:', rubError);
+    }
+
+    // Questions and options (for MCQ)
+    if (Array.isArray(questions) && questions.length > 0) {
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i] || {};
+        let qType = q.type || 'short-answer';
+        if (qType === 'text') {
+          qType = 'short-answer';
+        }
+        const qText = q.question || q.prompt || '';
+        const qPoints = Number(q.points) || 0;
+        let question = { assignment_id: createdId, position: i + 1, type: qType, question: qText, points: qPoints }
+        console.log('Question:', question);
+        const { data: qRow, error: qError } = await supabase
+          .from('assignment_questions')
+          .insert([question])
+          .select()
+          .single();
+        if (qError) {
+          console.error('Error inserting assignment_question:', qError);
+          continue;
+        }
+
+        // For MCQ, insert options
+        if (qType === 'multiple-choice' && Array.isArray(q.options)) {
+          const options = q.options;
+          const correct = q.answer; // can be value or key
+          const keyFromIndex = (idx) => String.fromCharCode('A'.charCodeAt(0) + idx);
+
+          const rows = options.map((opt, idx) => ({
+            question_id: qRow.id,
+            option_key: keyFromIndex(idx),
+            text: typeof opt === 'string' ? opt : (opt?.text || ''),
+            is_correct: (() => {
+              if (typeof correct === 'number') return idx === correct;
+              if (typeof correct === 'string') {
+                // match by option text or key
+                return correct === options[idx] || correct.toUpperCase() === keyFromIndex(idx);
+              }
+              return false;
+            })()
+          }));
+          const { error: optError } = await supabase.from('assignment_question_options').insert(rows);
+          if (optError) console.error('Error inserting assignment_question_options:', optError);
+        }
+      }
     }
 
     res.status(201).json({

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import authService from '../../services/authService'
+import './SettingsView.css'
 
 function SettingsView({ teacherProfile: initialProfile }) {
   const [profileData, setProfileData] = useState({

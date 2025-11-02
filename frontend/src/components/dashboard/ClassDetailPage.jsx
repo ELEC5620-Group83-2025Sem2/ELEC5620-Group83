@@ -1,7 +1,30 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import studentApi from '../../services/studentApi'
+import './ClassDetailPage.css'
 
 function ClassDetailPage({ classData, onBack }) {
   const [activeSection, setActiveSection] = useState('overview')
+  const [modules, setModules] = useState([])
+  const [loadingModules, setLoadingModules] = useState(false)
+
+  const fetchModules = async () => {
+    if (!classData?.id) return
+    setLoadingModules(true)
+    try {
+      const res = await studentApi.getClassModules(classData.id)
+      setModules(res.modules || [])
+    } catch (e) {
+      console.error('Failed to load modules', e)
+    } finally {
+      setLoadingModules(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeSection === 'materials') {
+      fetchModules()
+    }
+  }, [activeSection, classData?.id])
 
   if (!classData) {
     return (
@@ -35,7 +58,7 @@ function ClassDetailPage({ classData, onBack }) {
           <div className="class-detail-stats-row">
             <div className="stat-box">
               <span className="stat-label">Grade</span>
-              <span className="stat-value-large" style={{ color: classData.color }}>{classData.grade}</span>
+              <span className="stat-value-large" style={{ color: classData.color }}>{classData.studentAvgGrade}</span>
             </div>
             <div className="stat-box">
               <span className="stat-label">Progress</span>
@@ -43,7 +66,7 @@ function ClassDetailPage({ classData, onBack }) {
             </div>
             <div className="stat-box">
               <span className="stat-label">Assignments</span>
-              <span className="stat-value-large" style={{ color: classData.color }}>{classData.assignments}</span>
+              <span className="stat-value-large" style={{ color: classData.color }}>{classData.upcomingAssignments}</span>
             </div>
           </div>
         </div>
@@ -67,7 +90,7 @@ function ClassDetailPage({ classData, onBack }) {
           className={`detail-tab ${activeSection === 'materials' ? 'active' : ''}`}
           onClick={() => setActiveSection('materials')}
         >
-          Materials
+          Modules
         </button>
         <button 
           className={`detail-tab ${activeSection === 'schedule' ? 'active' : ''}`}
@@ -177,19 +200,62 @@ function ClassDetailPage({ classData, onBack }) {
         {activeSection === 'materials' && (
           <div className="materials-section">
             <div className="detail-card">
-              <h2>Course Materials</h2>
-              <div className="materials-list">
-                {classData.materials?.map((material, index) => (
-                  <div key={index} className="material-item">
-                    <span className="material-icon">{material.type === 'pdf' ? '📄' : material.type === 'video' ? '🎥' : '📎'}</span>
-                    <div className="material-info">
-                      <span className="material-name">{material.name}</span>
-                      <span className="material-meta">{material.size} • Uploaded {material.uploadDate}</span>
+              <h2>📚 Course Modules</h2>
+              {loadingModules ? (
+                <div className="modules-loading">Loading modules...</div>
+              ) : (
+                <div className="modules-container">
+                  {modules.length === 0 && (
+                    <div className="modules-empty-state">
+                      <div className="modules-empty-icon">📦</div>
+                      <p>No modules available yet</p>
                     </div>
-                    <button className="btn-download">Download</button>
-                  </div>
-                ))}
-              </div>
+                  )}
+                  {modules.map(mod => (
+                    <div key={mod.id} className="student-module-card">
+                      <div className="student-module-header">
+                        <div className="student-module-title">{mod.title}</div>
+                        {mod.description_richtext && (
+                          <div className="student-module-description">{mod.description_richtext}</div>
+                        )}
+                      </div>
+                      <div className="student-module-content">
+                        {(mod.items || []).length === 0 && (
+                          <div className="student-module-empty">No items in this module</div>
+                        )}
+                        {(mod.items || []).map(it => {
+                          const itemIcon = it.item_type === 'link' ? '🔗' : it.item_type === 'file' ? '📄' : '📝';
+                          return (
+                            <div key={it.id} className="student-module-item">
+                              <div className="student-module-item-header">
+                                <span className="student-module-item-icon">{itemIcon}</span>
+                                <div className="student-module-item-title">{it.title}</div>
+                                <span className={`student-module-item-type ${it.item_type}`}>{it.item_type}</span>
+                              </div>
+                              {it.description && (
+                                <div className="student-module-item-description">{it.description}</div>
+                              )}
+                              {it.item_type === 'link' && it.link_url && (
+                                <a href={it.link_url} target="_blank" rel="noreferrer" className="student-module-item-link">
+                                  {it.link_url}
+                                </a>
+                              )}
+                              {it.item_type === 'rich_text' && it.content_richtext && (
+                                <div className="student-module-item-content">{it.content_richtext}</div>
+                              )}
+                              {it.item_type === 'file' && it.file_public_url && (
+                                <a className="btn-download" href={it.file_public_url} target="_blank" rel="noreferrer">
+                                  Download File
+                                </a>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

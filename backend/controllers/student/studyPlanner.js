@@ -9,7 +9,10 @@ const __dirname = path.dirname(__filename);
 
 // OpenAI configuration
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL 
+  || process.env.OPENAI_URL 
+  || process.env.VITE_OPENAI_BASE_URL 
+  || 'https://api.zmon.me/v1';
 
 /**
  * UC2: Personalized Study Plan Generation
@@ -59,6 +62,7 @@ export const generateStudyPlan = async (req, res) => {
       .select(`
         id,
         grade,
+        submitted_at,
         assignments (
           id,
           title,
@@ -70,7 +74,7 @@ export const generateStudyPlan = async (req, res) => {
       `)
       .eq('student_id', studentId)
       .not('grade', 'is', null)
-      .order('created_at', { ascending: false })
+      .order('submitted_at', { ascending: false })
       .limit(20);
 
     if (submissionsError) {
@@ -84,7 +88,7 @@ export const generateStudyPlan = async (req, res) => {
         id,
         title,
         due_date,
-        points_possible,
+        total_points,
         classes (
           name
         )
@@ -138,7 +142,7 @@ export const generateStudyPlan = async (req, res) => {
             subject: extractSubjectFromClassName(assignment.classes.name),
             title: assignment.title,
             due_date: assignment.due_date,
-            weight: assignment.points_possible || 100
+            weight: assignment.total_points || 100
           });
         }
       });
@@ -222,7 +226,7 @@ Please return ONLY the JSON array following the format specified in the instruct
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -239,7 +243,8 @@ Please return ONLY the JSON array following the format specified in the instruct
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.statusText}`);
+        // Gracefully handle non-2xx without noisy error logs; fallback handled below
+        throw new Error(`Service unavailable: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -272,15 +277,15 @@ Please return ONLY the JSON array following the format specified in the instruct
       });
 
     } catch (apiError) {
-      console.error('❌ OpenAI API error:', apiError.message);
+      console.warn('OpenAI 不可用，已自动降级为本地数据：', apiError?.message || apiError);
       console.log('⚠️ Falling back to mock data');
       
       // Fallback to mock data if API fails
       return res.json({
         study_plan: generateMockStudyPlan(subjects, performanceData, upcomingData),
         mock: true,
-        error: 'AI service unavailable, using fallback study plan',
-        message: apiError.message,
+        error: 'ai_service_unavailable',
+        message: apiError?.message || 'OpenAI unavailable',
         used_preferences: preferences
       });
     }

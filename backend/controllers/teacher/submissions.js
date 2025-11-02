@@ -15,7 +15,7 @@ export const getAssignmentSubmissions = async (req, res) => {
     // Get assignment and verify access
     const { data: assignment, error: assignError } = await supabase
       .from('assignments')
-      .select('class_id, title, total_points')
+      .select('class_id, title, total_points, description, submission_type')
       .eq('id', assignmentId)
       .single();
 
@@ -34,6 +34,13 @@ export const getAssignmentSubmissions = async (req, res) => {
     if (!access) {
       return ErrorResponse.forbidden('You do not have access to this assignment').send(res);
     }
+
+    // Get rubric items
+    const { data: rubricItems } = await supabase
+      .from('assignment_rubric_items')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .order('created_at', { ascending: true });
 
     // Build query for submissions
     let query = supabase
@@ -87,7 +94,15 @@ export const getAssignmentSubmissions = async (req, res) => {
     return res.json({
       data: submissionsWithAnswers, // For compatibility with frontend expecting .data
       submissions: submissionsWithAnswers, // Also include direct submissions key
-      total: submissionsWithAnswers.length
+      total: submissionsWithAnswers.length,
+      assignment: {
+        id: assignmentId,
+        title: assignment.title,
+        description: assignment.description,
+        total_points: assignment.total_points,
+        submission_type: assignment.submission_type,
+        rubric: rubricItems || []
+      }
     });
 
   } catch (err) {
@@ -193,7 +208,7 @@ export const gradeSubmission = async (req, res) => {
         *,
         assignments:assignment_id (
           class_id,
-          points_possible
+          total_points
         )
       `)
       .eq('id', submissionId)
@@ -215,10 +230,11 @@ export const gradeSubmission = async (req, res) => {
     }
 
     // Validate grade
+    const maxPoints = submission.assignments.total_points || 100;
     if (grade !== undefined && grade !== null) {
-      if (grade < 0 || grade > submission.assignments.total_points) {
+      if (grade < 0 || grade > maxPoints) {
         return ErrorResponse.badRequest(
-          `Grade must be between 0 and ${submission.assignments.total_points}`
+          `Grade must be between 0 and ${maxPoints}`
         ).send(res);
       }
     }
