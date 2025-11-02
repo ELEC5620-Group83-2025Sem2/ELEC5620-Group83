@@ -1,4 +1,5 @@
 import authService from './authService.js'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
 // Use relative API path; base URL is handled by authService (API_BASE_URL)
 const API_URL = '/teacher'
@@ -10,8 +11,92 @@ class TeacherAPI {
     return response
   }
 
+  // Modules
+  async getModules(classId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/classes/${classId}/modules`)
+    return response
+  }
+
+  async createModule(classId, payload) {
+    const response = await authService.authenticatedRequest(`${API_URL}/classes/${classId}/modules`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+    return response
+  }
+
+  async updateModule(moduleId, payload) {
+    const response = await authService.authenticatedRequest(`${API_URL}/modules/${moduleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+    return response
+  }
+
+  async deleteModule(moduleId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/modules/${moduleId}`, {
+      method: 'DELETE'
+    })
+    return response
+  }
+
+  async createModuleItem(moduleId, payload) {
+    const response = await authService.authenticatedRequest(`${API_URL}/modules/${moduleId}/items`, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    })
+    return response
+  }
+
+  async updateModuleItem(moduleId, itemId, payload) {
+    const response = await authService.authenticatedRequest(`${API_URL}/modules/${moduleId}/items/${itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
+    return response
+  }
+
+  async deleteModuleItem(moduleId, itemId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/modules/${moduleId}/items/${itemId}`, {
+      method: 'DELETE'
+    })
+    return response
+  }
+
+  // Use direct fetch for multipart upload to avoid default JSON headers
+  async uploadModuleFile(moduleId, itemId, file) {
+    const token = authService.getAccessToken()
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await fetch(`${API_BASE_URL}${API_URL}/modules/${moduleId}/items/${itemId}/file`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      throw new Error(data.error || 'Upload failed')
+    }
+    return data
+  }
+
+  async summarizeModuleItem(moduleId, itemId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/modules/${moduleId}/items/${itemId}/summarize`, {
+      method: 'POST'
+    })
+    return response
+  }
+
   async getClassById(classId) {
     const response = await authService.authenticatedRequest(`${API_URL}/classes/${classId}`)
+    return response
+  }
+
+  async getClassStudents(classId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/classes/${classId}/students`)
     return response
   }
 
@@ -103,6 +188,11 @@ class TeacherAPI {
   // Students
   async getStudents() {
     const response = await authService.authenticatedRequest(`${API_URL}/students`)
+    return response
+  }
+
+  async getAllStudents() {
+    const response = await authService.authenticatedRequest(`${API_URL}/students/all-students`)
     return response
   }
 

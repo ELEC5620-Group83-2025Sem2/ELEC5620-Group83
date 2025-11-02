@@ -1,18 +1,21 @@
 import { getOpenAIClient } from '../clients/openaiClient.js';
 import { getSupabaseClient } from '../clients/supabaseClient.js';
 import { ErrorResponse } from '../utils/errorResponse.js';
+import { sendWeeklyReportEmail } from '../utils/emailService.js';
 import { readFileSync } from 'fs';
 
 /**
  * Generate weekly report for a student
  * POST /api/student/weekly-report OR POST /api/ai-agent/weekly-report
- * Body: { student_id?: uuid, report_week_start: date, report_week_end: date, model?: string }
+ * Body: { student_id?: uuid, report_week_start: date, report_week_end: date, model?: string, email?: string, send_email?: boolean }
  * 
  * For student endpoint: student_id is optional (uses req.user.id)
  * For ai-agent endpoint: student_id is required
+ * 
+ * If send_email is true and email is provided, will send the report via email
  */
 export const createWeeklyReport = async (req, res) => {
-  const { student_id, report_week_start, report_week_end, model = 'gpt-5' } = req.body;
+  const { student_id, report_week_start, report_week_end, model = 'gpt-5', email, send_email = false } = req.body;
 
   // Validation
   if (!student_id) {
@@ -153,11 +156,43 @@ export const createWeeklyReport = async (req, res) => {
       ).send(res);
     }
 
+    // Send email if requested
+    let emailResult = null;
+    if (send_email && email) {
+      try {
+        const studentName = studentData.profile.name || 
+          `${studentData.profile.first_name || ''} ${studentData.profile.last_name || ''}`.trim() || 
+          'Student';
+        
+        emailResult = await sendWeeklyReportEmail({
+          to: email,
+          subject: `Weekly Academic Report - ${report_week_start} to ${report_week_end}`,
+          weeklyReport: weeklyReport,
+          recipientName: studentName,
+          recipientType: 'student'
+        });
+        
+        console.log('Weekly report email sent:', emailResult);
+      } catch (emailError) {
+        console.error('Error sending weekly report email:', emailError);
+        // Don't fail the entire request if email fails
+        // Just log the error and continue
+        emailResult = {
+          success: false,
+          error: emailError.message
+        };
+      }
+    }
+
     res.status(200).json({
       success: true,
-      message: 'Weekly report generated successfully',
+      message: send_email && email 
+        ? (emailResult?.success ? 'Weekly report generated and emailed successfully' : 'Weekly report generated, but email failed to send')
+        : 'Weekly report generated successfully',
       data: {
-        weekly_report: weeklyReport
+        weekly_report: weeklyReport,
+        email_sent: emailResult?.success || false,
+        email_details: emailResult || null
       }
     });
   } catch (error) {

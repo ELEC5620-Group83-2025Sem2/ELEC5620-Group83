@@ -14,6 +14,8 @@ import WeeklyReportView from '../components/dashboard/WeeklyReportView'
 import ClassDetailPage from '../components/dashboard/ClassDetailPage'
 import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
 import HSCSubjectRecommendation from '../components/dashboard/HSCSubjectRecommendation'
+import ChatView from '../components/dashboard/ChatView'
+import KnowledgeGaps from '../components/dashboard/KnowledgeGaps'
 import './StudentDashboard.css'
 
 function StudentDashboard() {
@@ -23,7 +25,7 @@ function StudentDashboard() {
   // Extract tab from URL path
   const pathParts = location.pathname.split('/')
   const urlTab = pathParts[pathParts.length - 1] // Get last part of path
-  const validTabs = ['dashboard', 'classes', 'grades', 'assignments', 'study-planner', 'career', 'hsc-subjects', 'hsc-subjects-recommendation', 'weekly-report', 'settings']
+  const validTabs = ['dashboard', 'classes', 'grades', 'assignments', 'study-planner', 'career', 'hsc-subjects', 'hsc-subjects-recommendation', 'weekly-report', 'chat', 'knowledge-gaps', 'settings']
   const initialTab = validTabs.includes(urlTab) ? urlTab : 'dashboard'
   
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -44,6 +46,10 @@ function StudentDashboard() {
   const [recentGrades, setRecentGrades] = useState([])
   const [studyPlanSuggestions, setStudyPlanSuggestions] = useState([])
   const [careerRecommendations, setCareerRecommendations] = useState([])
+  
+  // Loading states
+  const [loadingClasses, setLoadingClasses] = useState(false)
+  const [loadingAssignments, setLoadingAssignments] = useState(false)
   
   // Get initial user data from localStorage
   const getInitialUserData = () => {
@@ -85,6 +91,7 @@ function StudentDashboard() {
 
   // Function to fetch student classes - memoized with useCallback
   const fetchStudentClasses = useCallback(async () => {
+    setLoadingClasses(true)
     try {
       // Invoke backend API /api/student/classes
       // JWT token is automatically passed via authenticatedRequest in studentApi
@@ -94,6 +101,8 @@ function StudentDashboard() {
       console.error('Failed to fetch student classes:', error)
       // Keep empty array on error
       setEnrolledClasses([])
+    } finally {
+      setLoadingClasses(false)
     }
   }, [])
 
@@ -111,12 +120,19 @@ function StudentDashboard() {
     }
   }, [])
 
-  // Fetch classes when classes tab is clicked/activated
-  useEffect(() => {
-    if (activeTab === 'classes') {
-      fetchStudentClasses()
+  // Function to fetch student grades - memoized with useCallback
+  const fetchStudentGrades = useCallback(async () => {
+    try {
+      // Invoke backend API /api/student/grades
+      // JWT token is automatically passed via authenticatedRequest in studentApi
+      const response = await studentApi.getGrades()
+      setRecentGrades(response.grades || [])
+    } catch (error) {
+      console.error('Failed to fetch student grades:', error)
+      // Keep empty array on error
+      setRecentGrades([])
     }
-  }, [activeTab, fetchStudentClasses])
+  }, [])
 
   // Fetch assignments when assignments tab is clicked/activated
   useEffect(() => {
@@ -124,6 +140,12 @@ function StudentDashboard() {
       fetchStudentAssignments()
     }
   }, [activeTab, fetchStudentAssignments])
+ 
+  // Prefetch classes and assignments on first load so Dashboard has data
+  useEffect(() => {
+    fetchStudentClasses()
+    fetchStudentAssignments()
+  }, [fetchStudentClasses, fetchStudentAssignments])
   
   // Sync activeTab with URL changes
   useEffect(() => {
@@ -149,6 +171,9 @@ function StudentDashboard() {
   // Fetch notifications on component mount
   useEffect(() => {
     fetchNotifications()
+    fetchStudentAssignments()
+    fetchStudentClasses()
+    fetchStudentGrades()
   }, [])
 
   // Fetch notifications when popup opens
@@ -207,6 +232,8 @@ function StudentDashboard() {
 
   const handleBackToAssignments = () => {
     setSelectedAssignmentId(null)
+    setActiveTab('assignments')
+    navigate('/student/assignments', { replace: true })
   }
 
   const handleTabChange = (tab) => {
@@ -226,13 +253,12 @@ function StudentDashboard() {
     // Show Class Detail Page if a class is selected
     if (selectedClassId) {
       const classData = enrolledClasses.find(c => c.id === selectedClassId)
-      return <ClassDetailPage classData={classData} onBack={handleBackToClasses} />
+      return <ClassDetailPage classData={classData} onBack={handleBackToClasses} onAssignmentClick={handleAssignmentClick} />
     }
 
     // Show Assignment Detail Page if an assignment is selected
     if (selectedAssignmentId) {
-      const assignmentData = upcomingAssignments.find(a => a.id === selectedAssignmentId)
-      return <AssignmentDetailPage assignmentData={assignmentData} onBack={handleBackToAssignments} />
+      return <AssignmentDetailPage assignmentId={selectedAssignmentId} onBack={handleBackToAssignments} />
     }
 
     // Otherwise show the normal tab content
@@ -246,10 +272,11 @@ function StudentDashboard() {
             upcomingAssignments={upcomingAssignments}
             recentGrades={recentGrades}
             onTabChange={handleTabChange}
+            loading={loading || loadingClasses || loadingAssignments}
           />
         )
       case 'classes':
-        return <ClassesView enrolledClasses={enrolledClasses} onClassClick={handleClassClick} />
+        return <ClassesView enrolledClasses={enrolledClasses} onClassClick={handleClassClick} loading={loadingClasses} />
       case 'grades':
         return <GradesView enrolledClasses={enrolledClasses} recentGrades={recentGrades} />
       case 'assignments':
@@ -264,6 +291,10 @@ function StudentDashboard() {
         return <HSCSubjectsView />
       case 'weekly-report':
         return <WeeklyReportView />
+      case 'chat':
+        return <ChatView />
+      case 'knowledge-gaps':
+        return <KnowledgeGaps />
       case 'settings':
         return <SettingsView studentData={studentData} userProfile={userProfile} onProfileUpdate={setUserProfile} />
       default:
@@ -290,6 +321,8 @@ function StudentDashboard() {
       'hsc-subjects-recommendation': 'HSC Subject Recommendation',
       'hsc-subjects': 'Browse HSC Subjects',
       'weekly-report': 'Weekly Report',
+      chat: 'AI Chat',
+      'knowledge-gaps': 'Knowledge Gaps',
       settings: 'Settings'
     }
     return titles[activeTab] || 'Dashboard'
@@ -370,6 +403,20 @@ function StudentDashboard() {
           >
             <span className="nav-icon">📊</span>
             <span className="nav-label">Weekly Report</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
+            onClick={() => handleTabChange('chat')}
+          >
+            <span className="nav-icon">💬</span>
+            <span className="nav-label">AI Chat</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'knowledge-gaps' ? 'active' : ''}`}
+            onClick={() => handleTabChange('knowledge-gaps')}
+          >
+            <span className="nav-icon">🔍</span>
+            <span className="nav-label">Knowledge Gaps</span>
           </button>
         </nav>
 

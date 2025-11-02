@@ -1,158 +1,156 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import teacherApi from '../../services/teacherApi'
 import './StudentGradesView.css'
 
-function StudentGradesView() {
-  const { studentId } = useParams()
+function StudentGradesView({ studentId, onBack }) {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [student, setStudent] = useState(null)
-  const [stats, setStats] = useState(null)
+  const [stats, setStats] = useState({ overallGrade: null, gradedAssignments: 0, totalAssignments: 0, submittedCount: 0 })
   const [grades, setGrades] = useState([])
   const [selectedClass, setSelectedClass] = useState('all')
   const [classes, setClasses] = useState([])
 
   useEffect(() => {
+    if (!studentId) {
+      setLoading(false)
+      return
+    }
+    
+    const fetchStudentGrades = async () => {
+      try {
+        setLoading(true)
+        const res = await teacherApi.getStudentGrades(studentId, selectedClass)
+        setStudent(res.student)
+        setStats(res.stats || { overallGrade: null, gradedAssignments: 0, totalAssignments: 0, submittedCount: 0 })
+        setGrades(res.grades || [])
+
+        const uniqueClasses = [...new Map(
+          (res.grades || []).map(g => [g.classCode, { code: g.classCode, name: g.className, color: g.classColor }])
+        ).values()]
+        setClasses(uniqueClasses)
+      } catch (e) {
+        console.error('Failed to fetch student grades:', e)
+        alert('Failed to fetch student grades')
+      } finally {
+        setLoading(false)
+      }
+    }
     fetchStudentGrades()
   }, [studentId, selectedClass])
 
-  const fetchStudentGrades = async () => {
-    try {
-      setLoading(true)
-      const response = await teacherApi.getStudentGrades(studentId, selectedClass)
-      setStudent(response.student)
-      setStats(response.stats)
-      setGrades(response.grades)
-      
-      // Extract unique classes from grades
-      const uniqueClasses = [...new Map(
-        response.grades.map(g => [g.classCode, { code: g.classCode, name: g.className, color: g.classColor }])
-      ).values()]
-      setClasses(uniqueClasses)
-    } catch (error) {
-      console.error('Failed to fetch student grades:', error)
-      alert('Failed to fetch student grades')
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const getStatusBadge = (status) => {
-    const statusMap = {
-      submitted: { label: 'Submitted', color: '#3b82f6' },
-      graded: { label: 'Graded', color: '#10b981' },
-      not_submitted: { label: 'Not Submitted', color: '#ef4444' },
-      late: { label: 'Late', color: '#f59e0b' }
+    const map = {
+      submitted:   { label: 'Submitted',    color: '#3b82f6' },
+      graded:      { label: 'Graded',       color: '#10b981' },
+      not_submitted:{ label: 'Not Submitted', color: '#ef4444' },
+      late:        { label: 'Late',         color: '#f59e0b' }
     }
-    const statusInfo = statusMap[status] || statusMap.not_submitted
-    return (
-      <span className="status-badge" style={{ background: statusInfo.color }}>
-        {statusInfo.label}
-      </span>
-    )
+    const s = map[status] || map.not_submitted
+    return <span className="sgvBadge" style={{ background: s.color }}>{s.label}</span>
   }
 
-  const getGradeColor = (percentage) => {
-    if (!percentage) return '#9ca3af'
-    if (percentage >= 90) return '#10b981'
-    if (percentage >= 80) return '#3b82f6'
-    if (percentage >= 70) return '#f59e0b'
-    if (percentage >= 60) return '#ef4444'
+  const getGradeColor = (p) => {
+    if (p == null) return '#9ca3af'
+    if (p >= 90) return '#10b981'
+    if (p >= 80) return '#3b82f6'
+    if (p >= 70) return '#f59e0b'
+    if (p >= 60) return '#ef4444'
     return '#ef4444'
   }
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
-        <p>Loading...</p>
+      <div className="sgv__center">
+        <div className="sgv__spinner" aria-hidden>⏳</div>
+        <p>Loading…</p>
       </div>
     )
   }
 
   if (!student) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
+      <div className="sgv__center">
+        <div className="sgv__spinner" aria-hidden>❌</div>
         <p>Student not found</p>
-        <button className="btn-secondary" onClick={() => navigate('/teacher/students')}>
-          返回学生列表
+        <button className="sgvBtn sgvBtn--secondary" onClick={() => navigate('/teacher/students')}>
+          Return to students
         </button>
       </div>
     )
   }
 
   return (
-    <div className="student-grades-view">
-      {/* Header */}
-      <div className="grades-header">
-        <button className="btn-back" onClick={() => navigate('/teacher/students')}>
+    <div className="student-grades-view sgv">
+      {/* Keep this container width 100% so the parent layout (with sidebar) remains intact */}
+      <header className="sgv__header">
+        <button className="sgvBtn sgvBtn--ghost" onClick={() => {
+          if (onBack) {
+            onBack()
+          } else {
+            navigate('/teacher/students')
+          }
+        }}>
           ← Back to Students
         </button>
-        
-        <div className="student-info-card">
-          <div className="student-avatar">
-            {student.avatar ? (
-              <img src={student.avatar} alt={`${student.firstName} ${student.lastName}`} />
-            ) : (
-              <div className="avatar-placeholder">
-                {(student.firstName?.[0] || student.lastName?.[0] || '?').toUpperCase()}
-              </div>
-            )}
+
+        <div className="sgvHero">
+          <div className="sgvHero__avatar">
+            {student.avatar
+              ? <img src={student.avatar} alt={`${student.firstName || ''} ${student.lastName || ''}`} />
+              : <div className="sgvHero__placeholder">
+                  {(student.firstName?.[0] || student.lastName?.[0] || '?').toUpperCase()}
+                </div>
+            }
           </div>
-          <div className="student-info-details">
-            <h2>{student.firstName} {student.lastName}</h2>
-            <p>{student.email}</p>
+          <div className="sgvHero__info">
+            <h2 className="sgvHero__name">{student.firstName} {student.lastName}</h2>
+            <p className="sgvHero__email">{student.email}</p>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Statistics Cards */}
-      <div className="grades-stats-grid">
-        <div className="stat-card">
+      <section className="sgv__stats">
+        <div className="sgvStat">
           <h3>Overall Grade</h3>
-          <p className="stat-value" style={{ color: getGradeColor(stats.overallGrade) }}>
-            {stats.overallGrade !== null ? `${stats.overallGrade}%` : 'N/A'}
+          <p className="sgvStat__value" style={{ color: getGradeColor(stats.overallGrade) }}>
+            {stats.overallGrade != null ? `${stats.overallGrade}%` : 'N/A'}
           </p>
-          <p className="stat-label">Weighted Average</p>
+          <p className="sgvStat__label">Weighted Average</p>
         </div>
-        
-        <div className="stat-card">
+        <div className="sgvStat">
           <h3>Graded Assignments</h3>
-          <p className="stat-value">{stats.gradedAssignments}/{stats.totalAssignments}</p>
-          <p className="stat-label">
-            {stats.totalAssignments > 0 
-              ? `${Math.round((stats.gradedAssignments / stats.totalAssignments) * 100)}% graded`
-              : 'No assignments'}
+          <p className="sgvStat__value">{stats.gradedAssignments}/{stats.totalAssignments}</p>
+          <p className="sgvStat__label">
+            {stats.totalAssignments > 0 ? `${Math.round((stats.gradedAssignments / stats.totalAssignments) * 100)}% graded` : 'No assignments'}
           </p>
         </div>
-        
-        <div className="stat-card">
+        <div className="sgvStat">
           <h3>Submission Rate</h3>
-          <p className="stat-value">{stats.submittedCount}/{stats.totalAssignments}</p>
-          <p className="stat-label">
-            {stats.totalAssignments > 0 
-              ? `${Math.round((stats.submittedCount / stats.totalAssignments) * 100)}% submitted`
-              : 'No assignments'}
+          <p className="sgvStat__value">{stats.submittedCount}/{stats.totalAssignments}</p>
+          <p className="sgvStat__label">
+            {stats.totalAssignments > 0 ? `${Math.round((stats.submittedCount / stats.totalAssignments) * 100)}% submitted` : 'No assignments'}
           </p>
         </div>
-      </div>
+      </section>
 
-      {/* Filter */}
-      <div className="grades-filter">
-        <label>Filter class:</label>
-        <select value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
+      <section className="sgv__filter">
+        <label htmlFor="classFilter">Filter class:</label>
+        <select
+          id="classFilter"
+          value={selectedClass}
+          onChange={(e) => setSelectedClass(e.target.value)}
+        >
           <option value="all">All classes</option>
           {classes.map(cls => (
             <option key={cls.code} value={cls.code}>{cls.name}</option>
           ))}
         </select>
-      </div>
+      </section>
 
-      {/* Grades Table */}
-      <div className="grades-table-container">
-        <table className="grades-table">
+      <section className="sgv__tableWrap">
+        <table className="sgvTable">
           <thead>
             <tr>
               <th>Assignment</th>
@@ -168,9 +166,7 @@ function StudentGradesView() {
           <tbody>
             {grades.length === 0 ? (
               <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem' }}>
-                  No grade data
-                </td>
+                <td colSpan="8" className="sgvTable__empty">No grade data</td>
               </tr>
             ) : (
               grades.map(grade => (
@@ -178,42 +174,29 @@ function StudentGradesView() {
                   <td>
                     <strong>{grade.assignmentTitle}</strong>
                     {grade.feedback && (
-                      <div className="grade-feedback">
-                        <small>💬 {grade.feedback}</small>
-                      </div>
+                      <div className="sgvFeedback">💬 {grade.feedback}</div>
                     )}
                   </td>
                   <td>
-                    <span 
-                      className="class-badge" 
-                      style={{ background: grade.classColor || '#3b82f6' }}
-                    >
+                    <span className="sgvPill" style={{ background: grade.classColor || '#3b82f6' }}>
                       {grade.classCode}
                     </span>
                   </td>
                   <td>
-                    {grade.dueDate 
+                    {grade.dueDate
                       ? `${new Date(grade.dueDate).toLocaleDateString('en-AU')} ${grade.dueTime || ''}`
                       : 'N/A'}
                   </td>
-                  <td>{grade.totalPoints || 'N/A'}</td>
+                  <td>{grade.totalPoints ?? 'N/A'}</td>
                   <td>
-                    {grade.grade !== null ? (
-                      <strong style={{ color: getGradeColor(grade.percentage) }}>
-                        {grade.grade}
-                      </strong>
-                    ) : (
-                      <span style={{ color: '#9ca3af' }}>-</span>
-                    )}
+                    {grade.grade != null
+                      ? <strong style={{ color: getGradeColor(grade.percentage) }}>{grade.grade}</strong>
+                      : <span className="sgvMuted">-</span>}
                   </td>
                   <td>
-                    {grade.percentage !== null ? (
-                      <span style={{ color: getGradeColor(grade.percentage), fontWeight: 600 }}>
-                        {grade.percentage}%
-                      </span>
-                    ) : (
-                      <span style={{ color: '#9ca3af' }}>-</span>
-                    )}
+                    {grade.percentage != null
+                      ? <span className="sgvPercent" style={{ color: getGradeColor(grade.percentage) }}>{grade.percentage}%</span>
+                      : <span className="sgvMuted">-</span>}
                   </td>
                   <td>{grade.weight ? `${grade.weight}%` : 'N/A'}</td>
                   <td>{getStatusBadge(grade.status)}</td>
@@ -222,10 +205,9 @@ function StudentGradesView() {
             )}
           </tbody>
         </table>
-      </div>
+      </section>
     </div>
   )
 }
 
 export default StudentGradesView
-

@@ -16,7 +16,9 @@ export async function generateWeeklyReport({
   student_id, 
   report_week_start, 
   report_week_end, 
-  model = 'gpt-4.1-nano'
+  model = 'gpt-4.1-nano',
+  send_email,
+  email
 }) {
   try {
     // Use student endpoint if authenticated, otherwise use ai-agent endpoint
@@ -27,10 +29,12 @@ export async function generateWeeklyReport({
       {
         method: 'POST',
         body: JSON.stringify({
-          ...(student_id && { student_id }), // Only include if provided
+          ...(student_id && { student_id }),
           report_week_start,
           report_week_end,
-          model
+          model,
+          ...(typeof send_email !== 'undefined' ? { send_email } : {}),
+          ...(email ? { email } : {})
         })
       }
     );
@@ -43,6 +47,42 @@ export async function generateWeeklyReport({
   } catch (error) {
     console.error('Generate weekly report error:', error);
     throw new Error(error.message || 'Failed to generate weekly report');
+  }
+}
+
+/**
+ * Generate and email weekly report in one call
+ * Returns full API response including email status
+ */
+export async function emailWeeklyReport({ 
+  student_id, 
+  report_week_start, 
+  report_week_end, 
+  model = 'gpt-4.1-nano',
+  email
+}) {
+  try {
+    const endpoint = '/ai-agent/weekly-report';
+
+    const response = await authService.authenticatedRequest(
+      endpoint,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...(student_id && { student_id }),
+          report_week_start,
+          report_week_end,
+          model,
+          send_email: true,
+          ...(email ? { email } : {})
+        })
+      }
+    );
+
+    return response;
+  } catch (error) {
+    console.error('Email weekly report error:', error);
+    throw new Error(error.message || 'Failed to email weekly report');
   }
 }
 
@@ -80,20 +120,20 @@ export function transformWeeklyReport(apiReport) {
   }) || [];
 
   // Transform study_time_summary to studySummary
-  const studyTimeSummary = apiReport.study_time_summary || {};
+  const studyTimeSummaryData = apiReport.study_time_summary || {};
   const studySummary = {
-    totalHours: studyTimeSummary.total_study_hours || 0,
-    averageSession: studyTimeSummary.average_daily_hours || 0,
-    targetHours: (studyTimeSummary.average_daily_hours || 0) * 7, // Estimate target from average daily
-    completionRate: studyTimeSummary.total_study_hours 
-      ? Math.round((studyTimeSummary.total_study_hours / ((studyTimeSummary.average_daily_hours || 1) * 7)) * 100)
+    totalHours: studyTimeSummaryData.total_study_hours || 0,
+    averageSession: studyTimeSummaryData.average_daily_hours || 0,
+    targetHours: (studyTimeSummaryData.average_daily_hours || 0) * 7, // Estimate target from average daily
+    completionRate: studyTimeSummaryData.total_study_hours 
+      ? Math.round((studyTimeSummaryData.total_study_hours / ((studyTimeSummaryData.average_daily_hours || 1) * 7)) * 100)
       : 0,
     recommendation: apiReport.weekly_insight?.recommendation || 'Continue maintaining your study schedule'
   };
 
   // Transform courses to subjects
   const subjects = (apiReport.courses || []).map((course, index) => {
-    const timeBySubject = studyTimeSummary.time_by_subject?.find(
+    const timeBySubject = studyTimeSummaryData.time_by_subject?.find(
       ts => ts.subject === course.course_name
     );
     
@@ -155,6 +195,34 @@ export function transformWeeklyReport(apiReport) {
     percentage: grade.max_score ? Math.round((grade.score / grade.max_score) * 100) : null
   }));
 
+  // Map study time summary to studyTimeSummary for parent view
+  const studyTimeSummary = (studyTimeSummaryData.time_by_subject || []).map(item => ({
+    subject: item.subject,
+    hours: item.hours
+  }));
+
+  // Map assignments for parent view
+  const assignmentsCompletedThisWeek = (apiReport.assignments?.completed_this_week || []).length;
+  
+  // Map overall summary for parent view
+  const overallSummary = {
+    studyHours: studyTimeSummaryData.total_study_hours || 0,
+    assignmentsCompleted: assignmentsCompletedThisWeek,
+    averageGrade: apiReport.summary?.average_score || null,
+    attendance: apiReport.summary?.attendance_rate ? `${apiReport.summary.attendance_rate}%` : null
+  };
+
+  // Map strengths and weaknesses from ai_analysis
+  const strengths = apiReport.ai_analysis?.strengths || [];
+  const weaknesses = apiReport.ai_analysis?.areas_for_improvement || [];
+  const behaviorNotes = apiReport.weekly_insight?.summary || '';
+  const recommendations = [
+    ...(apiReport.weekly_insight?.recommendation ? [apiReport.weekly_insight.recommendation] : []),
+    ...(topFocusAreas.slice(0, 3).map(focus => 
+      typeof focus === 'string' ? focus : focus.recommendation || focus.reason
+    ))
+  ];
+
   return {
     week: `${apiReport.report_week_start} to ${apiReport.report_week_end}`,
     studentName: apiReport.student_name,
@@ -167,6 +235,13 @@ export function transformWeeklyReport(apiReport) {
     gradeHistory,
     generatedAt: apiReport.generated_at || new Date().toISOString(),
     summary: apiReport.summary || {},
+    // Parent-specific fields
+    overallSummary,
+    studyTimeSummary,
+    strengths,
+    weaknesses,
+    behaviorNotes,
+    recommendations,
     // Keep original API response for reference
     _original: apiReport
   };
@@ -174,6 +249,7 @@ export function transformWeeklyReport(apiReport) {
 
 export default {
   generateWeeklyReport,
-  transformWeeklyReport
+  transformWeeklyReport,
+  emailWeeklyReport
 };
 

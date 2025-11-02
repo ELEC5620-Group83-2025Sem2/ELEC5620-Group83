@@ -422,4 +422,153 @@ export const createClass = async (req, res) => {
   }
 };
 
+/**
+ * POST /api/teacher/classes/:id/enroll
+ * Enroll a student in a class
+ */
+export const enrollStudent = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const { id: classId } = req.params;
+    const { studentId } = req.body;
+    const supabase = getSupabaseClient();
+
+    // Validate required fields
+    if (!studentId) {
+      return ErrorResponse.badRequest('Missing required field: studentId').send(res);
+    }
+
+    // Verify teacher has access to this class
+    const { data: access, error: accessError } = await supabase
+      .from('class_teachers')
+      .select('*')
+      .eq('profile_id', teacherId)
+      .eq('class_id', classId)
+      .single();
+
+    if (accessError || !access) {
+      return ErrorResponse.forbidden('You do not have access to this class').send(res);
+    }
+
+    // Verify student profile exists
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', studentId)
+      .single();
+
+    if (profileError || !profile) {
+      return ErrorResponse.notFound('Student not found').send(res);
+    }
+
+    // Verify student has the 'student' role via profile_roles (source of truth)
+    const { data: roleRow, error: roleError } = await supabase
+      .from('profile_roles')
+      .select('role')
+      .eq('profile_id', studentId)
+      .eq('role', 'student')
+      .maybeSingle();
+
+    if (roleError) {
+      console.error('Error verifying student role:', roleError);
+      return ErrorResponse.internalServerError('Failed to verify student role').send(res);
+    }
+
+    if (!roleRow) {
+      return ErrorResponse.badRequest('User is not a student').send(res);
+    }
+
+    // Check if student is already enrolled
+    const { data: existingEnrollment } = await supabase
+      .from('enrollments')
+      .select('*')
+      .eq('class_id', classId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    if (existingEnrollment) {
+      return ErrorResponse.badRequest('Student is already enrolled in this class').send(res);
+    }
+
+    // Enroll the student
+    const { data: enrollment, error: enrollError } = await supabase
+      .from('enrollments')
+      .insert([{
+        class_id: classId,
+        student_id: studentId,
+        enrolled_at: new Date().toISOString()
+      }])
+      .select()
+      .single();
+
+    if (enrollError) {
+      console.error('Error enrolling student:', enrollError);
+      return ErrorResponse.internalServerError('Failed to enroll student').send(res);
+    }
+
+    res.status(201).json({
+      message: 'Student enrolled successfully',
+      enrollment
+    });
+  } catch (err) {
+    console.error('Error in enrollStudent:', err);
+    return ErrorResponse.internalServerError('An error occurred while enrolling student').send(res);
+  }
+};
+
+/**
+ * DELETE /api/teacher/classes/:id/students/:studentId
+ * Remove a student from a class
+ */
+export const removeStudent = async (req, res) => {
+  try {
+    const teacherId = req.user.id;
+    const { id: classId, studentId } = req.params;
+    const supabase = getSupabaseClient();
+
+    // Verify teacher has access to this class
+    const { data: access, error: accessError } = await supabase
+      .from('class_teachers')
+      .select('*')
+      .eq('profile_id', teacherId)
+      .eq('class_id', classId)
+      .single();
+
+    if (accessError || !access) {
+      return ErrorResponse.forbidden('You do not have access to this class').send(res);
+    }
+
+    // Check if student is enrolled
+    const { data: existingEnrollment } = await supabase
+      .from('enrollments')
+      .select('*')
+      .eq('class_id', classId)
+      .eq('student_id', studentId)
+      .maybeSingle();
+
+    if (!existingEnrollment) {
+      return ErrorResponse.notFound('Student is not enrolled in this class').send(res);
+    }
+
+    // Remove the enrollment
+    const { error: deleteError } = await supabase
+      .from('enrollments')
+      .delete()
+      .eq('class_id', classId)
+      .eq('student_id', studentId);
+
+    if (deleteError) {
+      console.error('Error removing student:', deleteError);
+      return ErrorResponse.internalServerError('Failed to remove student').send(res);
+    }
+
+    res.status(200).json({
+      message: 'Student removed successfully'
+    });
+  } catch (err) {
+    console.error('Error in removeStudent:', err);
+    return ErrorResponse.internalServerError('An error occurred while removing student').send(res);
+  }
+};
+
 

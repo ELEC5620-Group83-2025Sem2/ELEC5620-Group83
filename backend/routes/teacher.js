@@ -5,7 +5,9 @@ import {
   getClassDetails, 
   getClassStudents, 
   getClassAnalytics,
-  createClass
+  createClass,
+  enrollStudent,
+  removeStudent
 } from '../controllers/teacher/classes.js';
 import { getOverallAnalytics } from '../controllers/teacher/analytics.js';
 import { 
@@ -20,7 +22,8 @@ import {
   getTeacherStudents, 
   getStudentDetails, 
   updateStudentNotes,
-  getStudentGrades
+  getStudentGrades,
+  getAllStudents
 } from '../controllers/teacher/students.js';
 import { 
   getAnnouncements, 
@@ -42,6 +45,18 @@ import {
   analyzeClassPerformance,
   generateAssignment
 } from '../controllers/teacher/aiFeatures.js';
+import multer from 'multer';
+import {
+  listClassModules,
+  createClassModule,
+  updateModule,
+  deleteModule,
+  createModuleItem,
+  updateModuleItem,
+  deleteModuleItem,
+  uploadModuleItemFile,
+  summarizeModuleItemFile
+} from '../controllers/teacher/modules.js';
 
 const router = express.Router();
 
@@ -74,6 +89,34 @@ router.get('/classes/:id/students', getClassStudents);
 
 // GET /api/teacher/classes/:id/analytics - Get class analytics
 router.get('/classes/:id/analytics', getClassAnalytics);
+
+// POST /api/teacher/classes/:id/enroll - Enroll a student in a class
+router.post('/classes/:id/enroll', enrollStudent);
+
+// DELETE /api/teacher/classes/:id/students/:studentId - Remove a student from a class
+router.delete('/classes/:id/students/:studentId', removeStudent);
+
+// ===================
+// Modules Routes (must come after classes routes but before generic params)
+// ===================
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+// List modules for a class
+router.get('/classes/:classId/modules', listClassModules);
+// Create module for a class
+router.post('/classes/:classId/modules', createClassModule);
+// Update/Delete a module
+router.put('/modules/:moduleId', updateModule);
+router.delete('/modules/:moduleId', deleteModule);
+// Items CRUD
+router.post('/modules/:moduleId/items', createModuleItem);
+router.put('/modules/:moduleId/items/:itemId', updateModuleItem);
+router.delete('/modules/:moduleId/items/:itemId', deleteModuleItem);
+// File upload for item
+router.post('/modules/:moduleId/items/:itemId/file', upload.single('file'), uploadModuleItemFile);
+// AI summarize a PDF file item
+router.post('/modules/:moduleId/items/:itemId/summarize', summarizeModuleItemFile);
 
 // ===================
 // Assignments Routes
@@ -110,6 +153,9 @@ router.delete('/assignments/:id', deleteAssignment);
 // ===================
 // Students Routes
 // ===================
+
+// GET /api/teacher/students/all-students - Get all students in system (must be before /:id)
+router.get('/students/all-students', getAllStudents);
 
 // GET /api/teacher/students - Get all students
 router.get('/students', getTeacherStudents);

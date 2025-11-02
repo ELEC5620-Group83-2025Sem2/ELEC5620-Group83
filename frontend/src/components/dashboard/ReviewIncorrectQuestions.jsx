@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import studentApi from '../../services/studentApi'
 
 function ReviewIncorrectQuestions() {
   const [questions, setQuestions] = useState([])
@@ -15,17 +16,41 @@ function ReviewIncorrectQuestions() {
     mastered: 0
   })
   const [selectedQuestion, setSelectedQuestion] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    // TODO: Load incorrect questions from Supabase API
-    setQuestions([])
-    setReviewStats({
-      total: 0,
-      dueForReview: 0,
-      masteryRate: 0,
-      mastered: 0
-    })
+    loadReviewQuestions()
+    loadReviewStats()
   }, [])
+
+  const loadReviewQuestions = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const response = await studentApi.getReviewQuestions()
+      setQuestions(response.questions || [])
+    } catch (err) {
+      console.error('Failed to load review questions:', err)
+      setError('Failed to load review questions. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadReviewStats = async () => {
+    try {
+      const response = await studentApi.getReviewStats()
+      setReviewStats({
+        total: response.total || 0,
+        dueForReview: response.dueForReview || 0,
+        masteryRate: response.masteryRate || 0,
+        mastered: response.mastered || 0
+      })
+    } catch (err) {
+      console.error('Failed to load review stats:', err)
+    }
+  }
 
   // Get unique topics, subjects, and mastery levels for filters
   const topics = useMemo(() => {
@@ -149,7 +174,6 @@ function ReviewIncorrectQuestions() {
   if (selectedQuestion) {
     return (
       <div className="question-detail-modal">
-        <div className="modal-overlay" onClick={handleCloseQuestionDetail}></div>
         <div className="modal-content">
           <div className="modal-header">
             <h2>Question Review</h2>
@@ -331,19 +355,28 @@ function ReviewIncorrectQuestions() {
       {/* Header */}
       <div className="review-header">
         <div className="header-content">
-          <h2>📚 Review Incorrect Questions</h2>
-          <p>Practice your mistakes to improve your understanding</p>
+          <h2>📚 Review Practice Questions</h2>
+          <p>Review and practice your generated questions</p>
         </div>
         <div className="header-actions">
           <button 
             className="btn-start-review"
             onClick={handleStartReview}
-            disabled={filteredQuestions.length === 0}
+            disabled={filteredQuestions.length === 0 || loading}
           >
-            🎯 Start Review Session
+            {loading ? '⏳ Loading...' : '🎯 Start Review Session'}
           </button>
         </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="alert alert-error">
+          <span className="alert-icon">⚠️</span>
+          <span>{error}</span>
+          <button className="alert-close" onClick={() => setError(null)}>×</button>
+        </div>
+      )}
 
       {/* Stats Overview */}
       <div className="stats-overview">
@@ -420,19 +453,27 @@ function ReviewIncorrectQuestions() {
       {/* Questions List */}
       <div className="questions-section">
         <h3>Questions ({filteredQuestions.length})</h3>
-        {filteredQuestions.length === 0 ? (
+        {loading ? (
+          <div className="loading-message">
+            <p>Loading practice questions...</p>
+          </div>
+        ) : filteredQuestions.length === 0 ? (
           <div className="no-questions">
-            <p>No questions match your current filters.</p>
-            <button 
-              className="btn-clear-filters"
-              onClick={() => {
-                setSelectedTopic('All')
-                setSelectedSubject('All')
-                setSelectedMasteryLevel('All')
-              }}
-            >
-              Clear Filters
-            </button>
+            <p>{questions.length === 0 
+              ? 'No practice questions yet. Generate some first!' 
+              : 'No questions match your current filters.'}</p>
+            {questions.length > 0 && (
+              <button 
+                className="btn-clear-filters"
+                onClick={() => {
+                  setSelectedTopic('All')
+                  setSelectedSubject('All')
+                  setSelectedMasteryLevel('All')
+                }}
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="questions-list">

@@ -30,7 +30,7 @@ Return ONLY valid JSON with the following structure:
   "total_points": 100,
   "questions": [
     {
-      "type": "multiple_choice",
+      "type": "multiple-choice",
       "question": "string",
       "points": 10,
       "options": ["A", "B", "C", "D"],
@@ -38,7 +38,7 @@ Return ONLY valid JSON with the following structure:
       "explanation": "string"
     },
     {
-      "type": "short_answer",
+      "type": "short-answer",
       "question": "string",
       "points": 10,
       "expected_answer": "string"
