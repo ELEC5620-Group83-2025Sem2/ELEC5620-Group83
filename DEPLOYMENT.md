@@ -7,7 +7,7 @@
 #### 前端部署到 Vercel
 
 1. **安装 Vercel CLI**
-   ```bash
+   ```bash1
    npm i -g vercel
    ```
 
