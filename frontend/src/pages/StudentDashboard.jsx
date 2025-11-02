@@ -231,6 +231,8 @@ function StudentDashboard() {
 
   const handleBackToAssignments = () => {
     setSelectedAssignmentId(null)
+    setActiveTab('assignments')
+    navigate('/student/assignments', { replace: true })
   }
 
   const handleTabChange = (tab) => {
@@ -255,8 +257,7 @@ function StudentDashboard() {
 
     // Show Assignment Detail Page if an assignment is selected
     if (selectedAssignmentId) {
-      const assignmentData = upcomingAssignments.find(a => a.id === selectedAssignmentId)
-      return <AssignmentDetailPage assignmentData={assignmentData} onBack={handleBackToAssignments} />
+      return <AssignmentDetailPage assignmentId={selectedAssignmentId} onBack={handleBackToAssignments} />
     }
 
     // Otherwise show the normal tab content
