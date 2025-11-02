@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import teacherApi from '../../services/teacherApi'
 import './GradeAssignmentView.css'
 
@@ -6,41 +6,37 @@ function GradeAssignmentView({ assignmentId, onBack }) {
   const [assignment, setAssignment] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [selectedSubmission, setSelectedSubmission] = useState(null)
-  const [gradeData, setGradeData] = useState({
-    grade: '',
-    feedback: ''
-  })
+  const [gradeData, setGradeData] = useState({ grade: '', feedback: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [aiGrading, setAiGrading] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [assignmentRes, submissionsRes] = await Promise.all([
-          teacherApi.getAssignmentById(assignmentId),
-          teacherApi.getAssignmentSubmissions(assignmentId)
-        ])
-        
-        // Backend returns { assignment: {...} } not { data: {...} }
-        const assignment = assignmentRes.assignment || assignmentRes.data
-        const submissions = submissionsRes.submissions || submissionsRes.data || []
-        
-        if (!assignment) {
-          console.error('Assignment not found in response:', assignmentRes)
-          return
+        const submissionsRes = await teacherApi.getAssignmentSubmissions(assignmentId)
+
+        // The backend now returns both assignment data and submissions
+        const assignmentData = submissionsRes.assignment
+        const subs = submissionsRes.submissions || submissionsRes.data || []
+
+        if (!assignmentData) {
+          // Fallback: fetch assignment separately if not included
+          const assignmentRes = await teacherApi.getAssignmentById(assignmentId)
+          const a = assignmentRes.assignment || assignmentRes.data
+          setAssignment(a)
+        } else {
+          setAssignment(assignmentData)
         }
-        
-        setAssignment(assignment)
-        setSubmissions(submissions)
-        
-        // Select first submission if available
-        if (submissions.length > 0) {
-          handleSelectSubmission(submissions[0])
+
+        setSubmissions(subs)
+
+        if (subs.length > 0) {
+          handleSelectSubmission(subs[0])
         }
       } catch (error) {
         console.error('Failed to fetch assignment data:', error)
-        // Set assignment to null to show error message
         setAssignment(null)
       } finally {
         setLoading(false)
@@ -50,11 +46,36 @@ function GradeAssignmentView({ assignmentId, onBack }) {
     fetchData()
   }, [assignmentId])
 
+  const gradedCount = useMemo(
+    () => submissions.filter(s => s.status === 'graded').length,
+    [submissions]
+  )
+  const pendingCount = useMemo(
+    () => submissions.filter(s => s.status !== 'graded').length,
+    [submissions]
+  )
+
+  // Calculate total points from rubric
+  const rubricTotal = useMemo(() => {
+    if (!assignment?.rubric || assignment.rubric.length === 0) {
+      return assignment?.total_points || 100
+    }
+    return assignment.rubric.reduce((sum, item) => sum + (item.points || 0), 0)
+  }, [assignment])
+
+  const getStudentObj = (s) => s?.student || s?.profiles || null
+  const getStudentName = (s) => {
+    const st = getStudentObj(s)
+    if (!st) return 'Unknown Student'
+    const name = `${st.first_name || ''} ${st.last_name || ''}`.trim()
+    return name || st.email || 'Unknown Student'
+  }
+
   const handleSelectSubmission = (submission) => {
     setSelectedSubmission(submission)
     setGradeData({
-      grade: submission.grade || '',
-      feedback: submission.feedback || ''
+      grade: submission.grade ?? '',
+      feedback: submission.feedback ?? ''
     })
   }
 
@@ -66,7 +87,7 @@ function GradeAssignmentView({ assignmentId, onBack }) {
   const handleSaveGrade = async () => {
     if (!selectedSubmission) return
 
-    if (!gradeData.grade) {
+    if (gradeData.grade === '' || gradeData.grade === null) {
       alert('Please enter a grade')
       return
     }
@@ -74,20 +95,20 @@ function GradeAssignmentView({ assignmentId, onBack }) {
     setSaving(true)
     try {
       await teacherApi.gradeSubmission(assignmentId, selectedSubmission.id, gradeData)
-      
-      // Update local submissions list
-      setSubmissions(prev => prev.map(sub => 
-        sub.id === selectedSubmission.id 
+
+      // update local copy
+      setSubmissions(prev => prev.map(sub =>
+        sub.id === selectedSubmission.id
           ? { ...sub, grade: gradeData.grade, feedback: gradeData.feedback, status: 'graded' }
           : sub
       ))
-      
+
       alert('Grade saved successfully!')
-      
-      // Move to next submission if available
-      const currentIndex = submissions.findIndex(s => s.id === selectedSubmission.id)
-      if (currentIndex < submissions.length - 1) {
-        handleSelectSubmission(submissions[currentIndex + 1])
+
+      // auto-advance to next
+      const idx = submissions.findIndex(s => s.id === selectedSubmission.id)
+      if (idx > -1 && idx < submissions.length - 1) {
+        handleSelectSubmission(submissions[idx + 1])
       }
     } catch (error) {
       console.error('Failed to save grade:', error)
@@ -99,7 +120,7 @@ function GradeAssignmentView({ assignmentId, onBack }) {
 
   const handleAIAutoGrade = async () => {
     if (!selectedSubmission || !assignment) return
-    
+
     const confirmed = window.confirm(
       'Use AI to automatically grade this submission? You can review and modify the grade before saving.'
     )
@@ -107,18 +128,13 @@ function GradeAssignmentView({ assignmentId, onBack }) {
 
     setAiGrading(true)
     try {
-      // Call AI auto-grade API
       const response = await teacherApi.autoGradeSubmission(selectedSubmission.id, assignmentId)
-      
-      if (response.data) {
-        // Update grade data with AI suggestion
-        setGradeData({
-          grade: response.data.grade || '',
-          feedback: response.data.feedback || ''
-        })
-        
-        alert(`AI Grading Complete!\nSuggested Grade: ${response.data.grade}\n\nPlease review and save if you agree.`)
-      }
+      const data = response?.data || {}
+      setGradeData({
+        grade: data.grade ?? '',
+        feedback: data.feedback ?? ''
+      })
+      alert(`AI Grading Complete!\nSuggested Grade: ${data.grade ?? '—'}\n\nPlease review and save if you agree.`)
     } catch (error) {
       console.error('AI grading failed:', error)
       alert('AI grading failed. Please grade manually.')
@@ -129,8 +145,8 @@ function GradeAssignmentView({ assignmentId, onBack }) {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+      <div className="center-state">
+        <div className="big-emoji">⏳</div>
         <p>Loading assignment data...</p>
       </div>
     )
@@ -138,12 +154,10 @@ function GradeAssignmentView({ assignmentId, onBack }) {
 
   if (!assignment) {
     return (
-      <div style={{ textAlign: 'center', padding: '3rem' }}>
-        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>❌</div>
+      <div className="center-state">
+        <div className="big-emoji">❌</div>
         <h3>Assignment Not Found</h3>
-        <button className="btn-back" onClick={onBack}>
-          ← Back to Assignments
-        </button>
+        <button className="btn btn--back" onClick={onBack}>← Back to Assignments</button>
       </div>
     )
   }
@@ -152,147 +166,180 @@ function GradeAssignmentView({ assignmentId, onBack }) {
     <div className="grade-assignment-view">
       {/* Header */}
       <div className="grade-header">
-        <button className="btn-back" onClick={onBack}>
-          ← Back to Assignments
-        </button>
+        <button className="btn btn--back" onClick={onBack}>← Back</button>
         <div className="assignment-meta">
-          <h2>{assignment.title}</h2>
+          <h2 className="title">{assignment.title}</h2>
           <div className="grade-stats">
-            <span>Total Submissions: {submissions.length}</span>
-            <span>Graded: {submissions.filter(s => s.status === 'graded').length}</span>
-            <span>Pending: {submissions.filter(s => s.status !== 'graded').length}</span>
+            <span className="chip">Total: {submissions.length}</span>
+            <span className="chip chip--success">Graded: {gradedCount}</span>
+            <span className="chip chip--warn">Pending: {pendingCount}</span>
           </div>
         </div>
       </div>
 
       {submissions.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '3rem' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📭</div>
+        <div className="center-state">
+          <div className="big-emoji">📭</div>
           <h3>No Submissions Yet</h3>
-          <p>No students have submitted this assignment yet</p>
+          <p>No students have submitted this assignment yet.</p>
         </div>
       ) : (
         <div className="grading-container">
-          {/* Submissions List */}
-          <div className="submissions-list">
-            <h3>Submissions</h3>
-            {submissions.map(submission => {
-              // Support both submission.profiles and submission.student formats
-              const student = submission.student || submission.profiles
-              const studentName = student
-                ? `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.email
-                : 'Unknown Student'
-
-              return (
-                <div
-                  key={submission.id}
-                  className={`submission-item ${selectedSubmission?.id === submission.id ? 'active' : ''}`}
-                  onClick={() => handleSelectSubmission(submission)}
+          {/* Left: Submissions list */}
+          <aside className={`submissions-list ${sidebarCollapsed ? 'collapsed' : ''}`} aria-label="Submissions">
+            <div className="list-header">
+              <h3>Submissions</h3>
+              <div className="list-header-actions">
+                <span className="muted">{submissions.length}</span>
+                <button 
+                  className="collapse-btn" 
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  title={sidebarCollapsed ? 'Expand' : 'Collapse'}
                 >
-                  <div className="submission-student">
-                    <span className="student-avatar">👤</span>
-                    <span className="student-name">{studentName}</span>
-                  </div>
-                  <div className="submission-date">
-                    {new Date(submission.submitted_at).toLocaleDateString()}
-                  </div>
-                  <span className={`submission-status ${submission.status === 'graded' ? 'graded-badge' : 'pending-badge'}`}>
-                    {submission.status === 'graded' ? 'Graded' : 'Pending'}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
+                  {sidebarCollapsed ? '→' : '←'}
+                </button>
+              </div>
+            </div>
 
-          {/* Grading Panel */}
+            {!sidebarCollapsed && (
+              <div className="list-scroll">
+                {submissions.map(submission => {
+                  const isActive = selectedSubmission?.id === submission.id
+                  return (
+                    <button
+                      type="button"
+                      key={submission.id}
+                      className={`submission-item ${isActive ? 'active' : ''}`}
+                      onClick={() => handleSelectSubmission(submission)}
+                    >
+                      <div className="submission-item__main">
+                        <span className="student-avatar" aria-hidden>👤</span>
+                        <span className="student-name">{getStudentName(submission)}</span>
+                      </div>
+                      <div className="submission-item__meta">
+                        <span className="submission-date">
+                          {submission.submitted_at ? new Date(submission.submitted_at).toLocaleDateString() : '—'}
+                        </span>
+                        <span className={`chip chip--${submission.status === 'graded' ? 'success' : 'warn'}`}>
+                          {submission.status === 'graded' ? 'Graded' : 'Pending'}
+                        </span>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </aside>
+
+          {/* Right: Grading panel */}
           {selectedSubmission && (
-            <div className="grading-panel">
+            <main className="grading-panel">
               <div className="submission-header">
-                <h3>
-                  {selectedSubmission.profiles 
-                    ? `${selectedSubmission.profiles.first_name || ''} ${selectedSubmission.profiles.last_name || ''}`.trim() || selectedSubmission.profiles.email
-                    : 'Unknown Student'
-                  }'s Submission
+                <h3 className="panel-title">
+                  {getStudentName(selectedSubmission)}’s Submission
                 </h3>
                 <span className="submission-date">
-                  Submitted {new Date(selectedSubmission.submitted_at).toLocaleString()}
+                  Submitted {selectedSubmission.submitted_at ? new Date(selectedSubmission.submitted_at).toLocaleString() : '—'}
                 </span>
               </div>
 
-              {/* AI Auto-Grade Button */}
-              <div className="ai-grade-button-container">
-                <button 
-                  className="btn-ai-grade" 
+              {/* AI Grade */}
+              <div className="ai-grade-row">
+                <button
+                  className="btn btn--primary"
                   onClick={handleAIAutoGrade}
-                  disabled={aiGrading || !selectedSubmission}
+                  disabled={aiGrading}
                 >
-                  {aiGrading ? (
-                    <>
-                      <span className="spinner"></span> AI Grading...
-                    </>
-                  ) : (
-                    <>
-                      <span>✨</span> AI Auto-Grade
-                    </>
-                  )}
+                  {aiGrading ? <span className="spinner" aria-hidden /> : '✨'}
+                  {aiGrading ? ' AI Grading...' : ' AI Auto-Grade'}
                 </button>
-                <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>
-                  AI will analyze the submission and suggest a grade with feedback
-                </p>
+                <span className="muted small">AI will suggest a grade and feedback. Review before saving.</span>
               </div>
 
-              {/* Submission Content */}
-              <div className="submission-content">
-                <h4>Submission Content</h4>
+              {/* Rubric */}
+              {assignment.rubric && assignment.rubric.length > 0 && (
+                <section className="rubric-section">
+                  <h4 className="section-title">Grading Rubric</h4>
+                  <div className="rubric-container">
+                    {assignment.rubric.map((item, index) => (
+                      <div key={item.id || index} className="rubric-item">
+                        <div className="rubric-item-header">
+                          <span className="rubric-criteria">{item.criteria}</span>
+                          <span className="rubric-points">{item.points} pts</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="rubric-total">
+                      <span>Total Points:</span>
+                      <span className="total-value">{rubricTotal} pts</span>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Submission content */}
+              <section className="submission-content">
+                <h4 className="section-title">Submission Content</h4>
                 <div className="content-box">
-                  <p>{selectedSubmission.submission_content || 'No text content'}</p>
-                  {selectedSubmission.submission_file_url && (
+                  <p>{selectedSubmission.text_response || selectedSubmission.submission_content || 'No text content.'}</p>
+                  {(selectedSubmission.file_url || selectedSubmission.submission_file_url) && (
                     <div className="attachments">
-                      <p>📎 Attachment: <a href={selectedSubmission.submission_file_url} target="_blank" rel="noopener noreferrer">View File</a></p>
+                      <p>📎 Attachment: <a href={selectedSubmission.file_url || selectedSubmission.submission_file_url} target="_blank" rel="noopener noreferrer">View file</a></p>
                     </div>
                   )}
                 </div>
-              </div>
+              </section>
 
-              {/* Grading Form */}
-              <div className="grading-form">
-                <div className="form-group">
-                  <label>Grade (out of {assignment.total_points || 100})</label>
-                  <input
-                    type="number"
-                    name="grade"
-                    className="grade-input"
-                    value={gradeData.grade}
-                    onChange={handleGradeChange}
-                    max={assignment.total_points || 100}
-                    min="0"
-                    placeholder="Enter grade"
-                  />
-                </div>
+              {/* Grading form */}
+              <section className="grading-form">
+                <div className="form-row">
+                  <div className="form-group">
+                    <label htmlFor="gradeInput">
+                      Grade (out of {rubricTotal})
+                      {assignment.rubric && assignment.rubric.length > 0 && (
+                        <span className="grade-hint"> — See rubric above for breakdown</span>
+                      )}
+                    </label>
+                    <input
+                      id="gradeInput"
+                      type="number"
+                      name="grade"
+                      className="grade-input"
+                      value={gradeData.grade}
+                      onChange={handleGradeChange}
+                      max={rubricTotal}
+                      min="0"
+                      step="0.5"
+                      placeholder="Enter grade"
+                      inputMode="decimal"
+                    />
+                  </div>
 
-                <div className="form-group">
-                  <label>Feedback Comments</label>
-                  <textarea
-                    name="feedback"
-                    className="feedback-textarea"
-                    value={gradeData.feedback}
-                    onChange={handleGradeChange}
-                    rows="6"
-                    placeholder="Enter feedback comments..."
-                  />
+                  <div className="form-group grow">
+                    <label htmlFor="feedbackTextarea">Feedback Comments</label>
+                    <textarea
+                      id="feedbackTextarea"
+                      name="feedback"
+                      className="feedback-textarea"
+                      value={gradeData.feedback}
+                      onChange={handleGradeChange}
+                      rows={5}
+                      placeholder="Enter feedback comments..."
+                    />
+                  </div>
                 </div>
 
                 <div className="grading-actions">
-                  <button 
-                    className="btn-save-grade"
+                  <button
+                    className="btn btn--primary btn--block"
                     onClick={handleSaveGrade}
                     disabled={saving}
                   >
-                    {saving ? 'Saving...' : 'Save Grade'}
+                    {saving ? 'Saving…' : 'Save Grade'}
                   </button>
                 </div>
-              </div>
-            </div>
+              </section>
+            </main>
           )}
         </div>
       )}
