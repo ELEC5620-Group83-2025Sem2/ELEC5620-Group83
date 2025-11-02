@@ -8,7 +8,7 @@ import {
 import { getStudentAnnouncements } from '../controllers/student/announcements.js';
 import { getStudentClasses } from '../controllers/student/classes.js';
 import { getHSCSubjects } from '../controllers/student/hscSubjects.js';
-import { getStudentAssignments } from '../controllers/student/assignments.js';
+import { getStudentAssignments, getAssignmentDetail, submitAssignment } from '../controllers/student/assignments.js';
 import { getClassModulesForStudent, getModuleDetailForStudent } from '../controllers/student/modules.js';
 import { getStudentGrades } from '../controllers/student/grades.js';
 import { sendChatMessage } from '../controllers/student/chat.js';
@@ -65,6 +65,12 @@ router.get('/hsc-subjects', getHSCSubjects);
 
 // GET /api/student/assignments - Get all assignments for student's enrolled classes
 router.get('/assignments', getStudentAssignments);
+
+// POST /api/student/assignments/:id/submit - Submit an assignment
+router.post('/assignments/:id/submit', submitAssignment);
+
+// GET /api/student/assignments/:id - Get assignment details
+router.get('/assignments/:id', getAssignmentDetail);
 
 // ===================
 // Grades Routes

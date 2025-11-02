@@ -106,6 +106,21 @@ const studentApi = {
     });
   },
 
+  // Get detailed information for a specific assignment
+  async getAssignmentDetail(assignmentId) {
+    return authenticatedRequest(`/student/assignments/${assignmentId}`, {
+      method: 'GET'
+    });
+  },
+
+  // Submit an assignment
+  async submitAssignment(assignmentId, submissionData) {
+    return authenticatedRequest(`/student/assignments/${assignmentId}/submit`, {
+      method: 'POST',
+      body: JSON.stringify(submissionData)
+    });
+  },
+
   // Grades
   // Get all grades for student
   // JWT token is automatically passed in Authorization header

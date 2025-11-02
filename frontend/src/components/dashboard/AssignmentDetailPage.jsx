@@ -1,10 +1,43 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getDaysUntilDue } from '../../utils/helpers'
+import studentApi from '../../services/studentApi'
 
-function AssignmentDetailPage({ assignmentData, onBack }) {
+function AssignmentDetailPage({ assignmentId, onBack }) {
   const [submissionText, setSubmissionText] = useState('')
   const [selectedFile, setSelectedFile] = useState(null)
   const [quizAnswers, setQuizAnswers] = useState({})
+  const [assignmentData, setAssignmentData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  
+  // Fetch assignment details when component mounts
+  useEffect(() => {
+    const fetchAssignmentDetails = async () => {
+      if (!assignmentId) {
+        setError('No assignment ID provided')
+        setLoading(false)
+        return
+      }
+
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await studentApi.getAssignmentDetail(assignmentId)
+        if (response.success && response.assignment) {
+          setAssignmentData(response.assignment)
+        } else {
+          setError('Failed to load assignment details')
+        }
+      } catch (err) {
+        console.error('Error fetching assignment details:', err)
+        setError(err.message || 'Failed to load assignment details')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchAssignmentDetails()
+  }, [assignmentId])
   
   const handleMultipleChoiceChange = (questionId, optionId) => {
     setQuizAnswers({
@@ -20,13 +53,32 @@ function AssignmentDetailPage({ assignmentData, onBack }) {
     })
   }
 
-  if (!assignmentData) {
+  // Show loading state
+  if (loading) {
     return (
       <div className="assignment-detail-page">
         <button className="btn-back" onClick={onBack}>
           ← Back to Assignments
         </button>
-        <p>Assignment not found</p>
+        <div style={{ textAlign: 'center', padding: '3rem' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+          <p>Loading assignment details...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error || !assignmentData) {
+    return (
+      <div className="assignment-detail-page">
+        <button className="btn-back" onClick={onBack}>
+          ← Back to Assignments
+        </button>
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#c53030' }}>
+          <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⚠️</div>
+          <p>{error || 'Assignment not found'}</p>
+        </div>
       </div>
     )
   }
@@ -37,9 +89,40 @@ function AssignmentDetailPage({ assignmentData, onBack }) {
     }
   }
 
-  const handleSubmit = () => {
-    // TODO: Implement submission logic
-    alert('Assignment submitted!')
+  const handleSubmit = async () => {
+    try {
+      // Prepare submission data
+      const submissionData = {
+        text: submissionText,
+        answers: []
+      }
+
+      // If there are quiz answers, format them for submission
+      if (assignmentData.hasQuestions && Object.keys(quizAnswers).length > 0) {
+        submissionData.answers = Object.entries(quizAnswers).map(([questionId, answer]) => ({
+          questionId: parseInt(questionId),
+          answerText: typeof answer === 'string' ? answer : null,
+          selectedOption: typeof answer === 'string' && answer.length === 1 ? answer : null
+        }))
+      }
+
+      // Submit the assignment
+      const response = await studentApi.submitAssignment(assignmentId, submissionData)
+      
+      if (response.success) {
+        alert('Assignment submitted successfully!')
+        // Refresh the assignment data to show submitted status
+        const updatedResponse = await studentApi.getAssignmentDetail(assignmentId)
+        if (updatedResponse.success && updatedResponse.assignment) {
+          setAssignmentData(updatedResponse.assignment)
+        }
+      } else {
+        alert('Failed to submit assignment. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error submitting assignment:', error)
+      alert(`Error: ${error.message || 'Failed to submit assignment'}`)
+    }
   }
 
   const priorityColor = {
@@ -121,11 +204,15 @@ function AssignmentDetailPage({ assignmentData, onBack }) {
           <div className="detail-card">
             <h2>📋 Instructions</h2>
             <div className="assignment-instructions">
-              <ol>
-                {assignmentData.instructions?.map((instruction, index) => (
-                  <li key={index}>{instruction}</li>
-                ))}
-              </ol>
+              {assignmentData.instructions && assignmentData.instructions.length > 0 ? (
+                <ol>
+                  {assignmentData.instructions.map((instruction, index) => (
+                    <li key={index}>{instruction}</li>
+                  ))}
+                </ol>
+              ) : (
+                <p style={{ color: '#718096', fontStyle: 'italic' }}>No specific instructions provided. Please follow the assignment description above.</p>
+              )}
             </div>
           </div>
 
@@ -133,12 +220,16 @@ function AssignmentDetailPage({ assignmentData, onBack }) {
           <div className="detail-card">
             <h2>✅ Requirements</h2>
             <div className="requirements-list">
-              {assignmentData.requirements?.map((req, index) => (
-                <div key={index} className="requirement-item">
-                  <span className="requirement-icon">•</span>
-                  <span>{req}</span>
-                </div>
-              ))}
+              {assignmentData.requirements && assignmentData.requirements.length > 0 ? (
+                assignmentData.requirements.map((req, index) => (
+                  <div key={index} className="requirement-item">
+                    <span className="requirement-icon">•</span>
+                    <span>{req}</span>
+                  </div>
+                ))
+              ) : (
+                <p style={{ color: '#718096', fontStyle: 'italic' }}>No specific requirements listed. Refer to the instructions and rubric.</p>
+              )}
             </div>
           </div>
 
@@ -322,12 +413,18 @@ function AssignmentDetailPage({ assignmentData, onBack }) {
           <div className="detail-card sidebar-card">
             <h3>Grading Rubric</h3>
             <div className="rubric-list">
-              {assignmentData.rubric?.map((item, index) => (
-                <div key={index} className="rubric-item">
-                  <div className="rubric-criteria">{item.criteria}</div>
-                  <div className="rubric-points">{item.points} pts</div>
-                </div>
-              ))}
+              {assignmentData.rubric && assignmentData.rubric.length > 0 ? (
+                assignmentData.rubric.map((item, index) => (
+                  <div key={index} className="rubric-item">
+                    <div className="rubric-criteria">{item.criteria}</div>
+                    <div className="rubric-points">{item.points} pts</div>
+                  </div>
+                ))
+              ) : (
+                <p style={{ color: '#718096', fontStyle: 'italic', fontSize: '0.9rem' }}>
+                  Rubric will be shared when grading
+                </p>
+              )}
             </div>
           </div>
 
