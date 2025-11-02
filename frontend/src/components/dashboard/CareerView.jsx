@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { generateCareerPathway } from '../../services/careerService'
 
@@ -6,12 +6,50 @@ function CareerView({ careerRecommendations }) {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [careerData, setCareerData] = useState(null)
+  const [careerData, setCareerData] = useState(() => {
+    // Load from localStorage on mount
+    const saved = localStorage.getItem('careerData')
+    return saved ? JSON.parse(saved) : null
+  })
 
   // User prompt inputs
-  const [interests, setInterests] = useState('')
-  const [strengths, setStrengths] = useState('')
-  const [goals, setGoals] = useState('')
+  const [interests, setInterests] = useState(() => {
+    const saved = localStorage.getItem('careerInterests')
+    return saved || ''
+  })
+  const [strengths, setStrengths] = useState(() => {
+    const saved = localStorage.getItem('careerStrengths')
+    return saved || ''
+  })
+  const [goals, setGoals] = useState(() => {
+    const saved = localStorage.getItem('careerGoals')
+    return saved || ''
+  })
+
+  // Save to localStorage whenever careerData or inputs change
+  useEffect(() => {
+    if (careerData) {
+      localStorage.setItem('careerData', JSON.stringify(careerData))
+    }
+  }, [careerData])
+
+  useEffect(() => {
+    if (interests !== '') {
+      localStorage.setItem('careerInterests', interests)
+    }
+  }, [interests])
+
+  useEffect(() => {
+    if (strengths !== '') {
+      localStorage.setItem('careerStrengths', strengths)
+    }
+  }, [strengths])
+
+  useEffect(() => {
+    if (goals !== '') {
+      localStorage.setItem('careerGoals', goals)
+    }
+  }, [goals])
 
   const prompt = useMemo(() => {
     const i = interests?.trim() || 'software, data, design'

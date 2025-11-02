@@ -7,12 +7,23 @@ function KnowledgeGaps() {
   const [loading, setLoading] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [error, setError] = useState(null)
-  const [knowledgeGaps, setKnowledgeGaps] = useState(null)
+  const [knowledgeGaps, setKnowledgeGaps] = useState(() => {
+    // Load from localStorage on mount
+    const saved = localStorage.getItem('knowledgeGaps')
+    return saved ? JSON.parse(saved) : null
+  })
   const [performanceData, setPerformanceData] = useState(null)
 
   useEffect(() => {
     fetchPerformanceData()
   }, [])
+
+  // Save to localStorage whenever knowledgeGaps changes
+  useEffect(() => {
+    if (knowledgeGaps) {
+      localStorage.setItem('knowledgeGaps', JSON.stringify(knowledgeGaps))
+    }
+  }, [knowledgeGaps])
 
   const fetchPerformanceData = async () => {
     setLoading(true)
