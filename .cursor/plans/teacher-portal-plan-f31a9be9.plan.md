@@ -71,11 +71,11 @@ Export mock data:
 ### MyClassesView.jsx
 
 - Grid of class cards showing:
-        - Class name, code, period
-        - Student count
-        - Average grade
-        - Upcoming assignments
-        - Quick action buttons (view, create assignment, take attendance)
+                                - Class name, code, period
+                                - Student count
+                                - Average grade
+                                - Upcoming assignments
+                                - Quick action buttons (view, create assignment, take attendance)
 - Click handler to open ClassDetailView
 
 ### ClassDetailView.jsx
@@ -107,10 +107,10 @@ Assignment creation/editing form:
 - Quiz builder (add multiple choice, short answer questions)
 - File attachments
 - **AI Generation Section** (skeleton):
-        - "Generate Assignment" button with subject/topic inputs
-        - "Generate Rubric" button → placeholder modal
-        - "Suggest Questions" based on curriculum
-        - Mock AI response structure in comments
+                                - "Generate Assignment" button with subject/topic inputs
+                                - "Generate Rubric" button → placeholder modal
+                                - "Suggest Questions" based on curriculum
+                                - Mock AI response structure in comments
 
 ### GradeAssignmentView.jsx
 
@@ -121,10 +121,10 @@ Grade submissions interface:
 - Rubric-based grading (if rubric exists)
 - Comments/feedback section
 - **AI Auto-Grade Section** (skeleton):
-        - "Auto-Grade with AI" button for each submission
-        - Shows confidence score and suggested grade
-        - Teacher can accept/modify AI suggestion
-        - Mock AI grading function returning dummy data
+                                - "Auto-Grade with AI" button for each submission
+                                - Shows confidence score and suggested grade
+                                - Teacher can accept/modify AI suggestion
+                                - Mock AI grading function returning dummy data
 
 ### StudentsView.jsx
 
@@ -133,11 +133,11 @@ Student management and tracking:
 - Searchable/filterable student list
 - Student cards showing: name, classes, overall grade, attendance
 - Click to view detailed student profile:
-        - All classes with this teacher
-        - Grade history
-        - Assignment completion rate
-        - Attendance record
-        - Notes section
+                                - All classes with this teacher
+                                - Grade history
+                                - Assignment completion rate
+                                - Attendance record
+                                - Notes section
 
 ### AnalyticsView.jsx
 
@@ -147,13 +147,13 @@ Class performance analytics:
 - Per-class performance breakdown
 - Assignment performance trends
 - **AI Insights Section** (skeleton):
-        - "Generate Insights" button
-        - Placeholder cards showing:
-                - At-risk students identification
-                - Topic difficulty analysis
-                - Suggested interventions
-                - Comparative performance trends
-        - Mock AI analysis function
+                                - "Generate Insights" button
+                                - Placeholder cards showing:
+                                                                - At-risk students identification
+                                                                - Topic difficulty analysis
+                                                                - Suggested interventions
+                                                                - Comparative performance trends
+                                - Mock AI analysis function
 
 ### AnnouncementsView.jsx
 
