@@ -9,6 +9,7 @@ import { getStudentAnnouncements } from '../controllers/student/announcements.js
 import { getStudentClasses } from '../controllers/student/classes.js';
 import { getHSCSubjects } from '../controllers/student/hscSubjects.js';
 import { getStudentAssignments } from '../controllers/student/assignments.js';
+import { getClassModulesForStudent, getModuleDetailForStudent } from '../controllers/student/modules.js';
 import { getStudentGrades } from '../controllers/student/grades.js';
 import { sendChatMessage } from '../controllers/student/chat.js';
 
@@ -44,6 +45,12 @@ router.get('/announcements', getStudentAnnouncements);
 
 // GET /api/student/classes - Get all classes the student is enrolled in
 router.get('/classes', getStudentClasses);
+
+// ===================
+// Modules Routes
+// ===================
+router.get('/classes/:classId/modules', getClassModulesForStudent);
+router.get('/modules/:moduleId', getModuleDetailForStudent);
 
 // ===================
 // HSC Subjects Routes
