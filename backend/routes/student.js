@@ -29,6 +29,7 @@ import {
   getPracticeQuestions,
   submitPracticeAnswer 
 } from '../controllers/student/practiceAnswers.js';
+import { analyzeKnowledgeGaps, getKnowledgeGapsStats } from '../controllers/student/knowledgeGaps.js';
 
 const router = express.Router();
 
@@ -145,6 +146,17 @@ router.get('/practice-answers/questions', getPracticeQuestions);
 
 // POST /api/student/practice-answers/submit - Submit answer
 router.post('/practice-answers/submit', submitPracticeAnswer);
+
+
+// ===================
+// Knowledge Gaps Routes
+// ===================
+
+// POST /api/student/knowledge-gaps/analyze - Analyze knowledge gaps
+router.post('/knowledge-gaps/analyze', analyzeKnowledgeGaps);
+
+// GET /api/student/knowledge-gaps/stats - Get knowledge gaps statistics
+router.get('/knowledge-gaps/stats', getKnowledgeGapsStats);
 
 export { router as studentRoutes };
 

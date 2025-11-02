@@ -198,9 +198,9 @@ const studentApi = {
       method: 'POST',
       body: JSON.stringify(data)
     });
-  }
+  },
 
-  ,
+
   // Modules
   async getClassModules(classId) {
     return authenticatedRequest(`/student/classes/${classId}/modules`, {
@@ -209,6 +209,18 @@ const studentApi = {
   },
   async getModule(moduleId) {
     return authenticatedRequest(`/student/modules/${moduleId}`, {
+      method: 'GET'
+    });
+  },
+
+  // Knowledge Gaps
+  async analyzeKnowledgeGaps() {
+    return authenticatedRequest('/student/knowledge-gaps/analyze', {
+      method: 'POST'
+    });
+  },
+  async getKnowledgeGapsStats() {
+    return authenticatedRequest('/student/knowledge-gaps/stats', {
       method: 'GET'
     });
   }
