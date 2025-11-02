@@ -986,6 +986,7 @@
   padding: 0.75rem;
   border-radius: 0.5rem;
   font-weight: 600;
+  font-size: 0.95rem;
   cursor: pointer;
   transition: all 0.2s;
 }

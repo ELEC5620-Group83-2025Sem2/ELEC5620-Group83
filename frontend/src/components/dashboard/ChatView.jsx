@@ -3,7 +3,31 @@ import { sendChatMessage } from '../../services/chatService';
 import './ChatView.css';
 
 function ChatView() {
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    // Load from localStorage on mount
+    const saved = localStorage.getItem('chatMessages')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        // Convert timestamp strings back to Date objects
+        return parsed.map(msg => ({
+          ...msg,
+          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+        }))
+      } catch (e) {
+        console.error('Failed to parse saved messages:', e)
+      }
+    }
+    // Initialize with welcome message if no saved messages
+    return [
+      {
+        id: 'welcome',
+        role: 'assistant',
+        content: 'Hello! I\'m your AI tutor assistant. I can help you with:\n\n📚 Academic questions\n📝 Study strategies\n🧮 Homework help\n💡 Learning tips\n\nWhat would you like to know?',
+        timestamp: new Date()
+      }
+    ]
+  });
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -20,17 +44,12 @@ function ChatView() {
     inputRef.current?.focus();
   }, []);
 
-  // Initialize with welcome message
+  // Save to localStorage whenever messages change (except welcome message only)
   useEffect(() => {
-    setMessages([
-      {
-        id: 'welcome',
-        role: 'assistant',
-        content: 'Hello! I\'m your AI tutor assistant. I can help you with:\n\n📚 Academic questions\n📝 Study strategies\n🧮 Homework help\n💡 Learning tips\n\nWhat would you like to know?',
-        timestamp: new Date()
-      }
-    ]);
-  }, []);
+    if (messages.length > 0 && (messages.length > 1 || messages[0].id !== 'welcome')) {
+      localStorage.setItem('chatMessages', JSON.stringify(messages))
+    }
+  }, [messages]);
 
   const handleSend = async () => {
     if (!inputMessage.trim() || isLoading) return;
@@ -103,14 +122,16 @@ function ChatView() {
 
   const handleClear = () => {
     if (window.confirm('Clear all messages and start a new conversation?')) {
-      setMessages([
+      const welcomeMessage = [
         {
           id: 'welcome',
           role: 'assistant',
           content: 'Hello! I\'m your AI tutor assistant. I can help you with:\n\n📚 Academic questions\n📝 Study strategies\n🧮 Homework help\n💡 Learning tips\n\nWhat would you like to know?',
           timestamp: new Date()
         }
-      ]);
+      ]
+      setMessages(welcomeMessage)
+      localStorage.setItem('chatMessages', JSON.stringify(welcomeMessage))
       setError('');
     }
   };
