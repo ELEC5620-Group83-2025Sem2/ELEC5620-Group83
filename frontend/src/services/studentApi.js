@@ -114,6 +114,76 @@ const studentApi = {
     return authenticatedRequest('/student/grades', {
       method: 'GET'
     });
+  },
+
+  // Selected Subjects
+  // Add a single selected HSC subject
+  // JWT token is automatically passed in Authorization header
+  async addSelectedSubject(data) {
+    return authenticatedRequest('/student/selected-subjects', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+  },
+
+  // Get student's selected HSC subjects
+  async getSelectedSubjects() {
+    return authenticatedRequest('/student/selected-subjects', {
+      method: 'GET'
+    });
+  },
+
+  // Delete a specific selected subject
+  async deleteSelectedSubject(subjectId) {
+    return authenticatedRequest(`/student/selected-subjects/${subjectId}`, {
+      method: 'DELETE'
+    });
+  },
+
+  // Practice Questions
+  // Generate AI practice questions based on selected subjects
+  async generatePracticeQuestions() {
+    return authenticatedRequest('/student/practice-questions/generate', {
+      method: 'POST'
+    });
+  },
+
+  // Get practice question stats
+  async getPracticeStats() {
+    return authenticatedRequest('/student/practice-questions/stats', {
+      method: 'GET'
+    });
+  },
+
+  // Review Questions
+  // Get practice questions for review
+  async getReviewQuestions() {
+    return authenticatedRequest('/student/review-questions', {
+      method: 'GET'
+    });
+  },
+
+  // Get review statistics
+  async getReviewStats() {
+    return authenticatedRequest('/student/review-questions/stats', {
+      method: 'GET'
+    });
+  },
+
+  // Practice Answers
+  // Get all practice questions for answering
+  async getPracticeQuestions() {
+    return authenticatedRequest('/student/practice-answers/questions', {
+      method: 'GET'
+    });
+  },
+
+  // Submit practice answer
+  async submitPracticeAnswer(data) {
+    return authenticatedRequest('/student/practice-answers/submit', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
   }
 
 };
