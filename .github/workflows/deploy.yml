@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, dev, test_cicd ]
   pull_request:
-    types: [closed]
+    types: [opened]
     branches: [ test_cicd ]
   workflow_dispatch:
 
@@ -50,6 +50,12 @@ jobs:
         run: npm run build
       
       # Docker Image Building (only on test_cicd branch)
+      - name: Prepare Docker image tags
+        if: github.ref == 'refs/heads/test_cicd' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'test_cicd')
+        run: |
+          echo "IMAGE_OWNER_LOWER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+          echo "REF_NAME_LOWER=$(echo '${{ github.ref_name }}' | tr '[:upper:]' '[:lower:]' | tr '/' '-')" >> $GITHUB_ENV
+      
       - name: Set up Docker Buildx
         if: github.ref == 'refs/heads/test_cicd' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'test_cicd')
         uses: docker/setup-buildx-action@v3
@@ -70,11 +76,11 @@ jobs:
           file: ./backend/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/hsc-power-backend:latest
-            ghcr.io/${{ github.repository_owner }}/hsc-power-backend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/hsc-power-backend:${{ github.ref_name }}
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/hsc-power-backend:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/hsc-power-backend:buildcache,mode=max
+            ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-backend:latest
+            ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-backend:${{ github.sha }}
+            ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-backend:${{ env.REF_NAME_LOWER }}
+          cache-from: type=registry,ref=ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-backend:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-backend:buildcache,mode=max
       
       - name: Build and push frontend Docker image
         if: github.ref == 'refs/heads/test_cicd' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'test_cicd')
@@ -84,11 +90,11 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/hsc-power-frontend:latest
-            ghcr.io/${{ github.repository_owner }}/hsc-power-frontend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/hsc-power-frontend:${{ github.ref_name }}
-          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/hsc-power-frontend:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/hsc-power-frontend:buildcache,mode=max
+            ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-frontend:latest
+            ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-frontend:${{ github.sha }}
+            ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-frontend:${{ env.REF_NAME_LOWER }}
+          cache-from: type=registry,ref=ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-frontend:buildcache
+          cache-to: type=registry,ref=ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-frontend:buildcache,mode=max
       
       - name: Deploy to hosting service
         run: |
@@ -108,8 +114,8 @@ jobs:
           if [ "${{ github.ref }}" == "refs/heads/test_cicd" ] || [ "${{ github.event_name }}" == "pull_request" ]; then
             echo "✅ Docker images built and pushed to GitHub Container Registry"
             echo "Images available at:"
-            echo "  - ghcr.io/${{ github.repository_owner }}/hsc-power-backend:latest"
-            echo "  - ghcr.io/${{ github.repository_owner }}/hsc-power-frontend:latest"
+            echo "  - ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-backend:latest"
+            echo "  - ghcr.io/${{ env.IMAGE_OWNER_LOWER }}/hsc-power-frontend:latest"
           fi
           # Add notification to Slack, Discord, etc. if needed
 
