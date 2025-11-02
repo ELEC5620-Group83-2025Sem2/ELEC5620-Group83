@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import authService from '../services/authService'
+import teacherApi from '../services/teacherApi'
 import DashboardOverview from '../components/teacher/DashboardOverview'
 import MyClassesView from '../components/teacher/MyClassesView'
 import ClassDetailView from '../components/teacher/ClassDetailView'
@@ -52,7 +53,7 @@ function TeacherDashboard() {
 
     fetchTeacherProfile()
   }, [navigate])
-  
+
   // Sync activeTab with URL changes and detect student grades route
   useEffect(() => {
     // Check if URL matches student grades pattern: /teacher/students/:studentId/grades
@@ -93,9 +94,18 @@ function TeacherDashboard() {
 
   const handleAssignmentClick = (assignmentId) => {
     setSelectedAssignmentId(assignmentId)
+    setSelectedClassId(null)
+    setIsCreatingAssignment(false)
+    setIsGradingAssignment(false)
+    // Route to assignments tab while preserving the selected assignment
+    navigate('/teacher/assignments', { replace: true })
+    setActiveTab('assignments')
   }
 
-  const handleCreateAssignment = () => {
+  const handleCreateAssignment = (assignmentId = null) => {
+    if (assignmentId) {
+      setSelectedAssignmentId(assignmentId)
+    }
     setIsCreatingAssignment(true)
   }
 
@@ -130,6 +140,7 @@ function TeacherDashboard() {
     navigate('/teacher/students', { replace: true })
   }
 
+
   const renderContent = () => {
     // Priority: Show detail views if selected
     // Student grades view
@@ -145,6 +156,9 @@ function TeacherDashboard() {
           classId={selectedClassId}
           onBack={handleBackToClasses}
           onCreateAssignment={handleCreateAssignment}
+          onAssignmentClick={handleAssignmentClick}
+          onEditAssignment={handleCreateAssignment}
+          onGradeAssignment={handleGradeAssignment}
         />
       )
     }
@@ -331,15 +345,12 @@ function TeacherDashboard() {
         <header className="dashboard-header">
           <h1 className="page-title">{getPageTitle()}</h1>
           <div className="header-right">
-            <button className="header-btn">
-              <span className="notification-icon">🔔</span>
-              <span className="notification-badge">3</span>
-            </button>
-
             <div className="user-menu-container">
               <button
                 className="user-profile-btn"
-                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                onClick={() => {
+                  setUserMenuOpen(!userMenuOpen)
+                }}
               >
                 <span className="user-avatar">👨‍🏫</span>
                 <span className="user-name">{displayName}</span>
