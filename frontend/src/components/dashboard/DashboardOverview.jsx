@@ -1,9 +1,18 @@
 import { getDaysUntilDue } from '../../utils/helpers'
 
-function DashboardOverview({ studentData, userProfile, enrolledClasses, upcomingAssignments, recentGrades, onTabChange }) {
+function DashboardOverview({ studentData, userProfile, enrolledClasses, upcomingAssignments, recentGrades, onTabChange, loading }) {
   const displayName = userProfile?.first_name && userProfile?.last_name 
     ? `${userProfile.first_name} ${userProfile.last_name}` 
     : userProfile?.name || ''
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <div className="loading-spinner"></div>
+        <p>Loading your dashboard...</p>
+      </div>
+    )
+  }
 
   return (
     <>
@@ -107,6 +116,30 @@ function DashboardOverview({ studentData, userProfile, enrolledClasses, upcoming
           </div>
         </section>
       </div>
+
+      {/* Quick Actions */}
+      <section className="dashboard-section">
+        <div className="section-header">
+          <h3>Quick Actions</h3>
+        </div>
+        <div className="quick-actions-grid">
+          <button 
+            className="quick-action-card"
+            onClick={() => onTabChange('chat')}
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none'
+            }}
+          >
+            <div className="quick-action-icon">💬</div>
+            <div className="quick-action-content">
+              <h4>Chat with AI</h4>
+              <p>Get instant help with your studies</p>
+            </div>
+          </button>
+        </div>
+      </section>
 
       {/* Recent Grades */}
       <section className="dashboard-section">

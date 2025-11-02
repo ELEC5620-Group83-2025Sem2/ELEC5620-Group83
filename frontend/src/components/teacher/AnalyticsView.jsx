@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import teacherApi from '../../services/teacherApi'
+import './AnalyticsView.css'
 
 function AnalyticsView() {
   const [classes, setClasses] = useState([])
@@ -27,7 +28,7 @@ function AnalyticsView() {
     setGenerating(true)
     try {
       const response = await teacherApi.analyzeClassPerformance(classId)
-      setInsights(response.data)
+      setInsights(response)
       alert('AI Insights generated successfully!')
     } catch (error) {
       console.error('Failed to generate insights:', error)

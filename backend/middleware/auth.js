@@ -56,15 +56,10 @@ export const requireRole = (allowedRoles) => {
         console.error('Error details:', error.message, error.code, error.details);
         return ErrorResponse.internalServerError(`Failed to verify user role: ${error.message}`).send(res);
       }
-      
-      console.log(`[Auth] Found ${userRoles?.length || 0} roles for user ${req.user.id}`);
 
       // Map roles and normalize them to strings (handle enum types)
       const roles = (userRoles || []).map(r => String(r.role).toLowerCase().trim());
       const allowedRolesLower = allowedRoles.map(r => String(r).toLowerCase().trim());
-      
-      console.log(`[Auth] User ${req.user.id} roles:`, roles);
-      console.log(`[Auth] Required roles:`, allowedRolesLower);
       
       let effectiveRoles = new Set(roles);
       
@@ -93,9 +88,6 @@ export const requireRole = (allowedRoles) => {
             }
 
             effectiveRoles.add('student');
-            console.log('[Auth.requireRole] backfilled student role based on enrollments', {
-              userId: req.user.id
-            });
           }
         } catch (fallbackErr) {
           console.warn('Role fallback check failed:', fallbackErr);
@@ -110,7 +102,6 @@ export const requireRole = (allowedRoles) => {
         return ErrorResponse.forbidden(`Insufficient permissions. Your roles: [${Array.from(effectiveRoles).join(', ')}]. Required: [${allowedRolesLower.join(', ')}]`).send(res);
       }
 
-      console.log(`[Auth] Permission granted for user ${req.user.id}`);
       // Attach roles to request object
       req.userRoles = roles;
       next();

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import teacherApi from '../../services/teacherApi'
+import './AnnouncementsView.css'
 
 function AnnouncementsView() {
   const [announcements, setAnnouncements] = useState([])

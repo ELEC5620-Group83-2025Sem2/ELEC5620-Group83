@@ -1,11 +1,21 @@
 import { getSupabaseClient } from '../../clients/supabaseClient.js';
 import { ErrorResponse } from '../../utils/errorResponse.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Note: OpenAI integration requires OPENAI_API_KEY (or compatible alias) in environment
 const OPENAI_API_KEY = (process.env.OPENAI_API_KEY
   || process.env.OPENAI_KEY
   || process.env.VITE_OPENAI_API_KEY
   || '').trim();
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL
+  || process.env.OPENAI_URL
+  || process.env.VITE_OPENAI_BASE_URL
+  || 'https://api.zmon.me/v1';
 
 /**
  * UC10: AI-Generated Assessment Rubric
@@ -18,67 +28,52 @@ export const generateRubric = async (req, res) => {
       assignment_description,
       submission_type,
       total_points,
-      learning_objectives
+      learning_objectives,
+      force_mock
     } = req.body;
 
     if (!assignment_title) {
       return ErrorResponse.badRequest('Assignment title is required').send(res);
     }
 
-    // Check if OpenAI API key is configured
-    if (!OPENAI_API_KEY) {
+    const pointsTarget = Number(total_points) || 100;
+
+    // Force mock path (or when API key not configured)
+    if (force_mock || !OPENAI_API_KEY) {
       // Return a mock rubric for development
       return res.json({
-        rubric: generateMockRubric(assignment_title, total_points || 100),
+        rubric: generateMockRubric(assignment_title, pointsTarget),
         ai_generated: true,
         mock: true,
-        message: 'OpenAI API key not configured, returning mock rubric'
+        message: force_mock ? 'Forced mock rubric' : 'OpenAI API key not configured, returning mock rubric'
       });
     }
 
-    // Call OpenAI API to generate rubric
-    const prompt = `Generate a detailed grading rubric for the following assignment:
-
-Title: ${assignment_title}
-Description: ${assignment_description || 'Not provided'}
-Type: ${submission_type || 'General assignment'}
-Total Points: ${total_points || 100}
-Learning Objectives: ${learning_objectives || 'Not specified'}
-
-Create a comprehensive rubric with 4-6 criteria. For each criterion, provide:
-1. Criterion name
-2. Description of what is being evaluated
-3. Point value
-4. Levels of achievement (Excellent, Good, Fair, Poor)
-
-Format as JSON array with structure:
-[
-  {
-    "criteria": "string",
-    "description": "string",
-    "points": number,
-    "levels": {
-      "excellent": "string",
-      "good": "string",
-      "fair": "string",
-      "poor": "string"
+    // Load instruction from file
+    const instructionPath = path.join(__dirname, '../../instructions/assignment-rubric-instruction.md');
+    let instruction = '';
+    try {
+      instruction = fs.readFileSync(instructionPath, 'utf-8');
+    } catch (error) {
+      instruction = 'You are an educational assessment expert. Generate a rubric JSON array with criteria, description, points, and levels.';
     }
-  }
-]`;
+
+    // Prepare details for user message
+    const prompt = `Generate a rubric for this assignment:\n\nTitle: ${assignment_title}\nDescription: ${assignment_description || 'Not provided'}\nType: ${submission_type || 'General assignment'}\nTotal Points: ${pointsTarget}\nLearning Objectives: ${Array.isArray(learning_objectives) ? learning_objectives.join(', ') : (learning_objectives || 'Not specified')}\n\nReturn ONLY the JSON array.`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
-              content: 'You are an educational assessment expert. Generate detailed, fair, and comprehensive grading rubrics.'
+              content: instruction
             },
             {
               role: 'user',
@@ -91,7 +86,7 @@ Format as JSON array with structure:
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.statusText}`);
+        throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
@@ -105,20 +100,23 @@ Format as JSON array with structure:
         rubric = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : rubricText);
       } catch (parseError) {
         console.error('Failed to parse AI rubric:', parseError);
-        rubric = generateMockRubric(assignment_title, points_possible || 100);
+        rubric = generateMockRubric(assignment_title, pointsTarget);
       }
+      // Scale rubric points to target total if needed
+      rubric = Array.isArray(rubric) ? rubric : [];
+      const scaled = scaleRubricToTotal(rubric, pointsTarget);
 
       return res.json({
-        rubric,
+        rubric: scaled,
         ai_generated: true,
         mock: false
       });
 
     } catch (apiError) {
-      console.error('OpenAI API call failed:', apiError);
+      console.warn('AI rubric service unavailable, using fallback:', apiError?.message || apiError);
       // Fallback to mock rubric
       return res.json({
-        rubric: generateMockRubric(assignment_title, total_points || 100),
+        rubric: generateMockRubric(assignment_title, pointsTarget),
         ai_generated: true,
         mock: true,
         message: 'AI generation failed, returning mock rubric'
@@ -127,6 +125,115 @@ Format as JSON array with structure:
 
   } catch (err) {
     console.error('Generate rubric error:', err);
+    return ErrorResponse.internalServerError(err.message).send(res);
+  }
+};
+
+/**
+ * UC13: AI-Generated Assignment
+ * Generate a complete assignment spec (title, description, questions, rubric)
+ */
+export const generateAssignment = async (req, res) => {
+  try {
+    const {
+      subject,
+      topic,
+      difficulty,
+      assignment_type,
+      question_count,
+      total_points,
+      class_id,
+      source
+    } = req.body || {};
+
+    const pointsTargetA = Number(total_points) || 100;
+
+    // Always prefer DB-driven generation unless explicitly forced to AI
+    if (!source || source === 'db') {
+      const dbAssignment = await generateAssignmentFromDatabase({
+        req,
+        subject,
+        topic,
+        difficulty,
+        assignment_type,
+        question_count: Number(question_count) || 6,
+        total_points: pointsTargetA,
+        class_id
+      });
+      return res.json({ assignment: dbAssignment, ai_generated: false, mock: false, source: 'db' });
+    }
+
+    // Load instruction from file
+    const instructionPath = path.join(__dirname, '../../instructions/assignment-generation-instruction.md');
+    let instruction = '';
+    try {
+      instruction = fs.readFileSync(instructionPath, 'utf-8');
+    } catch (error) {
+      instruction = 'You generate complete assignments with questions and rubric. Return a JSON object as specified.';
+    }
+
+    const details = {
+      subject: subject || 'General Studies',
+      topic: topic || 'Core Concepts',
+      difficulty: difficulty || 'medium',
+      assignment_type: assignment_type || 'quiz',
+      question_count: Number(question_count) || 5,
+      total_points: pointsTargetA
+    };
+
+    const userPrompt = `Generate an assignment using these details:\n${JSON.stringify(details, null, 2)}\n\nReturn ONLY the JSON object.`;
+
+    try {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: instruction },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 1800
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`OpenAI API error: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const text = data.choices[0].message.content;
+
+      // Parse JSON from response
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/);
+      const assignment = JSON.parse(jsonMatch ? jsonMatch[1] || jsonMatch[0] : text);
+      assignment.total_points = pointsTargetA;
+      if (Array.isArray(assignment.rubric)) {
+        assignment.rubric = scaleRubricToTotal(assignment.rubric, pointsTargetA);
+      }
+
+      return res.json({ assignment, ai_generated: true, mock: false });
+    } catch (apiError) {
+      console.error('OpenAI assignment generation failed:', apiError);
+      // Fall back to database-driven generation instead of mock
+      const dbAssignment = await generateAssignmentFromDatabase({
+        req,
+        subject: details.subject,
+        topic: details.topic,
+        difficulty: details.difficulty,
+        assignment_type: details.assignment_type,
+        question_count: details.question_count,
+        total_points: pointsTargetA,
+        class_id
+      });
+      return res.json({ assignment: dbAssignment, ai_generated: false, mock: false, source: 'db_fallback' });
+    }
+  } catch (err) {
+    console.error('Generate assignment error:', err);
     return ErrorResponse.internalServerError(err.message).send(res);
   }
 };
@@ -157,14 +264,14 @@ ${content}
 Provide a clear, informative summary that captures the main points.`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -265,11 +372,23 @@ export const autoGradeSubmission = async (req, res) => {
       .eq('submission_id', submission_id);
 
     if (!OPENAI_API_KEY) {
+      // Check if there's any submission content
+      const hasContent = (submission.text_response && submission.text_response.trim().length > 0) || (answers && answers.length > 0);
+      
+      if (!hasContent) {
+        return res.json({
+          grade: null,
+          feedback: 'No submission content found. Please ensure the student has submitted their work.',
+          mock: true,
+          error: 'No submission content'
+        });
+      }
+      
       // Return mock grading
       const mockGrade = Math.floor(Math.random() * 20) + 80; // 80-100
       return res.json({
         grade: mockGrade,
-        feedback: 'Auto-grading not available (OpenAI API key not configured). This is a mock grade.',
+        feedback: 'Auto-grading not available (OpenAI API key not configured). This is a mock grade based on the submission content.',
         mock: true,
         answer_grades: answers?.map(a => ({
           answer_id: a.id,
@@ -280,6 +399,32 @@ export const autoGradeSubmission = async (req, res) => {
     }
 
     // Build prompt for AI grading
+    const hasTextResponse = submission.text_response && submission.text_response.trim().length > 0;
+    const hasAnswers = answers && answers.length > 0;
+
+    let submissionContent = '';
+    
+    if (hasTextResponse) {
+      submissionContent += `\nWritten Response:\n${submission.text_response}\n`;
+    }
+    
+    if (hasAnswers) {
+      submissionContent += `\nQuiz/Question Answers:\n${answers.map((a, idx) => `
+Question ${idx + 1}: ${a.questions.question_text}
+Student Answer: ${a.answer_text || 'No answer provided'}
+Points Available: ${a.questions.points}
+`).join('\n')}`;
+    }
+
+    if (!hasTextResponse && !hasAnswers) {
+      return res.json({
+        grade: null,
+        feedback: 'No submission was received. The answers field shows \'undefined\', indicating that no responses were provided for this assignment. Please submit your completed work to receive a grade and feedback.',
+        mock: true,
+        error: 'No submission content found'
+      });
+    }
+
     const prompt = `Grade the following student submission:
 
 Assignment: ${submission.assignments.title}
@@ -287,18 +432,13 @@ Description: ${submission.assignments.description || 'Not provided'}
 Total Points: ${submission.assignments.total_points}
 Type: ${submission.assignments.submission_type || 'General'}
 
-Student Answers:
-${answers?.map((a, idx) => `
-Question ${idx + 1}: ${a.questions.question_text}
-Student Answer: ${a.answer_text || 'No answer provided'}
-Points Available: ${a.questions.points}
-`).join('\n')}
+Student Submission:${submissionContent}
 
 Provide:
 1. Total grade (out of ${submission.assignments.total_points})
 2. Overall feedback (2-3 sentences)
-3. Individual grades for each question
-4. Brief feedback for each answer
+3. Individual grades for each question (if applicable)
+4. Brief feedback for each answer (if applicable)
 
 Format as JSON:
 {
@@ -316,7 +456,7 @@ Format as JSON:
     try {
       console.log(`[AI Auto-Grade] Calling OpenAI API with key: ${OPENAI_API_KEY.substring(0, 7)}...${OPENAI_API_KEY.slice(-4)}`);
       
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -456,7 +596,7 @@ Format as JSON:
 }`;
 
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -578,6 +718,287 @@ function generateMockRubric(title, totalPoints) {
   ];
 
   return criteria;
+}
+
+function buildMockAssignment(subject, topic, type, questionCount, totalPoints = 100) {
+  const count = Math.max(4, Math.min(8, Number(questionCount) || 5));
+  const pointsPer = Math.floor(totalPoints / count);
+  const remaining = totalPoints - (pointsPer * (count - 1));
+  const questions = Array.from({ length: count }).map((_, idx) => {
+    if (idx % 2 === 0) {
+      return {
+        type: 'multiple-choice',
+        question: `(${subject}) ${topic}: Which statement is correct?`,
+        points: idx === count - 1 ? remaining : pointsPer,
+        options: ['Option A', 'Option B', 'Option C', 'Option D'],
+        answer: 'Option B',
+        explanation: 'Mock explanation for correct choice.'
+      };
+    }
+    return {
+      type: 'short-answer',
+      question: `(${subject}) ${topic}: Briefly explain the core idea.`,
+      points: idx === count - 1 ? remaining : pointsPer,
+      expected_answer: 'A concise explanation covering the key concept.'
+    };
+  });
+
+  return {
+    title: `${topic} ${type === 'quiz' ? 'Quiz' : 'Assignment'}`,
+    description: `This ${type} assesses understanding of ${topic}.`,
+    submission_type: type === 'project' ? 'project' : (type === 'quiz' ? 'quiz' : 'online'),
+    total_points: totalPoints,
+    questions,
+    rubric: generateMockRubric(`${topic} ${type}`, totalPoints),
+    resources: [
+      { name: 'Textbook Chapter', type: 'reference', value: topic },
+      { name: 'Practice Set', type: 'link', value: 'Provide relevant practice materials' }
+    ]
+  };
+}
+
+// Scale rubric items' points so the total equals targetTotal
+function scaleRubricToTotal(rubric, targetTotal) {
+  const pts = Number(targetTotal) || 100;
+  const safeRubric = Array.isArray(rubric) ? rubric : [];
+  const sum = safeRubric.reduce((s, r) => s + (Number(r.points) || 0), 0);
+  if (sum <= 0) return generateMockRubric('Rubric', pts);
+  const factor = pts / sum;
+  const scaled = safeRubric.map((r) => ({
+    ...r,
+    points: Math.max(0, Math.round((Number(r.points) || 0) * factor))
+  }));
+  // Fix rounding to match exactly
+  const diff = pts - scaled.reduce((s, r) => s + (Number(r.points) || 0), 0);
+  if (scaled.length > 0 && diff !== 0) {
+    scaled[scaled.length - 1].points = (Number(scaled[scaled.length - 1].points) || 0) + diff;
+  }
+  return scaled;
+}
+
+// ---------------------------
+// DB-driven assignment generation
+// ---------------------------
+async function generateAssignmentFromDatabase({ req, subject, topic, difficulty, assignment_type, question_count, total_points, class_id }) {
+  const supabase = getSupabaseClient();
+  const teacherId = req.user.id;
+
+  // Helper to extract subject name from class name
+  const extractSubjectFromClassName = (className) => {
+    if (!className) return 'General';
+    const lower = String(className).toLowerCase();
+    if (lower.includes('math')) return 'Mathematics';
+    if (lower.includes('physic')) return 'Physics';
+    if (lower.includes('chem')) return 'Chemistry';
+    if (lower.includes('bio')) return 'Biology';
+    if (lower.includes('english')) return 'English';
+    if (lower.includes('history')) return 'History';
+    if (lower.includes('geo')) return 'Geography';
+    if (lower.includes('computer') || lower.includes('software') || lower.includes('elec')) return 'Computer Science';
+    if (lower.includes('business') || lower.includes('commerce')) return 'Business Studies';
+    if (lower.includes('econ')) return 'Economics';
+    return className.split(/\s|-/)[0];
+  };
+
+  // 1) Resolve teacher classes
+  const { data: classTeachers } = await supabase
+    .from('class_teachers')
+    .select('class_id')
+    .eq('profile_id', teacherId);
+  const teacherClassIds = (classTeachers || []).map(c => c.class_id);
+
+  // 2) Resolve subject name
+  let subjectName = subject && String(subject).trim();
+  let className = '';
+  if (!subjectName && class_id) {
+    const { data: cls } = await supabase
+      .from('classes')
+      .select('name')
+      .eq('id', class_id)
+      .single();
+    className = cls?.name || '';
+    subjectName = extractSubjectFromClassName(cls?.name);
+  }
+  if (!subjectName) subjectName = 'General';
+
+  // 3) Try to fetch recent assignments in teacher classes as templates
+  let templateAssignmentIds = [];
+  if (teacherClassIds.length > 0) {
+    const { data: recentAssignments } = await supabase
+      .from('assignments')
+      .select('id,title,description,total_points,submission_type,class_id')
+      .in('class_id', teacherClassIds)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    templateAssignmentIds = (recentAssignments || []).map(a => a.id);
+  }
+
+  // 4) Aggregate rubric items from historical data
+  let rubricItems = [];
+  if (templateAssignmentIds.length > 0) {
+    const { data: rubricRows } = await supabase
+      .from('assignment_rubric_items')
+      .select('criteria,points,assignment_id')
+      .in('assignment_id', templateAssignmentIds);
+    const freq = {};
+    (rubricRows || []).forEach(r => {
+      const key = (r.criteria || 'Quality').trim();
+      if (!freq[key]) freq[key] = { criteria: key, total: 0, count: 0 };
+      freq[key].total += Number(r.points) || 0;
+      freq[key].count += 1;
+    });
+    const averaged = Object.values(freq).map(x => ({ criteria: x.criteria, points: Math.round(x.total / Math.max(1, x.count)) }));
+    // pick top 4
+    rubricItems = averaged.sort((a,b) => b.points - a.points).slice(0, 4);
+  }
+  if (rubricItems.length === 0) {
+    // default rubric from subject (but data-driven from DB total)
+    rubricItems = generateMockRubric(`${subjectName} ${topic || ''}`.trim(), total_points);
+  } else {
+    rubricItems = scaleRubricToTotal(rubricItems, total_points);
+  }
+
+  // 5) Build questions: try reuse distribution from history
+  let questionTemplates = [];
+  if (templateAssignmentIds.length > 0) {
+    const { data: questionRows } = await supabase
+      .from('assignment_questions')
+      .select('type,points,assignment_id')
+      .in('assignment_id', templateAssignmentIds);
+    const typeCounts = {};
+    (questionRows || []).forEach(q => {
+      const t = q.type || 'multiple-choice';
+      if (!typeCounts[t]) typeCounts[t] = { type: t, count: 0, avgPoints: 0, totalPoints: 0 };
+      typeCounts[t].count += 1;
+      typeCounts[t].totalPoints += Number(q.points) || 0;
+    });
+    Object.values(typeCounts).forEach(x => { x.avgPoints = Math.round(x.totalPoints / Math.max(1, x.count)); });
+    const sortedTypes = Object.values(typeCounts).sort((a,b) => b.count - a.count);
+    const desired = Math.max(1, Number(question_count) || 6);
+    for (let i = 0; i < desired; i++) {
+      const t = (sortedTypes[i % sortedTypes.length]?.type) || 'multiple-choice';
+      questionTemplates.push({ type: t, points: sortedTypes[0]?.avgPoints || 5 });
+    }
+  }
+  if (questionTemplates.length === 0) {
+    const desired = Math.max(1, Number(question_count) || 6);
+    for (let i = 0; i < desired; i++) {
+      const t = i % 2 === 0 ? 'multiple-choice' : 'short-answer';
+      questionTemplates.push({ type: t, points: 5 });
+    }
+  }
+  // scale points and generate question texts according to assignment type
+  const normalizedType = (assignment_type || '').toLowerCase();
+  const desiredCount = Math.max(1, Number(question_count) || (normalizedType === 'quiz' ? 6 : 2));
+
+  // For quiz: all MCQ; For homework/project: all text coding tasks
+  let baseTemplates;
+  if (normalizedType === 'quiz') {
+    baseTemplates = Array.from({ length: desiredCount }).map((_, i) => ({ type: 'multiple-choice', points: 1 }));
+  } else {
+    baseTemplates = Array.from({ length: desiredCount }).map((_, i) => ({ type: 'text', points: 1 }));
+  }
+
+  const sumBase = baseTemplates.reduce((s,q)=> s + (Number(q.points)||0), 0) || baseTemplates.length;
+  const factorBase = total_points / sumBase;
+  const scaledBase = baseTemplates.map(q => ({ ...q, points: Math.max(1, Math.round((Number(q.points)||0) * factorBase)) }));
+  const diffBase = total_points - scaledBase.reduce((s,q)=> s + (Number(q.points)||0),0);
+  if (scaledBase.length > 0 && diffBase !== 0) scaledBase[0].points += diffBase;
+
+  const courseLabel = className ? `${className}` : subjectName;
+  const topicLabel = topic || subjectName;
+
+  // Try to fetch subject description to enrich options (best-effort)
+  let subjectDesc = '';
+  try {
+    const { data: subj } = await supabase
+      .from('hsc_subjects')
+      .select('name, description')
+      .ilike('name', `%${subjectName}%`)
+      .limit(1)
+      .maybeSingle();
+    subjectDesc = subj?.description || '';
+  } catch (_) {}
+
+  const buildMcq = (idx, pts) => {
+    const templates = [
+      `In ${courseLabel}, which statement about ${topicLabel} is correct?`,
+      `Which of the following best describes ${topicLabel} in ${courseLabel}?`,
+      `Select the true statement regarding ${topicLabel} for ${courseLabel}.`,
+      `About ${topicLabel} in ${courseLabel}, which option is accurate?`
+    ];
+    const qText = templates[idx % templates.length];
+
+    const descSentences = String(subjectDesc || '')
+      .split(/\.|。|!/)
+      .map(s => s.trim())
+      .filter(Boolean);
+    const descSnippet = descSentences.length > 0
+      ? descSentences[idx % descSentences.length]
+      : `${topicLabel} is commonly assessed in ${courseLabel}`;
+
+    const correct = `${topicLabel} is a key concept in ${courseLabel} — ${descSnippet}.`;
+
+    const distractorPool = [
+      `It mainly measures attendance rather than understanding of ${topicLabel}.`,
+      `${topicLabel} is unrelated to ${courseLabel}.`,
+      `${topicLabel} requires no prior knowledge and is optional.`,
+      `${topicLabel} is primarily about sports activities.`,
+      `It focuses on formatting only, not on ${topicLabel}.`,
+      `It discourages applying ${topicLabel} in real tasks.`
+    ];
+    // pick 3 distinct distractors starting from rotating index
+    const start = idx % distractorPool.length;
+    const distractors = [];
+    for (let i = 0; i < distractorPool.length && distractors.length < 3; i++) {
+      const cand = distractorPool[(start + i) % distractorPool.length];
+      if (!distractors.includes(cand)) distractors.push(cand);
+    }
+    const letters = ['A','B','C','D'];
+    const correctPos = idx % 4; // rotate correct answer position
+    const options = [];
+    let dIdx = 0;
+    for (let i = 0; i < 4; i++) {
+      if (i === correctPos) options.push(correct);
+      else options.push(distractors[dIdx++]);
+    }
+    return {
+      type: 'multiple-choice',
+      question: qText,
+      points: pts,
+      options,
+      answer: `Option ${letters[correctPos]}`
+    };
+  };
+
+  const scaledQuestions = scaledBase.map((q, idx) => {
+    if (q.type === 'multiple-choice') {
+      return buildMcq(idx, q.points);
+    }
+    // coding/text task for homework/project
+    return {
+      type: 'text',
+      question: `Coding Task ${idx + 1} · ${courseLabel}: Implement a solution for ${topicLabel}. Provide your code in the editor and include brief comments explaining your approach.`,
+      points: q.points,
+      expected_answer: 'Working code that satisfies the described requirements with clear comments.'
+    };
+  });
+
+  // 6) Construct assignment payload
+  const submission_type = normalizedType === 'project' ? 'project' : (normalizedType === 'quiz' ? 'quiz' : 'online');
+  const assignment = {
+    title: `${topic || subjectName} ${normalizedType === 'quiz' ? 'Quiz' : 'Assignment'}`.trim(),
+    description: normalizedType === 'quiz'
+      ? `This quiz assesses your understanding of ${courseLabel} - ${topicLabel}.`
+      : `This homework assesses your ability to apply ${courseLabel} concepts to ${topicLabel} by writing code.`,
+    submission_type,
+    total_points,
+    questions: scaledQuestions,
+    rubric: rubricItems,
+    resources: []
+  };
+
+  return assignment;
 }
 
 

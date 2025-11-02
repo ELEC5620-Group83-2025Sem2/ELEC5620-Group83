@@ -8,7 +8,6 @@ import AccountRecovery from './pages/AccountRecovery'
 import StudentDashboard from './pages/StudentDashboard'
 import CareerResultPage from './pages/CareerResultPage'
 import TeacherDashboard from './pages/TeacherDashboard'
-import StudentGradesView from './components/teacher/StudentGradesView'
 import ParentDashboard from './pages/ParentDashboard'
 import AdminLogin from './pages/AdminLogin'
 import AdminDashboard from './pages/AdminDashboard'
@@ -65,7 +64,7 @@ function App() {
           path="/teacher/students/:studentId/grades" 
           element={
             <ProtectedRoute requiredRole="teacher" redirectTo="/login/teacher">
-              <StudentGradesView />
+              <TeacherDashboard />
             </ProtectedRoute>
           } 
         />

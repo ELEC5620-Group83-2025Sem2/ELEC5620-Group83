@@ -6,7 +6,6 @@ import { ErrorResponse } from '../utils/errorResponse.js';
  */
 export const getStudents = async (req, res) => {
   try {
-    console.log('📊 [Admin] Fetching students...');
     const supabase = getSupabaseClient();
     
     // Use a JOIN query to get students with their profiles in one go
@@ -27,8 +26,6 @@ export const getStudents = async (req, res) => {
 
     // If direct query fails (maybe due to enum type), get all roles and filter
     if (roleError || !roleData || roleData.length === 0) {
-      console.log('⚠️ Direct query returned empty, trying alternative approach...');
-      
       // Get all roles first
       const { data: allRolesData, error: allRolesError } = await supabase
         .from('profile_roles')
@@ -39,18 +36,13 @@ export const getStudents = async (req, res) => {
         return ErrorResponse.internalServerError(`Failed to fetch roles: ${allRolesError.message}`).send(res);
       }
       
-      console.log(`✅ Total roles in database: ${allRolesData?.length || 0}`);
-      
       // Filter for student roles (handle both enum and text types)
       const studentRoles = (allRolesData || []).filter(r => {
         const roleStr = String(r.role).toLowerCase().trim();
         return roleStr === 'student';
       });
       
-      console.log(`✅ Found ${studentRoles.length} student roles after filtering`);
-      
       if (studentRoles.length === 0) {
-        console.log('ℹ️ No students found with role assignments');
         return res.status(200).json({
           message: 'Students fetched successfully',
           students: [],
@@ -58,7 +50,6 @@ export const getStudents = async (req, res) => {
       }
       
       const studentIds = studentRoles.map(r => r.profile_id).filter(id => id);
-      console.log(`Fetching profiles for ${studentIds.length} students...`);
       
       // Get student profiles
       const { data: students, error: studentsError } = await supabase
@@ -70,8 +61,6 @@ export const getStudents = async (req, res) => {
         console.error('❌ Error fetching students:', studentsError);
         return ErrorResponse.internalServerError(`Failed to fetch students: ${studentsError.message}`).send(res);
       }
-      
-      console.log(`✅ Fetched ${students?.length || 0} student profiles`);
       
       // Format the response
       const formattedStudents = (students || []).map(student => ({
@@ -88,8 +77,6 @@ export const getStudents = async (req, res) => {
     }
 
     // If JOIN query worked, format the response
-    console.log(`✅ Found ${roleData.length} students via JOIN query`);
-    
     const formattedStudents = roleData
       .filter(item => item.profiles) // Ensure profiles exists
       .map(item => ({
@@ -114,7 +101,6 @@ export const getStudents = async (req, res) => {
  */
 export const getTeachers = async (req, res) => {
   try {
-    console.log('👨‍🏫 [Admin] Fetching teachers...');
     const supabase = getSupabaseClient();
     
     // Use a JOIN query to get teachers with their profiles in one go
@@ -135,8 +121,6 @@ export const getTeachers = async (req, res) => {
 
     // If direct query fails (maybe due to enum type), get all roles and filter
     if (roleError || !roleData || roleData.length === 0) {
-      console.log('⚠️ Direct query returned empty, trying alternative approach...');
-      
       // Get all roles first
       const { data: allRolesData, error: allRolesError } = await supabase
         .from('profile_roles')
@@ -147,18 +131,13 @@ export const getTeachers = async (req, res) => {
         return ErrorResponse.internalServerError(`Failed to fetch roles: ${allRolesError.message}`).send(res);
       }
       
-      console.log(`✅ Total roles in database: ${allRolesData?.length || 0}`);
-      
       // Filter for teacher roles (handle both enum and text types)
       const teacherRoles = (allRolesData || []).filter(r => {
         const roleStr = String(r.role).toLowerCase().trim();
         return roleStr === 'teacher';
       });
       
-      console.log(`✅ Found ${teacherRoles.length} teacher roles after filtering`);
-      
       if (teacherRoles.length === 0) {
-        console.log('ℹ️ No teachers found with role assignments');
         return res.status(200).json({
           message: 'Teachers fetched successfully',
           teachers: [],
@@ -166,7 +145,6 @@ export const getTeachers = async (req, res) => {
       }
       
       const teacherIds = teacherRoles.map(r => r.profile_id).filter(id => id);
-      console.log(`Fetching profiles for ${teacherIds.length} teachers...`);
       
       // Get teacher profiles
       const { data: teachers, error: teachersError } = await supabase
@@ -178,8 +156,6 @@ export const getTeachers = async (req, res) => {
         console.error('❌ Error fetching teachers:', teachersError);
         return ErrorResponse.internalServerError(`Failed to fetch teachers: ${teachersError.message}`).send(res);
       }
-      
-      console.log(`✅ Fetched ${teachers?.length || 0} teacher profiles`);
       
       // Format the response
       const formattedTeachers = (teachers || []).map(teacher => ({
@@ -196,8 +172,6 @@ export const getTeachers = async (req, res) => {
     }
 
     // If JOIN query worked, format the response
-    console.log(`✅ Found ${roleData.length} teachers via JOIN query`);
-    
     const formattedTeachers = roleData
       .filter(item => item.profiles) // Ensure profiles exists
       .map(item => ({
@@ -363,8 +337,6 @@ export const createTeacher = async (req, res) => {
       await supabase.auth.admin.deleteUser(userId);
       return ErrorResponse.internalServerError(`Failed to assign teacher role: ${roleError.message}`).send(res);
     }
-
-    console.log(`✅ Teacher role assigned to user ${userId}`);
 
     return res.status(201).json({
       message: 'Teacher created successfully',

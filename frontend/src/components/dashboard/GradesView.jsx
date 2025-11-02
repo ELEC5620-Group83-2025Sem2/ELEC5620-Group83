@@ -1,8 +1,9 @@
 import { useState } from 'react'
+import GeneratePracticeQuestions from './GeneratePracticeQuestions'
 import ReviewIncorrectQuestions from './ReviewIncorrectQuestions'
 
 function GradesView({ enrolledClasses, recentGrades }) {
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' or 'review'
+  const [activeTab, setActiveTab] = useState('overview') // 'overview', 'practice', or 'review'
 
   return (
     <>
@@ -15,10 +16,16 @@ function GradesView({ enrolledClasses, recentGrades }) {
           📊 Grades Overview
         </button>
         <button 
+          className={`tab-button ${activeTab === 'practice' ? 'active' : ''}`}
+          onClick={() => setActiveTab('practice')}
+        >
+          🎯 Generate Practice Questions
+        </button>
+        <button 
           className={`tab-button ${activeTab === 'review' ? 'active' : ''}`}
           onClick={() => setActiveTab('review')}
         >
-          📚 Review Incorrect Questions
+          📚 Review Practice Questions
         </button>
       </div>
 
@@ -76,6 +83,11 @@ function GradesView({ enrolledClasses, recentGrades }) {
             </div>
           </section>
         </>
+      )}
+
+      {/* Generate Practice Questions Tab */}
+      {activeTab === 'practice' && (
+        <GeneratePracticeQuestions />
       )}
 
       {/* Review Incorrect Questions Tab */}

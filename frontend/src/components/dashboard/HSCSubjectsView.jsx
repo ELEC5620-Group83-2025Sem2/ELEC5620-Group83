@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
+import studentApi from '../../services/studentApi'
 
 function HSCSubjectsView() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -12,28 +13,61 @@ function HSCSubjectsView() {
   const [notification, setNotification] = useState(null)
   const [selectedSubject, setSelectedSubject] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [subjectsPerPage] = useState(12) // Show 12 subjects per page
 
   // Load HSC subjects from API
   useEffect(() => {
-    // TODO: Replace with actual API call to fetch HSC subjects from Supabase
-    setLoading(false)
+    fetchHSCSubjects()
   }, [])
 
+  const fetchHSCSubjects = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await studentApi.getHSCSubjects()
+      console.log('HSC Subjects API Response:', response)
+      
+      if (response && response.success && response.subjects) {
+        console.log('Setting subjects:', response.subjects.length, 'subjects')
+        setHscSubjects(response.subjects)
+      } else if (response && response.subjects) {
+        // Handle case where success might not be present
+        console.log('Setting subjects (no success flag):', response.subjects.length, 'subjects')
+        setHscSubjects(response.subjects)
+      } else {
+        console.warn('Unexpected response format:', response)
+        setHscSubjects([])
+      }
+    } catch (err) {
+      console.error('Failed to fetch HSC subjects:', err)
+      setError(err.message || 'Failed to load HSC subjects')
+      setHscSubjects([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Get unique categories for filter
-  const categories = ['All', ...new Set(hscSubjects.map(subject => subject.category))]
-  const units = ['All', ...new Set(hscSubjects.map(subject => subject.units))]
-  const difficulties = ['All', ...new Set(hscSubjects.map(subject => subject.difficulty))]
+  const categories = ['All', ...new Set(hscSubjects.map(subject => subject.category).filter(Boolean))]
+  const units = ['All', ...new Set(hscSubjects.map(subject => subject.units).filter(val => val != null))]
+  const difficulties = ['All', ...new Set(hscSubjects.map(subject => subject.difficulty).filter(Boolean))]
 
   // Filter and sort subjects
   const filteredSubjects = useMemo(() => {
     let filtered = hscSubjects.filter(subject => {
-      const matchesSearch = subject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           subject.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           subject.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           subject.careerPaths.some(path => path.toLowerCase().includes(searchTerm.toLowerCase()))
+      if (!subject) return false
+      
+      const matchesSearch = (subject.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (subject.code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (subject.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (subject.careerPaths || []).some(path => 
+                             (path || '').toLowerCase().includes(searchTerm.toLowerCase())
+                           )
       
       const matchesCategory = selectedCategory === 'All' || subject.category === selectedCategory
-      const matchesUnits = selectedUnits === 'All' || subject.units.toString() === selectedUnits
+      const matchesUnits = selectedUnits === 'All' || (subject.units != null && subject.units.toString() === selectedUnits)
       const matchesDifficulty = selectedDifficulty === 'All' || subject.difficulty === selectedDifficulty
 
       return matchesSearch && matchesCategory && matchesUnits && matchesDifficulty
@@ -43,24 +77,41 @@ function HSCSubjectsView() {
     filtered.sort((a, b) => {
       switch (sortBy) {
         case 'name':
-          return a.name.localeCompare(b.name)
+          return (a.name || '').localeCompare(b.name || '')
         case 'popularity':
-          return b.popularity - a.popularity
+          return (b.popularity || 0) - (a.popularity || 0)
         case 'difficulty':
           const difficultyOrder = { 'Low': 1, 'Medium': 2, 'High': 3, 'Very High': 4, 'Extreme': 5 }
-          return difficultyOrder[a.difficulty] - difficultyOrder[b.difficulty]
+          return (difficultyOrder[a.difficulty] || 0) - (difficultyOrder[b.difficulty] || 0)
         case 'units':
-          return b.units - a.units
+          return (b.units || 0) - (a.units || 0)
         default:
           return 0
       }
     })
 
     return filtered
+  }, [hscSubjects, searchTerm, selectedCategory, selectedUnits, selectedDifficulty, sortBy])
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredSubjects.length / subjectsPerPage)
+  const indexOfLastSubject = currentPage * subjectsPerPage
+  const indexOfFirstSubject = indexOfLastSubject - subjectsPerPage
+  const currentSubjects = filteredSubjects.slice(indexOfFirstSubject, indexOfLastSubject)
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1)
   }, [searchTerm, selectedCategory, selectedUnits, selectedDifficulty, sortBy])
 
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+    // Scroll to top when page changes
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const handleAddToPlan = (subject) => {
-    const newTotalUnits = currentPlan.totalUnits + subject.units
+    const newTotalUnits = currentPlan.totalUnits + (subject.units || 0)
     if (newTotalUnits > currentPlan.maxUnits) {
       setNotification({
         type: 'error',
@@ -89,7 +140,7 @@ function HSCSubjectsView() {
     setCurrentPlan({
       ...currentPlan,
       subjects: currentPlan.subjects.filter(s => s.id !== subjectId),
-      totalUnits: currentPlan.totalUnits - subject.units
+      totalUnits: currentPlan.totalUnits - (subject.units || 0)
     })
     setNotification({
       type: 'success',
@@ -195,7 +246,7 @@ function HSCSubjectsView() {
                   <div>
                     <span className="detail-label">Prerequisites</span>
                     <span className="detail-value">
-                      {selectedSubject.prerequisites.length > 0 
+                      {(selectedSubject.prerequisites || []).length > 0 
                         ? selectedSubject.prerequisites.join(', ') 
                         : 'None'}
                     </span>
@@ -248,7 +299,7 @@ function HSCSubjectsView() {
             <div className="detail-section">
               <h3>💼 Career Paths</h3>
               <div className="career-paths-grid">
-                {selectedSubject.careerPaths.map((path, index) => (
+                {(selectedSubject.careerPaths || []).map((path, index) => (
                   <div key={index} className="career-path-item">
                     <span className="career-icon">🎓</span>
                     <span>{path}</span>
@@ -261,7 +312,7 @@ function HSCSubjectsView() {
             <div className="detail-section">
               <h3>✨ Recommended For</h3>
               <ul className="recommended-list-full">
-                {selectedSubject.recommendedFor.map((item, index) => (
+                {(selectedSubject.recommendedFor || []).map((item, index) => (
                   <li key={index}>
                     <span className="check-icon">✓</span>
                     {item}
@@ -413,14 +464,39 @@ function HSCSubjectsView() {
         </div>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <div className="loading-spinner"></div>
+          <p>Loading HSC subjects...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div style={{ padding: '40px', textAlign: 'center' }}>
+          <h3>Error loading HSC subjects</h3>
+          <p>{error}</p>
+          <button onClick={fetchHSCSubjects} className="btn-retry">
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Results Summary */}
-      <div className="results-summary">
-        <p>Showing {filteredSubjects.length} of {hscSubjects.length} subjects</p>
-      </div>
+      {!loading && !error && (
+        <div className="results-summary">
+          <p>
+            Showing {indexOfFirstSubject + 1}-{Math.min(indexOfLastSubject, filteredSubjects.length)} of {filteredSubjects.length} subjects
+            {filteredSubjects.length !== hscSubjects.length && ` (${hscSubjects.length} total)`}
+          </p>
+        </div>
+      )}
 
       {/* Subjects Grid */}
-      <div className="subjects-grid">
-        {filteredSubjects.map(subject => (
+      {!loading && !error && (
+        <div className="subjects-grid">
+        {currentSubjects.map(subject => (
           <div 
             key={subject.id} 
             className="subject-card clickable-card"
@@ -428,31 +504,31 @@ function HSCSubjectsView() {
           >
             <div className="subject-header">
               <div className="subject-title">
-                <h3>{subject.name}</h3>
-                <span className="subject-code">{subject.code}</span>
+                <h3>{subject.name || 'Unnamed Subject'}</h3>
+                <span className="subject-code">{subject.code || 'N/A'}</span>
               </div>
               <div className="subject-badges">
                 <span 
                   className="difficulty-badge"
-                  style={{ backgroundColor: getDifficultyColor(subject.difficulty) }}
+                  style={{ backgroundColor: getDifficultyColor(subject.difficulty || 'Medium') }}
                 >
-                  {subject.difficulty}
+                  {subject.difficulty || 'Medium'}
                 </span>
-                <span className="units-badge">{subject.units} units</span>
+                <span className="units-badge">{subject.units || 0} units</span>
               </div>
             </div>
 
             <div className="subject-category">
-              <span className="category-tag">{subject.category}</span>
+              <span className="category-tag">{subject.category || 'Uncategorized'}</span>
             </div>
 
-            <p className="subject-description">{subject.description}</p>
+            <p className="subject-description">{subject.description || 'No description available'}</p>
 
             <div className="subject-details">
               <div className="detail-row">
                 <span className="detail-label">Prerequisites:</span>
                 <span className="detail-value">
-                  {subject.prerequisites.length > 0 ? subject.prerequisites.join(', ') : 'None'}
+                  {(subject.prerequisites || []).length > 0 ? subject.prerequisites.join(', ') : 'None'}
                 </span>
               </div>
               
@@ -460,31 +536,31 @@ function HSCSubjectsView() {
                 <span className="detail-label">ATAR Contribution:</span>
                 <span 
                   className="detail-value atar-contribution"
-                  style={{ color: getATARColor(subject.atarContribution) }}
+                  style={{ color: getATARColor(subject.atarContribution || 'Medium') }}
                 >
-                  {subject.atarContribution}
+                  {subject.atarContribution || 'Medium'}
                 </span>
               </div>
 
               <div className="detail-row">
                 <span className="detail-label">Exam Type:</span>
-                <span className="detail-value">{subject.examType}</span>
+                <span className="detail-value">{subject.examType || 'Written'}</span>
               </div>
 
               <div className="detail-row">
                 <span className="detail-label">Practical Work:</span>
-                <span className="detail-value">{subject.practicalWork}</span>
+                <span className="detail-value">{subject.practicalWork || 'None'}</span>
               </div>
             </div>
 
             <div className="career-paths">
               <span className="career-label">Career Paths:</span>
               <div className="career-tags">
-                {subject.careerPaths.slice(0, 3).map((path, index) => (
+                {(subject.careerPaths || []).slice(0, 3).map((path, index) => (
                   <span key={index} className="career-tag">{path}</span>
                 ))}
-                {subject.careerPaths.length > 3 && (
-                  <span className="career-tag more">+{subject.careerPaths.length - 3} more</span>
+                {(subject.careerPaths || []).length > 3 && (
+                  <span className="career-tag more">+{(subject.careerPaths || []).length - 3} more</span>
                 )}
               </div>
             </div>
@@ -495,17 +571,17 @@ function HSCSubjectsView() {
                 <div className="popularity-bar">
                   <div 
                     className="popularity-fill"
-                    style={{ width: `${subject.popularity}%` }}
+                    style={{ width: `${subject.popularity || 0}%` }}
                   ></div>
                 </div>
-                <span className="popularity-value">{subject.popularity}%</span>
+                <span className="popularity-value">{subject.popularity || 0}%</span>
               </div>
             </div>
 
             <div className="recommended-for">
               <span className="recommended-label">Recommended for:</span>
               <ul className="recommended-list">
-                {subject.recommendedFor.slice(0, 2).map((item, index) => (
+                {(subject.recommendedFor || []).slice(0, 2).map((item, index) => (
                   <li key={index}>{item}</li>
                 ))}
               </ul>
@@ -536,10 +612,58 @@ function HSCSubjectsView() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && !error && filteredSubjects.length > 0 && totalPages > 1 && (
+        <div className="pagination-container">
+          <div className="pagination">
+            <button
+              className="pagination-btn"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              ← Previous
+            </button>
+            
+            <div className="pagination-pages">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => {
+                // Show first page, last page, current page, and pages around current
+                if (
+                  page === 1 ||
+                  page === totalPages ||
+                  (page >= currentPage - 1 && page <= currentPage + 1)
+                ) {
+                  return (
+                    <button
+                      key={page}
+                      className={`pagination-page ${currentPage === page ? 'active' : ''}`}
+                      onClick={() => handlePageChange(page)}
+                    >
+                      {page}
+                    </button>
+                  )
+                } else if (page === currentPage - 2 || page === currentPage + 2) {
+                  return <span key={page} className="pagination-ellipsis">...</span>
+                }
+                return null
+              })}
+            </div>
+            
+            <button
+              className="pagination-btn"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* No Results */}
-      {filteredSubjects.length === 0 && (
+      {!loading && !error && filteredSubjects.length === 0 && (
         <div className="no-results">
           <h3>No subjects found</h3>
           <p>Try adjusting your filters or search terms</p>
