@@ -133,26 +133,6 @@ function StudentDashboard() {
     }
   }, [])
 
-  // Fetch classes when classes tab is clicked/activated
-  useEffect(() => {
-    if (activeTab === 'classes') {
-      fetchStudentClasses()
-    }
-  }, [activeTab, fetchStudentClasses])
-
-  // Fetch assignments when assignments tab is clicked/activated
-  useEffect(() => {
-    if (activeTab === 'assignments') {
-      fetchStudentAssignments()
-    }
-  }, [activeTab, fetchStudentAssignments])
-
-  // Fetch grades when grades tab is clicked/activated or on dashboard
-  useEffect(() => {
-    if (activeTab === 'grades' || activeTab === 'dashboard') {
-      fetchStudentGrades()
-    }
-  }, [activeTab, fetchStudentGrades])
   
   // Sync activeTab with URL changes
   useEffect(() => {
@@ -180,6 +160,7 @@ function StudentDashboard() {
     fetchNotifications()
     fetchStudentAssignments()
     fetchStudentClasses()
+    fetchStudentGrades()
   }, [])
 
   // Fetch notifications when popup opens
