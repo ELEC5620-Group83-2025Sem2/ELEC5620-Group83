@@ -120,6 +120,18 @@ function TeacherDashboard() {
     setIsGradingAssignment(true)
   }
 
+  const handleEditAssignment = (assignmentId) => {
+    setSelectedAssignmentId(assignmentId)
+    setIsCreatingAssignment(true)
+  }
+
+  const handleDeleteAssignment = (assignmentId) => {
+    // If the deleted assignment was being viewed, go back
+    if (selectedAssignmentId === assignmentId) {
+      handleBackToAssignments()
+    }
+  }
+
   const handleTabChange = (tab) => {
     setActiveTab(tab)
     setSelectedClassId(null)
@@ -169,6 +181,7 @@ function TeacherDashboard() {
         <AssignmentDetailView
           assignmentId={selectedAssignmentId}
           onBack={handleBackToAssignments}
+          onEdit={handleEditAssignment}
         />
       )
     }
@@ -214,6 +227,8 @@ function TeacherDashboard() {
             onAssignmentClick={handleAssignmentClick}
             onCreateAssignment={handleCreateAssignment}
             onGradeAssignment={handleGradeAssignment}
+            onEditAssignment={handleEditAssignment}
+            onDeleteAssignment={handleDeleteAssignment}
           />
         )
       case 'students':
