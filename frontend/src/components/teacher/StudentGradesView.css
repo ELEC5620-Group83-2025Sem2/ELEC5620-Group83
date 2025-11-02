@@ -1,197 +1,212 @@
-/* Student Grades View Styles */
+/* ===== StudentGradesView (namespaced: sgv*) ===== */
+/* This file avoids any global layout resets so the teacher sidebar remains visible. */
 
-.student-grades-view {
-  padding: 2rem;
-  max-width: 1400px;
-  margin: 0 auto;
+:root {
+  --sgv-border: #e2e8f0;
+  --sgv-muted: #64748b;
+  --sgv-muted-2: #94a3b8;
+  --sgv-card: #ffffff;
+  --sgv-shadow: 0 2px 8px rgba(0,0,0,.08);
 }
 
-.grades-header {
-  margin-bottom: 2rem;
+.student-grades-view.sgv {
+  width: 100%;
+  padding: 16px 20px;   /* container padding only; no width tricks */
+  box-sizing: border-box;
 }
 
-.student-info-card {
-  display: flex;
+.sgv__header {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 12px 16px;
   align-items: center;
-  gap: 1.5rem;
-  background: white;
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-top: 1rem;
+  margin-bottom: 16px;
 }
 
-.student-avatar {
-  width: 80px;
-  height: 80px;
+.sgvBtn {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid var(--sgv-border);
+  background: #fff;
+  cursor: pointer;
+}
+.sgvBtn--ghost { background: #f8fafc; }
+.sgvBtn--secondary { background: #eef2ff; }
+
+.sgvHero {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 14px;
+  align-items: center;
+  background: var(--sgv-card);
+  border: 1px solid var(--sgv-border);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--sgv-shadow);
+}
+
+.sgvHero__avatar {
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   overflow: hidden;
   background: #e2e8f0;
 }
+.sgvHero__avatar img { width: 100%; height: 100%; object-fit: cover; }
 
-.student-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.sgvHero__placeholder {
+  width: 100%; height: 100%;
+  display: grid; place-items: center;
+  font-size: 1.6rem; font-weight: 700;
+  color: #475569; background: #e2e8f0;
 }
 
-.avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 2rem;
-  font-weight: 600;
-  color: #64748b;
-  background: #e2e8f0;
-}
+.sgvHero__name { margin: 0 0 4px 0; color: #0f172a; }
+.sgvHero__email { margin: 0; color: var(--sgv-muted); }
 
-.student-info-details h2 {
-  margin: 0 0 0.5rem 0;
-  color: #1e293b;
-}
-
-.student-info-details p {
-  margin: 0;
-  color: #64748b;
-}
-
-.grades-stats-grid {
+.sgv__stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 16px 0;
 }
 
-.stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+.sgvStat {
   text-align: center;
-}
-
-.stat-card h3 {
-  margin: 0 0 1rem 0;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #64748b;
-}
-
-.stat-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin: 0.5rem 0;
-}
-
-.stat-label {
-  color: #64748b;
-  font-size: 0.875rem;
-}
-
-.grades-filter {
-  background: white;
-  padding: 1.5rem;
+  background: var(--sgv-card);
+  border: 1px solid var(--sgv-border);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
+  padding: 16px;
+  box-shadow: var(--sgv-shadow);
+}
+
+.sgvStat h3 {
+  margin: 0 0 8px 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--sgv-muted);
+}
+
+.sgvStat__value { font-size: 2rem; font-weight: 800; margin: 4px 0; }
+.sgvStat__label { color: var(--sgv-muted); font-size: 0.9rem; margin: 0; }
+
+.sgv__filter {
   display: flex;
   align-items: center;
-  gap: 1rem;
-}
-
-.grades-filter label {
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.grades-filter select {
-  flex: 1;
-  max-width: 300px;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 1rem;
-}
-
-.grades-table-container {
-  background: white;
+  gap: 10px;
+  background: var(--sgv-card);
+  border: 1px solid var(--sgv-border);
   border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 12px;
+  box-shadow: var(--sgv-shadow);
+  margin-bottom: 16px;
+}
+
+.sgv__filter label { font-weight: 700; color: #1e293b; }
+.sgv__filter select {
+  max-width: 300px; flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--sgv-border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+/* Table */
+.sgv__tableWrap {
+  background: var(--sgv-card);
+  border: 1px solid var(--sgv-border);
+  border-radius: 12px;
+  box-shadow: var(--sgv-shadow);
   overflow: hidden;
 }
 
-.grades-table {
+.sgvTable {
   width: 100%;
   border-collapse: collapse;
 }
 
-.grades-table thead {
+.sgvTable thead {
   background: #f8fafc;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-.grades-table th {
-  padding: 1rem;
+.sgvTable th, .sgvTable td {
+  padding: 12px;
+  border-bottom: 1px solid var(--sgv-border);
   text-align: left;
-  font-weight: 600;
+}
+
+.sgvTable th {
+  font-weight: 700;
   color: #475569;
-  border-bottom: 2px solid #e2e8f0;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: .04em;
 }
 
-.grades-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-  color: #1e293b;
+.sgvTable__empty {
+  text-align: center;
+  padding: 28px 12px;
+  color: var(--sgv-muted);
 }
 
-.grades-table tbody tr:hover {
-  background: #f8fafc;
-}
-
-.grade-feedback {
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background: #f1f5f9;
-  border-radius: 6px;
-}
-
-.grade-feedback small {
-  color: #64748b;
-}
-
-.class-badge {
+/* Chips and badges */
+.sgvPill {
   display: inline-block;
-  padding: 0.25rem 0.75rem;
+  padding: 3px 10px;
   border-radius: 999px;
-  color: white;
+  color: #fff;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.student-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
+.sgvBadge {
+  display: inline-block;
+  min-width: 88px;
+  text-align: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.8rem;
 }
 
-.btn-view-grades {
-  flex: 1;
-  padding: 0.75rem 1.5rem;
-  background: #10b981;
-  color: white;
-  border: none;
+.sgvFeedback {
+  margin-top: 6px;
+  padding: 8px;
+  background: #f1f5f9;
   border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s;
+  font-size: 0.9rem;
+  color: #334155;
 }
 
-.btn-view-grades:hover {
-  background: #059669;
+.sgvMuted { color: #9ca3af; }
+.sgvPercent { font-weight: 700; }
+
+/* Center states */
+.sgv__center {
+  text-align: center;
+  padding: 48px 16px;
+}
+.sgv__spinner { font-size: 2rem; margin-bottom: .5rem; }
+
+/* Responsive tweaks */
+@media (max-width: 760px) {
+  .sgv__header { grid-template-columns: 1fr; align-items: start; }
+  .sgvHero { grid-template-columns: 48px 1fr; }
+  .sgvHero__avatar { width: 48px; height: 48px; }
+  .sgvStat__value { font-size: 1.8rem; }
+  .sgvTable th, .sgvTable td { padding: 10px; }
 }
 
+/* Compact phones: allow horizontal scroll if needed */
+@media (max-width: 520px) {
+  .sgv__tableWrap { overflow-x: auto; }
+  .sgvTable { min-width: 720px; }
+}

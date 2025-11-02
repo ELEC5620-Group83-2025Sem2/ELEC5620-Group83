@@ -72,8 +72,7 @@ function MyClassesView({ onClassClick }) {
   return (
     <>
       {/* Header with Create Button */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h2>My Classes</h2>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '2rem' }}>
         <button 
           className="btn-primary-action"
           onClick={() => setShowCreateModal(true)}
