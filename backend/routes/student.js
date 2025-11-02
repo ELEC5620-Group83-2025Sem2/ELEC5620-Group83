@@ -9,6 +9,7 @@ import { getStudentAnnouncements } from '../controllers/student/announcements.js
 import { getStudentClasses } from '../controllers/student/classes.js';
 import { getHSCSubjects } from '../controllers/student/hscSubjects.js';
 import { getStudentAssignments } from '../controllers/student/assignments.js';
+import { sendChatMessage } from '../controllers/student/chat.js';
 
 const router = express.Router();
 
@@ -54,6 +55,13 @@ router.get('/hsc-subjects', getHSCSubjects);
 
 // GET /api/student/assignments - Get all assignments for student's enrolled classes
 router.get('/assignments', getStudentAssignments);
+
+// ===================
+// Chat Routes
+// ===================
+
+// POST /api/student/chat - Send message to AI chat
+router.post('/chat', sendChatMessage);
 
 export { router as studentRoutes };
 
