@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { generateCourseRecommendation } from '../../services/courseService'
+import studentApi from '../../services/studentApi'
 
 function HSCSubjectRecommendation() {
   const [interestInput, setInterestInput] = useState('')
@@ -8,6 +9,24 @@ function HSCSubjectRecommendation() {
   const [apiResults, setApiResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selectedSubjects, setSelectedSubjects] = useState([])
+  const [loadingSubjects, setLoadingSubjects] = useState(true)
+
+  // Load selected subjects on component mount
+  useEffect(() => {
+    const fetchSelectedSubjects = async () => {
+      try {
+        const response = await studentApi.getSelectedSubjects()
+        const subjects = response.subjects || []
+        setSelectedSubjects(subjects)
+      } catch (e) {
+        console.error('Failed to load selected subjects:', e)
+      } finally {
+        setLoadingSubjects(false)
+      }
+    }
+    fetchSelectedSubjects()
+  }, [])
 
   const handleGenerate = async () => {
     setError('')
@@ -37,12 +56,82 @@ function HSCSubjectRecommendation() {
     }
   }
 
+  const toggleSubjectSelection = async (subject) => {
+    const subjectCode = subject.code
+    const subjectName = subject.recommend_subject || subject.name
+    
+    // Check if already selected
+    const existingSubject = selectedSubjects.find(
+      s => s.subject_code === subjectCode && s.subject_name === subjectName
+    )
+    
+    if (existingSubject) {
+      // Unselect: Delete from database
+      try {
+        await studentApi.deleteSelectedSubject(existingSubject.id)
+        setSelectedSubjects(selectedSubjects.filter(s => s.id !== existingSubject.id))
+        setNotification({ 
+          type: 'success', 
+          message: `Removed "${subjectName}" from your selections` 
+        })
+        setTimeout(() => setNotification(null), 3000)
+      } catch (e) {
+        setNotification({ 
+          type: 'error', 
+          message: 'Failed to remove subject. Please try again.' 
+        })
+        setTimeout(() => setNotification(null), 3000)
+      }
+    } else {
+      // Select: Add to database
+      try {
+        const response = await studentApi.addSelectedSubject({
+          subject_code: subjectCode,
+          subject_name: subjectName,
+          category: subject.category,
+          reasoning: subject.reasoning || subject.Reasoning
+        })
+        
+        if (response.success) {
+          setSelectedSubjects([...selectedSubjects, response.data])
+          setNotification({ 
+            type: 'success', 
+            message: `Added "${subjectName}" to your selections ✓` 
+          })
+          setTimeout(() => setNotification(null), 3000)
+        }
+      } catch (e) {
+        // Check if it's a duplicate error
+        if (e.message && e.message.includes('already selected')) {
+          setNotification({ 
+            type: 'error', 
+            message: `You have already selected "${subjectName}"` 
+          })
+        } else {
+          setNotification({ 
+            type: 'error', 
+            message: e.message || 'Failed to save selection. Please try again.' 
+          })
+        }
+        setTimeout(() => setNotification(null), 3000)
+      }
+    }
+  }
+
+  const isSubjectSelected = (subject) => {
+    const subjectCode = subject.code
+    const subjectName = subject.recommend_subject || subject.name
+    return selectedSubjects.some(
+      s => s.subject_code === subjectCode && s.subject_name === subjectName
+    )
+  }
+
   return (
     <div className="hsc-subjects-container">
       {notification && (
         <div className={`notification ${notification.type}`}>
           <span className="notification-icon">
-            {notification.type === 'success' ? '✅' : 'ℹ️'}
+            {notification.type === 'success' ? '✅' : notification.type === 'error' ? '❌' : 'ℹ️'}
           </span>
           <span className="notification-message">{notification.message}</span>
           <button className="notification-close" onClick={() => setNotification(null)}>
@@ -50,14 +139,6 @@ function HSCSubjectRecommendation() {
           </button>
         </div>
       )}
-
-      {/* Header */}
-      <div className="subjects-header">
-        <div className="header-content">
-          <h2>HSC Subject Recommendation</h2>
-          <p>Tell us your interests and we’ll suggest subjects that fit you.</p>
-        </div>
-      </div>
 
       {/* Input row */}
       <div className="search-filters-section">
@@ -85,6 +166,73 @@ function HSCSubjectRecommendation() {
         <div className="error-text" style={{ marginTop: '0.5rem' }}>{error}</div>
       )}
 
+      {/* Selected Subjects Summary - Always visible if there are selections */}
+      {selectedSubjects.length > 0 && (
+        <div className="selected-summary" style={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          padding: '1rem 1.5rem',
+          borderRadius: '12px',
+          marginTop: '2rem',
+          marginBottom: '1.5rem',
+          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem' }}>
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem' }}>
+                ✓ Your Selected Subjects ({selectedSubjects.length})
+              </h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {selectedSubjects.map(subject => (
+                  <span key={subject.id} style={{
+                    background: 'rgba(255, 255, 255, 0.2)',
+                    padding: '0.3rem 0.8rem',
+                    borderRadius: '20px',
+                    fontSize: '0.9rem',
+                    backdropFilter: 'blur(10px)'
+                  }}>
+                    {subject.subject_name}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button 
+              className="btn-primary" 
+              onClick={() => {
+                setNotification({ 
+                  type: 'success', 
+                  message: `Your ${selectedSubjects.length} selected subject(s) are already saved!` 
+                })
+                setTimeout(() => setNotification(null), 3000)
+              }}
+              style={{ 
+                background: 'white',
+                color: '#667eea',
+                border: 'none',
+                padding: '0.6rem 1.5rem',
+                fontSize: '0.95rem',
+                fontWeight: '600',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                whiteSpace: 'nowrap',
+                transition: 'transform 0.2s, box-shadow 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.transform = 'translateY(-2px)'
+                e.target.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)'
+              }}
+              onMouseOut={(e) => {
+                e.target.style.transform = 'translateY(0)'
+                e.target.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'
+              }}
+            >
+              💾 Save Selection
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Results Summary */}
       {generated && (
         <div className="results-summary">
@@ -108,13 +256,40 @@ function HSCSubjectRecommendation() {
           const recommendedFor = item.recommendedFor || [];
           const careerPaths = item.careerPaths || [];
           return (
-            <div key={code + name} className="subject-card">
+            <div 
+              key={code + name} 
+              className={`subject-card ${isSubjectSelected(item) ? 'selected' : ''}`}
+              style={{ 
+                cursor: 'pointer',
+                border: isSubjectSelected(item) ? '3px solid #667eea' : '1px solid #e2e8f0',
+                boxShadow: isSubjectSelected(item) ? '0 4px 12px rgba(102, 126, 234, 0.2)' : '0 2px 4px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease'
+              }}
+              onClick={() => toggleSubjectSelection(item)}
+            >
               <div className="subject-header">
-                <div className="subject-title">
-                  <h3>{name}</h3>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.8rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={isSubjectSelected(item)}
+                    onChange={(e) => {
+                      e.stopPropagation()
+                      toggleSubjectSelection(item)
+                    }}
+                    style={{ 
+                      width: '20px', 
+                      height: '20px', 
+                      marginTop: '0.2rem',
+                      cursor: 'pointer',
+                      accentColor: '#667eea'
+                    }}
+                  />
+                  <div className="subject-title">
+                    <h3>{name}</h3>
+                  </div>
                 </div>
                 <div className="subject-badges">
-                <span className="category-tag">{category}</span>
+                  <span className="category-tag">{category}</span>
                   <span className="units-badge">{units} units</span>
                 </div>
               </div>

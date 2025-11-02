@@ -11,7 +11,25 @@ import { getHSCSubjects } from '../controllers/student/hscSubjects.js';
 import { getStudentAssignments, getAssignmentDetail, submitAssignment } from '../controllers/student/assignments.js';
 import { getClassModulesForStudent, getModuleDetailForStudent } from '../controllers/student/modules.js';
 import { getStudentGrades } from '../controllers/student/grades.js';
+import { 
+  addSelectedSubject, 
+  getSelectedSubjects, 
+  deleteSelectedSubject 
+} from '../controllers/student/selectedSubjects.js';
 import { sendChatMessage } from '../controllers/student/chat.js';
+import { 
+  generatePracticeQuestions,
+  getPracticeStats 
+} from '../controllers/student/practiceQuestions.js';
+import { 
+  getReviewQuestions,
+  getReviewStats 
+} from '../controllers/student/reviewQuestions.js';
+import { 
+  getPracticeQuestions,
+  submitPracticeAnswer 
+} from '../controllers/student/practiceAnswers.js';
+import { analyzeKnowledgeGaps, getKnowledgeGapsStats } from '../controllers/student/knowledgeGaps.js';
 
 const router = express.Router();
 
@@ -80,11 +98,65 @@ router.get('/assignments/:id', getAssignmentDetail);
 router.get('/grades', getStudentGrades);
 
 // ===================
+// Selected Subjects Routes
+// ===================
+
+// POST /api/student/selected-subjects - Add a single selected HSC subject
+router.post('/selected-subjects', addSelectedSubject);
+
+// GET /api/student/selected-subjects - Get student's selected HSC subjects
+router.get('/selected-subjects', getSelectedSubjects);
+
+// DELETE /api/student/selected-subjects/:id - Delete a specific selected subject
+router.delete('/selected-subjects/:id', deleteSelectedSubject);
+
+// ===================
 // Chat Routes
 // ===================
 
 // POST /api/student/chat - Send message to AI chat
 router.post('/chat', sendChatMessage);
+
+// ===================
+// Practice Questions Routes
+// ===================
+
+// POST /api/student/practice-questions/generate - Generate AI practice questions
+router.post('/practice-questions/generate', generatePracticeQuestions);
+
+// GET /api/student/practice-questions/stats - Get practice question stats
+router.get('/practice-questions/stats', getPracticeStats);
+
+// ===================
+// Review Questions Routes
+// ===================
+
+// GET /api/student/review-questions - Get practice questions for review
+router.get('/review-questions', getReviewQuestions);
+
+// GET /api/student/review-questions/stats - Get review statistics
+router.get('/review-questions/stats', getReviewStats);
+
+// ===================
+// Practice Answers Routes
+// ===================
+
+// GET /api/student/practice-answers/questions - Get all practice questions
+router.get('/practice-answers/questions', getPracticeQuestions);
+
+// POST /api/student/practice-answers/submit - Submit answer
+router.post('/practice-answers/submit', submitPracticeAnswer);
+
+
+// ===================
+// Knowledge Gaps Routes
+// ===================
+
+// POST /api/student/knowledge-gaps/analyze - Analyze knowledge gaps
+router.post('/knowledge-gaps/analyze', analyzeKnowledgeGaps);
+
+// GET /api/student/knowledge-gaps/stats - Get knowledge gaps statistics
+router.get('/knowledge-gaps/stats', getKnowledgeGapsStats);
 
 export { router as studentRoutes };
 

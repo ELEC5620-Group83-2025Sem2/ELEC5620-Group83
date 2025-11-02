@@ -226,7 +226,7 @@ Please return ONLY the JSON array following the format specified in the instruct
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',

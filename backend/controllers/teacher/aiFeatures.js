@@ -69,7 +69,7 @@ export const generateRubric = async (req, res) => {
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
@@ -191,7 +191,7 @@ export const generateAssignment = async (req, res) => {
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: instruction },
             { role: 'user', content: userPrompt }
@@ -271,7 +271,7 @@ Provide a clear, informative summary that captures the main points.`;
           'Authorization': `Bearer ${OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
