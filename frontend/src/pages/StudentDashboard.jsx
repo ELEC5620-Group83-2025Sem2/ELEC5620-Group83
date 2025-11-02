@@ -15,6 +15,7 @@ import ClassDetailPage from '../components/dashboard/ClassDetailPage'
 import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
 import HSCSubjectRecommendation from '../components/dashboard/HSCSubjectRecommendation'
 import ChatView from '../components/dashboard/ChatView'
+import KnowledgeGaps from '../components/dashboard/KnowledgeGaps'
 import './StudentDashboard.css'
 
 function StudentDashboard() {
@@ -24,7 +25,7 @@ function StudentDashboard() {
   // Extract tab from URL path
   const pathParts = location.pathname.split('/')
   const urlTab = pathParts[pathParts.length - 1] // Get last part of path
-  const validTabs = ['dashboard', 'classes', 'grades', 'assignments', 'study-planner', 'career', 'hsc-subjects', 'hsc-subjects-recommendation', 'weekly-report', 'chat', 'settings']
+  const validTabs = ['dashboard', 'classes', 'grades', 'assignments', 'study-planner', 'career', 'hsc-subjects', 'hsc-subjects-recommendation', 'weekly-report', 'chat', 'knowledge-gaps', 'settings']
   const initialTab = validTabs.includes(urlTab) ? urlTab : 'dashboard'
   
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -257,7 +258,8 @@ function StudentDashboard() {
 
     // Show Assignment Detail Page if an assignment is selected
     if (selectedAssignmentId) {
-      return <AssignmentDetailPage assignmentId={selectedAssignmentId} onBack={handleBackToAssignments} />
+      const assignmentData = upcomingAssignments.find(a => a.id === selectedAssignmentId)
+      return <AssignmentDetailPage assignmentData={assignmentData} onBack={handleBackToAssignments} />
     }
 
     // Otherwise show the normal tab content
@@ -292,6 +294,8 @@ function StudentDashboard() {
         return <WeeklyReportView />
       case 'chat':
         return <ChatView />
+      case 'knowledge-gaps':
+        return <KnowledgeGaps />
       case 'settings':
         return <SettingsView studentData={studentData} userProfile={userProfile} onProfileUpdate={setUserProfile} />
       default:
@@ -319,6 +323,7 @@ function StudentDashboard() {
       'hsc-subjects': 'Browse HSC Subjects',
       'weekly-report': 'Weekly Report',
       chat: 'AI Chat',
+      'knowledge-gaps': 'Knowledge Gaps',
       settings: 'Settings'
     }
     return titles[activeTab] || 'Dashboard'
@@ -406,6 +411,13 @@ function StudentDashboard() {
           >
             <span className="nav-icon">💬</span>
             <span className="nav-label">AI Chat</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'knowledge-gaps' ? 'active' : ''}`}
+            onClick={() => handleTabChange('knowledge-gaps')}
+          >
+            <span className="nav-icon">🔍</span>
+            <span className="nav-label">Knowledge Gaps</span>
           </button>
         </nav>
 
