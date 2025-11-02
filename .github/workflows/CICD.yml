@@ -1,0 +1,139 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop, Ziqi ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # 后端测试
+  backend-test:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        working-directory: ./backend
+        run: npm install
+      
+      - name: Run tests
+        working-directory: ./backend
+        run: npm test
+      
+      - name: Tests completed
+        run: echo "Backend tests passed!"
+  
+  # 前端测试
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm install
+      
+      - name: Run tests
+        working-directory: ./frontend
+        run: npm run test:ci
+      
+      - name: Tests completed
+        run: echo "Frontend tests passed!"
+  
+  # 前端构建
+  frontend-build:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    needs: [frontend-test]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm install
+      
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+      
+      - name: Build completed
+        run: echo "Frontend build successful!"
+  
+  # 代码质量检查
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check for TODO comments
+        run: |
+          echo "Checking for TODO comments..."
+          grep -r "TODO" backend/ frontend/ || echo "No TODOs found"
+      
+      - name: Count lines of code
+        run: |
+          echo "Lines of code statistics:"
+          echo "Backend:"
+          find backend -name "*.js" -not -path "*/node_modules/*" | xargs wc -l | tail -1 || echo "No JS files"
+          echo "Frontend:"
+          find frontend/src -name "*.jsx" -o -name "*.js" -not -path "*/node_modules/*" | xargs wc -l | tail -1 || echo "No JSX files"
+  
+  # 安全审计
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Backend security audit
+        working-directory: ./backend
+        run: |
+          npm install
+          npm audit --audit-level=high || echo "Security issues found (continuing)"
+      
+      - name: Frontend security audit
+        working-directory: ./frontend
+        run: |
+          npm install
+          npm audit --audit-level=high || echo "Security issues found (continuing)"
