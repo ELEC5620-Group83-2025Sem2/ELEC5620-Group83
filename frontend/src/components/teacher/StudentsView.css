@@ -1,233 +1,266 @@
-/* Students View Styles */
-
-.students-view {
-  max-width: 1400px;
-  margin: 0 auto;
-}
+/* ===== Students View (Compact, Professional Layout) ===== */
 
 .students-header {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  justify-content: space-between;
+  align-items: center;
   flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0 0.25rem;
 }
 
 .search-box {
   flex: 1;
   position: relative;
-  min-width: 300px;
+  min-width: 240px;
 }
 
 .search-input {
   width: 100%;
-  padding: 0.75rem 2.5rem 0.75rem 1rem;
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 0.95rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  background: white;
+  transition: all 0.2s;
 }
 
 .search-input:focus {
   outline: none;
   border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102,126,234,0.2);
 }
 
 .search-icon {
   position: absolute;
-  right: 1rem;
+  right: 0.75rem;
   top: 50%;
   transform: translateY(-50%);
-  font-size: 1.25rem;
+  font-size: 1rem;
   color: #a0aec0;
 }
 
-.students-results {
-  font-size: 0.875rem;
-  color: #718096;
-  margin-bottom: 1.5rem;
+/* Grid layout for student cards */
+.students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
 }
 
-.student-classes-tags {
+/* Student Card */
+.student-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.8rem;
+  text-align: center;
+  transition: all 0.2s ease;
   display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin: 0.75rem 0;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-.class-tag {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+.student-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 3px 6px rgba(102,126,234,0.1);
+}
+
+.student-avatar-large {
+  font-size: 2.2rem;
+  color: #5a67d8;
+  margin-bottom: 0.4rem;
+}
+
+/* Name + Email */
+.student-card h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #2d3748;
+  margin-bottom: 0.15rem;
+}
+
+.student-email {
+  font-size: 0.75rem;
+  color: #718096;
+  margin-bottom: 0.25rem;
+  word-break: break-all;
+}
+
+/* Enrollment info */
+.student-stats {
+  background: #f9fafb;
+  border-radius: 6px;
+  padding: 0.35rem 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.7rem;
+  color: #a0aec0;
+}
+
+.stat-value {
+  font-weight: 600;
+  color: #2d3748;
+  font-size: 0.95rem;
+  margin-top: 0.1rem;
+}
+
+/* Buttons */
+.student-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.btn-view-student,
+.btn-view-grades {
+  flex: 1;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  border-radius: 5px;
   font-size: 0.75rem;
   font-weight: 600;
-}
-
-.student-recent-activity {
-  font-size: 0.8rem;
-  color: #718096;
-  margin-top: 0.75rem;
-  font-style: italic;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .btn-view-student {
-  width: 100%;
-  padding: 0.5rem;
   background: #667eea;
   color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 1rem;
-  transition: all 0.2s;
 }
 
 .btn-view-student:hover {
   background: #5a67d8;
 }
 
-.student-detail-modal {
-  max-width: 800px;
+.btn-view-grades {
+  background: #38a169;
+  color: white;
 }
 
-.student-profile {
-  padding: 0;
+.btn-view-grades:hover {
+  background: #2f855a;
 }
 
-.profile-header {
+/* Modal remains same */
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.3);
   display: flex;
+  justify-content: center;
   align-items: center;
-  gap: 1.5rem;
-  padding: 1.5rem;
-  background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
-  border-radius: 8px;
-  margin-bottom: 1.5rem;
+  z-index: 999;
 }
 
-.student-avatar-xl {
-  font-size: 5rem;
+.modal {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  width: 90%;
+  max-width: 650px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+  animation: fadeIn 0.2s ease;
 }
 
-.profile-info h2 {
-  font-size: 1.5rem;
-  margin-bottom: 0.25rem;
-  color: #2d3748;
-}
-
-.profile-info p {
-  font-size: 0.95rem;
-  color: #718096;
-  margin-bottom: 0.25rem;
-}
-
-.student-id-large {
-  font-size: 0.875rem !important;
-  color: #a0aec0 !important;
-}
-
-.profile-stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.profile-stat-card {
-  background: #f7fafc;
-  padding: 1.25rem;
-  border-radius: 8px;
-  text-align: center;
-}
-
-.profile-stat-card h4 {
-  font-size: 0.875rem;
-  color: #718096;
-  margin-bottom: 0.5rem;
-}
-
-.stat-large {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #2d3748;
-}
-
-.profile-section {
-  margin-bottom: 1.5rem;
-}
-
-.profile-section h4 {
-  font-size: 1rem;
-  margin-bottom: 1rem;
-  color: #2d3748;
-}
-
-.profile-classes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.profile-class-item {
+.modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  background: #f7fafc;
-  border-radius: 8px;
-  border-left: 4px solid;
+  margin-bottom: 0.75rem;
 }
 
-.profile-class-item h5 {
-  font-size: 0.95rem;
-  margin-bottom: 0.25rem;
-  color: #2d3748;
-}
-
-.profile-class-item p {
-  font-size: 0.85rem;
-  color: #718096;
-  margin: 0;
-}
-
-.class-grade-badge {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
+.modal-header h3 {
+  font-size: 1.1rem;
   font-weight: 700;
-  font-size: 1.25rem;
 }
 
-.notes-textarea {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  resize: vertical;
-  margin-bottom: 1rem;
-}
-
-.btn-save-notes {
-  padding: 0.5rem 1rem;
-  background: #667eea;
-  color: white;
+.modal-close {
   border: none;
-  border-radius: 6px;
-  font-weight: 600;
+  background: transparent;
+  font-size: 1.1rem;
   cursor: pointer;
-  transition: all 0.2s;
 }
 
-.btn-save-notes:hover {
-  background: #5a67d8;
+/* Responsive Tweaks */
+@media (max-width: 992px) {
+  .students-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
 }
 
-/* Responsive */
 @media (max-width: 768px) {
   .students-header {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .search-box {
-    width: 100%;
+  .student-avatar-large {
+    font-size: 1.8rem;
+  }
+
+  .student-card {
+    padding: 0.6rem;
   }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* === Force date font-size inside student cards / 只改卡片里的日期字号 === */
+.students-grid .student-card .student-stats,
+.students-grid .student-card .student-stats *,
+.students-grid .student-card .stat-value,
+.students-grid .student-card time,
+.students-grid .student-card .enrol-date,
+.students-grid .student-card .enroll-date,
+.students-grid .student-card .date {
+  font-size: 12px !important;     /* 想要多小就改这里，比如 12px/0.9rem */
+  line-height: 1.2 !important;
+  font-weight: 600;
+}
+
+/* 有人把日期包在 h1/h2？一起压下去 */
+.students-grid .student-card .student-stats h1,
+.students-grid .student-card .student-stats h2,
+.students-grid .student-card .student-stats h3,
+.students-grid .student-card .student-stats h4,
+.students-grid .student-card .student-stats h5,
+.students-grid .student-card .student-stats h6 {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+}
+
+/* Center ENROLLED + date inside the gray box */
+.student-card .student-stats {
+  display: flex;                 /* 垂直布局并可居中 */
+  flex-direction: column;
+  align-items: center;           /* 水平居中 */
+  justify-content: center;       /* 垂直居中 */
+  text-align: center;            /* 文本居中 */
+  gap: 0.25rem;                  /* 上下留点间距 */
+  min-height: 64px;              /* 让盒子高度一致，可按需调 */
+}
+
+/* 细化一下字号与间距（可选） */
+.student-card .stat-label {
+  font-size: 0.7rem;
+  letter-spacing: .02em;
+  margin: 0;
+}
+
+.student-card .stat-value,
+.student-card time.stat-value {
+  font-size: 0.95rem;
+  line-height: 1.2;
+  margin: 0;
+}

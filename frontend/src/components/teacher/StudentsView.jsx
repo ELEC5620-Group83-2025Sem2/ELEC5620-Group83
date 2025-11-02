@@ -58,6 +58,7 @@ function StudentsView() {
 
   return (
     <>
+    <div id="students-view">
       <div className="students-header">
         <div className="search-box">
           <input
@@ -70,7 +71,7 @@ function StudentsView() {
           <span className="search-icon">🔍</span>
         </div>
       </div>
-
+    </div>
       <div className="students-results">
         {filteredStudents.length > 0 ? (
           <div className="students-grid">
@@ -116,7 +117,7 @@ function StudentsView() {
                       className="btn-view-grades"
                       onClick={() => navigate(`/teacher/students/${student.id}/grades`)}
                     >
-                      查看成绩
+                      View Grades
                     </button>
                   </div>
                 </div>
@@ -172,6 +173,19 @@ function StudentsView() {
                 })()}</p>
                 <p>Email: {selectedStudent.email}</p>
                 <p>Registered: {selectedStudent.created_at ? new Date(selectedStudent.created_at).toLocaleString() : 'N/A'}</p>
+                <p>
+                  Classes: {
+                    selectedStudent.classes && selectedStudent.classes.length > 0
+                      ? selectedStudent.classes.map((cls, index) => (
+                          <span key={cls.id || index}>
+                            {cls.name || cls.code || 'Unknown'}
+                            {cls.code && cls.name && cls.code !== cls.name ? ` (${cls.code})` : ''}
+                            {index < selectedStudent.classes.length - 1 ? ', ' : ''}
+                          </span>
+                        ))
+                      : 'No classes enrolled'
+                  }
+                </p>
               </div>
             </div>
 

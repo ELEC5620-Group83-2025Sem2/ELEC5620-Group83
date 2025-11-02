@@ -14,6 +14,7 @@ import WeeklyReportView from '../components/dashboard/WeeklyReportView'
 import ClassDetailPage from '../components/dashboard/ClassDetailPage'
 import AssignmentDetailPage from '../components/dashboard/AssignmentDetailPage'
 import HSCSubjectRecommendation from '../components/dashboard/HSCSubjectRecommendation'
+import ChatView from '../components/dashboard/ChatView'
 import './StudentDashboard.css'
 
 function StudentDashboard() {
@@ -23,7 +24,7 @@ function StudentDashboard() {
   // Extract tab from URL path
   const pathParts = location.pathname.split('/')
   const urlTab = pathParts[pathParts.length - 1] // Get last part of path
-  const validTabs = ['dashboard', 'classes', 'grades', 'assignments', 'study-planner', 'career', 'hsc-subjects', 'hsc-subjects-recommendation', 'weekly-report', 'settings']
+  const validTabs = ['dashboard', 'classes', 'grades', 'assignments', 'study-planner', 'career', 'hsc-subjects', 'hsc-subjects-recommendation', 'weekly-report', 'chat', 'settings']
   const initialTab = validTabs.includes(urlTab) ? urlTab : 'dashboard'
   
   const [activeTab, setActiveTab] = useState(initialTab)
@@ -264,6 +265,8 @@ function StudentDashboard() {
         return <HSCSubjectsView />
       case 'weekly-report':
         return <WeeklyReportView />
+      case 'chat':
+        return <ChatView />
       case 'settings':
         return <SettingsView studentData={studentData} userProfile={userProfile} onProfileUpdate={setUserProfile} />
       default:
@@ -290,6 +293,7 @@ function StudentDashboard() {
       'hsc-subjects-recommendation': 'HSC Subject Recommendation',
       'hsc-subjects': 'Browse HSC Subjects',
       'weekly-report': 'Weekly Report',
+      chat: 'AI Chat',
       settings: 'Settings'
     }
     return titles[activeTab] || 'Dashboard'
@@ -370,6 +374,13 @@ function StudentDashboard() {
           >
             <span className="nav-icon">📊</span>
             <span className="nav-label">Weekly Report</span>
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'chat' ? 'active' : ''}`}
+            onClick={() => handleTabChange('chat')}
+          >
+            <span className="nav-icon">💬</span>
+            <span className="nav-label">AI Chat</span>
           </button>
         </nav>
 
