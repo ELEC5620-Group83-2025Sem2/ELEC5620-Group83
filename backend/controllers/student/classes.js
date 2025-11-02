@@ -20,8 +20,6 @@ export const getStudentClasses = async (req, res) => {
 
     // Get all enrollments for this student from the enrollments table
     // student_id = user_id from JWT token
-    console.log(`[getStudentClasses] Fetching classes for student_id (user_id from JWT): ${studentId}`);
-    
     const { data: enrollments, error: enrollError } = await supabase
       .from('enrollments')
       .select(`
@@ -46,8 +44,6 @@ export const getStudentClasses = async (req, res) => {
       console.error(`Failed to fetch enrollments for student_id: ${studentId}`);
       return ErrorResponse.internalServerError('Failed to fetch student enrollments').send(res);
     }
-
-    console.log(`[getStudentClasses] Found ${enrollments?.length || 0} enrollments for student ${studentId}`);
 
     // If student is not enrolled in any classes, return empty array
     if (!enrollments || enrollments.length === 0) {
