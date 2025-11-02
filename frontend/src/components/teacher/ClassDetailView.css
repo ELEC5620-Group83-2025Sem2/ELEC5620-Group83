@@ -242,3 +242,33 @@
   color: #2d3748;
 }
 
+/* Status badge styles for assignments */
+.status-badge {
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.status-published { 
+  background: #48bb7820; 
+  color: #2f855a; 
+}
+
+.status-draft { 
+  background: #71809620; 
+  color: #4a5568; 
+}
+
+.status-grading { 
+  background: #ed893620; 
+  color: #c05621; 
+}
+
+.status-graded { 
+  background: #667eea20; 
+  color: #5a67d8; 
+}
+

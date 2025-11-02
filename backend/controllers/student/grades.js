@@ -10,8 +10,6 @@ export const getStudentGrades = async (req, res) => {
     const studentId = req.user.id;
     const supabase = getSupabaseClient();
     
-    console.log(`[getStudentGrades] Fetching grades for student_id: ${studentId}`);
-    
     // Get all grades from class_grade_history
     const { data: grades, error: gradeError } = await supabase
       .from('class_grade_history')
@@ -37,8 +35,6 @@ export const getStudentGrades = async (req, res) => {
       console.error('Error fetching grades:', gradeError);
       return ErrorResponse.internalServerError('Failed to fetch student grades').send(res);
     }
-    
-    console.log(`[getStudentGrades] Found ${grades?.length || 0} grades for student ${studentId}`);
     
     // Transform grades to match frontend format
     const transformedGrades = (grades || []).map(grade => {

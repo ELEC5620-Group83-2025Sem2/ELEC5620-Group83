@@ -43,15 +43,6 @@ export const getTeacherAssignments = async (req, res) => {
 
     // Enrich each assignment with submission stats
     const enrichedAssignments = await Promise.all(assignments.map(async (assignment) => {
-      // Debug: Log assignment data to check for due_date
-      console.log('Assignment data:', {
-        id: assignment.id,
-        title: assignment.title,
-        due_date: assignment.due_date,
-        dueDate: assignment.dueDate,
-        allKeys: Object.keys(assignment)
-      });
-
       // Get submission stats
       const { data: submissions } = await supabase
         .from('assignment_submissions')
@@ -111,8 +102,6 @@ export const getAssignmentDetails = async (req, res) => {
     const { id: assignmentId } = req.params;
     const supabase = getSupabaseClient();
 
-    console.log('getAssignmentDetails called with:', { assignmentId, teacherId });
-
     // Get assignment details
     const { data: assignment, error: assignError } = await supabase
       .from('assignments')
@@ -126,8 +115,6 @@ export const getAssignmentDetails = async (req, res) => {
       `)
       .eq('id', assignmentId)
       .single();
-
-    console.log('Assignment query result:', { assignment: !!assignment, error: assignError });
 
     if (assignError) {
       console.error('Error fetching assignment:', assignError);
@@ -143,15 +130,6 @@ export const getAssignmentDetails = async (req, res) => {
       return ErrorResponse.notFound('Assignment not found').send(res);
     }
 
-    // Debug: Log assignment data to check for due_date
-    console.log('Assignment details:', {
-      id: assignment.id,
-      title: assignment.title,
-      due_date: assignment.due_date,
-      dueDate: assignment.dueDate,
-      allKeys: Object.keys(assignment)
-    });
-
     // Verify teacher has access to this assignment's class
     const { data: access, error: accessError } = await supabase
       .from('class_teachers')
@@ -159,13 +137,6 @@ export const getAssignmentDetails = async (req, res) => {
       .eq('profile_id', teacherId)
       .eq('class_id', assignment.class_id)
       .single();
-
-    console.log('Teacher access check:', {
-      teacherId,
-      classId: assignment.class_id,
-      hasAccess: !!access,
-      error: accessError
-    });
 
     // TEMPORARILY DISABLED for debugging
     // if (!access) {

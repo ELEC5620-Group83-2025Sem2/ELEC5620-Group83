@@ -3,7 +3,7 @@ import teacherApi from '../../services/teacherApi'
 import './ClassDetailView.css'
 import './ModulesView.css'
 
-function ClassDetailView({ classId, onBack, onCreateAssignment }) {
+function ClassDetailView({ classId, onBack, onCreateAssignment, onAssignmentClick }) {
   const [classData, setClassData] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
   const [loading, setLoading] = useState(true)
@@ -12,6 +12,10 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
   const [showCreateModule, setShowCreateModule] = useState(false)
   const [newModule, setNewModule] = useState({ title: '', description_richtext: '', is_published: false })
   const [creatingModule, setCreatingModule] = useState(false)
+  const [announcements, setAnnouncements] = useState([])
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false)
+  const [assignments, setAssignments] = useState([])
+  const [loadingAssignments, setLoadingAssignments] = useState(false)
 
   const [expandedModuleId, setExpandedModuleId] = useState(null)
   const [showNewItemFor, setShowNewItemFor] = useState(null)
@@ -50,11 +54,43 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
     }
   }
 
+  const fetchAnnouncements = async () => {
+    setLoadingAnnouncements(true)
+    try {
+      const res = await teacherApi.getAnnouncements()
+      // Filter announcements for this specific class
+      const classAnnouncements = (res.announcements || []).filter(a => a.classId === classId)
+      setAnnouncements(classAnnouncements)
+    } catch (e) {
+      console.error('Failed to fetch announcements', e)
+    } finally {
+      setLoadingAnnouncements(false)
+    }
+  }
+
+  const fetchAssignments = async () => {
+    setLoadingAssignments(true)
+    try {
+      const res = await teacherApi.getAssignments()
+      // Filter assignments for this specific class
+      const classAssignments = (res.assignments || []).filter(a => a.class_id === classId)
+      setAssignments(classAssignments)
+    } catch (e) {
+      console.error('Failed to fetch assignments', e)
+    } finally {
+      setLoadingAssignments(false)
+    }
+  }
+
   useEffect(() => {
     if (activeTab === 'modules') {
       fetchModules()
+    } else if (activeTab === 'announcements') {
+      fetchAnnouncements()
+    } else if (activeTab === 'assignments') {
+      fetchAssignments()
     }
-  }, [activeTab])
+  }, [activeTab, classId])
 
   if (loading) {
     return (
@@ -107,12 +143,6 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
           onClick={() => setActiveTab('overview')}
         >
           Overview
-        </button>
-        <button 
-          className={`detail-tab ${activeTab === 'roster' ? 'active' : ''}`}
-          onClick={() => setActiveTab('roster')}
-        >
-          Student Roster
         </button>
         <button 
           className={`detail-tab ${activeTab === 'assignments' ? 'active' : ''}`}
@@ -168,34 +198,132 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
           </div>
         )}
 
-        {activeTab === 'roster' && (
-          <div className="roster-section">
-            <div className="detail-card">
-              <h2>Student Roster</h2>
-              <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <p>Student roster feature coming soon</p>
-                <p style={{ color: '#718096', marginTop: '0.5rem' }}>
-                  View and manage class students here
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        
 
         {activeTab === 'assignments' && (
           <div className="assignments-section">
             <div className="detail-card">
-              <h2>Class Assignments</h2>
-              <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <p>Class assignments list coming soon</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2>Class Assignments</h2>
                 <button 
                   className="btn-primary"
                   onClick={onCreateAssignment}
-                  style={{ marginTop: '1rem' }}
                 >
                   ➕ Create Assignment
                 </button>
               </div>
+              
+              {loadingAssignments ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                  <p>Loading assignments...</p>
+                </div>
+              ) : assignments.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
+                  <p>No assignments yet for this class</p>
+                  <p style={{ color: '#718096', marginTop: '0.5rem' }}>
+                    Click "Create Assignment" to add your first assignment
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {assignments.map(assignment => {
+                    const dueDate = assignment.dueDate ? new Date(assignment.dueDate) : null
+                    const isDraft = assignment.status === 'draft'
+                    const isPublished = assignment.status === 'published'
+                    
+                    return (
+                      <div 
+                        key={assignment.id} 
+                        style={{
+                          padding: '1.5rem',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          background: '#fff',
+                          borderLeft: isDraft ? '4px solid #ed8936' : '4px solid #48bb78',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => onAssignmentClick && onAssignmentClick(assignment.id)}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.75rem' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                              <h3 style={{ 
+                                fontSize: '1.125rem', 
+                                fontWeight: '600', 
+                                margin: 0,
+                                color: '#2d3748'
+                              }}>
+                                {assignment.title}
+                              </h3>
+                              <span style={{
+                                padding: '0.25rem 0.75rem',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: '600',
+                                background: isDraft ? '#fed7d7' : '#c6f6d5',
+                                color: isDraft ? '#c53030' : '#2f855a'
+                              }}>
+                                {isDraft ? '📝 Draft' : '✓ Published'}
+                              </span>
+                            </div>
+                            {assignment.description && (
+                              <p style={{ 
+                                color: '#718096', 
+                                fontSize: '0.875rem',
+                                marginTop: '0.5rem',
+                                marginBottom: '0.75rem'
+                              }}>
+                                {assignment.description.length > 150 
+                                  ? `${assignment.description.substring(0, 150)}...` 
+                                  : assignment.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div style={{ 
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: '1rem',
+                          padding: '1rem',
+                          background: '#f7fafc',
+                          borderRadius: '6px',
+                          marginBottom: '1rem'
+                        }}>
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Due Date</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#2d3748' }}>
+                              {dueDate ? dueDate.toLocaleDateString() : 'No due date'}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Total Points</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#2d3748' }}>
+                              {assignment.totalPoints || 100}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Submissions</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: '#2d3748' }}>
+                              {assignment.submissionStats?.total || 0} / {assignment.submissionStats?.totalStudents || 0}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.75rem', color: '#718096', marginBottom: '0.25rem' }}>Pending Grading</div>
+                            <div style={{ fontSize: '0.875rem', fontWeight: '600', color: assignment.submissionStats?.pending > 0 ? '#d69e2e' : '#2d3748' }}>
+                              {assignment.submissionStats?.pending || 0}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -203,13 +331,65 @@ function ClassDetailView({ classId, onBack, onCreateAssignment }) {
         {activeTab === 'announcements' && (
           <div className="announcements-section">
             <div className="detail-card">
-              <h2>Class Announcements</h2>
-              <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <p>Class announcements feature coming soon</p>
-                <p style={{ color: '#718096', marginTop: '0.5rem' }}>
-                  You can post new announcements from the Announcements tab
-                </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2>Class Announcements</h2>
               </div>
+              
+              {loadingAnnouncements ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                  <p>Loading announcements...</p>
+                </div>
+              ) : announcements.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📢</div>
+                  <p>No announcements yet for this class</p>
+                  <p style={{ color: '#718096', marginTop: '0.5rem' }}>
+                    Post announcements from the Announcements tab
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {announcements.map(announcement => (
+                    <div 
+                      key={announcement.id} 
+                      style={{
+                        padding: '1.5rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        background: '#fff'
+                      }}
+                    >
+                      <h3 style={{ 
+                        fontSize: '1.125rem', 
+                        fontWeight: '600', 
+                        marginBottom: '0.5rem',
+                        color: '#2d3748'
+                      }}>
+                        {announcement.title}
+                      </h3>
+                      <p style={{ 
+                        color: '#4a5568', 
+                        lineHeight: '1.6',
+                        marginBottom: '1rem'
+                      }}>
+                        {announcement.content}
+                      </p>
+                      <div style={{ 
+                        fontSize: '0.875rem', 
+                        color: '#718096',
+                        display: 'flex',
+                        gap: '1rem'
+                      }}>
+                        <span>📅 Posted {new Date(announcement.createdAt).toLocaleDateString()}</span>
+                        {announcement.viewCount !== undefined && (
+                          <span>👁️ {announcement.viewCount} view{announcement.viewCount !== 1 ? 's' : ''}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
