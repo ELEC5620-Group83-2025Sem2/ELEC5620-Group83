@@ -5,7 +5,9 @@ import {
   getClassDetails, 
   getClassStudents, 
   getClassAnalytics,
-  createClass
+  createClass,
+  enrollStudent,
+  removeStudent
 } from '../controllers/teacher/classes.js';
 import { getOverallAnalytics } from '../controllers/teacher/analytics.js';
 import { 
@@ -20,7 +22,8 @@ import {
   getTeacherStudents, 
   getStudentDetails, 
   updateStudentNotes,
-  getStudentGrades
+  getStudentGrades,
+  getAllStudents
 } from '../controllers/teacher/students.js';
 import { 
   getAnnouncements, 
@@ -87,6 +90,12 @@ router.get('/classes/:id/students', getClassStudents);
 // GET /api/teacher/classes/:id/analytics - Get class analytics
 router.get('/classes/:id/analytics', getClassAnalytics);
 
+// POST /api/teacher/classes/:id/enroll - Enroll a student in a class
+router.post('/classes/:id/enroll', enrollStudent);
+
+// DELETE /api/teacher/classes/:id/students/:studentId - Remove a student from a class
+router.delete('/classes/:id/students/:studentId', removeStudent);
+
 // ===================
 // Modules Routes (must come after classes routes but before generic params)
 // ===================
@@ -144,6 +153,9 @@ router.delete('/assignments/:id', deleteAssignment);
 // ===================
 // Students Routes
 // ===================
+
+// GET /api/teacher/students/all-students - Get all students in system (must be before /:id)
+router.get('/students/all-students', getAllStudents);
 
 // GET /api/teacher/students - Get all students
 router.get('/students', getTeacherStudents);

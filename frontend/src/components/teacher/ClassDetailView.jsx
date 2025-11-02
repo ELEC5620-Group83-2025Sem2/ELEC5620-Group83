@@ -16,6 +16,14 @@ function ClassDetailView({ classId, onBack, onCreateAssignment, onAssignmentClic
   const [loadingAnnouncements, setLoadingAnnouncements] = useState(false)
   const [assignments, setAssignments] = useState([])
   const [loadingAssignments, setLoadingAssignments] = useState(false)
+  const [classStudents, setClassStudents] = useState([])
+  const [loadingClassStudents, setLoadingClassStudents] = useState(false)
+  const [showAddStudentModal, setShowAddStudentModal] = useState(false)
+  const [allStudents, setAllStudents] = useState([])
+  const [loadingAllStudents, setLoadingAllStudents] = useState(false)
+  const [studentSearchTerm, setStudentSearchTerm] = useState('')
+  const [enrollingStudentId, setEnrollingStudentId] = useState(null)
+  const [removingStudentId, setRemovingStudentId] = useState(null)
 
   const [expandedModuleId, setExpandedModuleId] = useState(null)
   const [showNewItemFor, setShowNewItemFor] = useState(null)
@@ -82,6 +90,63 @@ function ClassDetailView({ classId, onBack, onCreateAssignment, onAssignmentClic
     }
   }
 
+  const fetchClassStudents = async () => {
+    setLoadingClassStudents(true)
+    try {
+      const res = await teacherApi.getClassStudents(classId)
+      setClassStudents(res.students || [])
+    } catch (e) {
+      console.error('Failed to fetch class students', e)
+    } finally {
+      setLoadingClassStudents(false)
+    }
+  }
+
+  const fetchAllStudents = async () => {
+    setLoadingAllStudents(true)
+    try {
+      const res = await teacherApi.getAllStudents()
+      setAllStudents(res.students || [])
+    } catch (e) {
+      console.error('Failed to fetch all students', e)
+    } finally {
+      setLoadingAllStudents(false)
+    }
+  }
+
+  const handleEnrollStudent = async (studentId) => {
+    setEnrollingStudentId(studentId)
+    try {
+      await teacherApi.enrollStudent(classId, studentId)
+      await fetchClassStudents()
+      setShowAddStudentModal(false)
+      setStudentSearchTerm('')
+      alert('Student enrolled successfully!')
+    } catch (e) {
+      console.error('Failed to enroll student', e)
+      alert('Failed to enroll student: ' + (e.message || 'Unknown error'))
+    } finally {
+      setEnrollingStudentId(null)
+    }
+  }
+
+  const handleRemoveStudent = async (studentId, studentName) => {
+    if (!confirm(`Are you sure you want to remove ${studentName} from this class?`)) {
+      return
+    }
+    setRemovingStudentId(studentId)
+    try {
+      await teacherApi.removeStudent(classId, studentId)
+      await fetchClassStudents()
+      alert('Student removed successfully!')
+    } catch (e) {
+      console.error('Failed to remove student', e)
+      alert('Failed to remove student: ' + (e.message || 'Unknown error'))
+    } finally {
+      setRemovingStudentId(null)
+    }
+  }
+
   useEffect(() => {
     if (activeTab === 'modules') {
       fetchModules()
@@ -89,6 +154,8 @@ function ClassDetailView({ classId, onBack, onCreateAssignment, onAssignmentClic
       fetchAnnouncements()
     } else if (activeTab === 'assignments') {
       fetchAssignments()
+    } else if (activeTab === 'students') {
+      fetchClassStudents()
     }
   }, [activeTab, classId])
 
@@ -145,6 +212,12 @@ function ClassDetailView({ classId, onBack, onCreateAssignment, onAssignmentClic
           Overview
         </button>
         <button 
+          className={`detail-tab ${activeTab === 'students' ? 'active' : ''}`}
+          onClick={() => setActiveTab('students')}
+        >
+          Students
+        </button>
+        <button 
           className={`detail-tab ${activeTab === 'assignments' ? 'active' : ''}`}
           onClick={() => setActiveTab('assignments')}
         >
@@ -183,6 +256,10 @@ function ClassDetailView({ classId, onBack, onCreateAssignment, onAssignmentClic
                 <span className="info-icon">📅</span>
                 <span>Created: {new Date(classData.created_at).toLocaleDateString()}</span>
               </div>
+              <div className="info-row">
+                <span className="info-icon">👥</span>
+                <span>Students: {classData.studentCount || 0}</span>
+              </div>
             </div>
 
             <div className="detail-card">
@@ -194,6 +271,116 @@ function ClassDetailView({ classId, onBack, onCreateAssignment, onAssignmentClic
               >
                 ➕ Create Assignment
               </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'students' && (
+          <div className="students-section">
+            <div className="detail-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2>Class Roster</h2>
+                <button 
+                  className="btn-primary"
+                  onClick={() => {
+                    setShowAddStudentModal(true)
+                    fetchAllStudents()
+                  }}
+                >
+                  ➕ Add Student
+                </button>
+              </div>
+
+              {loadingClassStudents ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                  <p>Loading students...</p>
+                </div>
+              ) : classStudents.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>👥</div>
+                  <p>No students enrolled yet</p>
+                  <p style={{ color: '#718096', marginTop: '0.5rem' }}>
+                    Click "Add Student" to enroll students in this class
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                  {classStudents.map(student => (
+                    <div 
+                      key={student.id}
+                      style={{
+                        padding: '1.5rem',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        background: '#fff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '0.75rem'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ 
+                          width: '48px', 
+                          height: '48px', 
+                          borderRadius: '50%', 
+                          background: '#e0e7ff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '1.5rem'
+                        }}>
+                          👤
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h3 style={{ 
+                            fontSize: '1rem', 
+                            fontWeight: '600', 
+                            margin: 0,
+                            color: '#2d3748',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {student.name || student.firstName + ' ' + student.lastName || student.email}
+                          </h3>
+                          <p style={{ 
+                            fontSize: '0.875rem', 
+                            color: '#718096',
+                            margin: '0.25rem 0 0 0',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {student.email}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {student.avgGrade && (
+                        <div style={{ 
+                          padding: '0.5rem',
+                          background: '#f7fafc',
+                          borderRadius: '4px',
+                          fontSize: '0.875rem'
+                        }}>
+                          <span style={{ color: '#718096' }}>Avg Grade: </span>
+                          <span style={{ fontWeight: '600', color: '#2d3748' }}>{student.avgGrade}</span>
+                        </div>
+                      )}
+                      
+                      <button
+                        className="btn-danger"
+                        style={{ width: '100%' }}
+                        disabled={removingStudentId === student.id}
+                        onClick={() => handleRemoveStudent(student.id, student.name || student.email)}
+                      >
+                        {removingStudentId === student.id ? '⏳ Removing...' : '🗑 Remove'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -707,6 +894,136 @@ function ClassDetailView({ classId, onBack, onCreateAssignment, onAssignmentClic
           </div>
         )}
       </div>
+
+      {/* Add Student Modal */}
+      {showAddStudentModal && (
+        <div className="modal-overlay" onClick={() => setShowAddStudentModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Add Student to Class</h3>
+              <button className="btn-close-modal" onClick={() => setShowAddStudentModal(false)}>✕</button>
+            </div>
+            
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <input
+                  type="text"
+                  placeholder="Search students by name or email..."
+                  value={studentSearchTerm}
+                  onChange={(e) => setStudentSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem'
+                  }}
+                />
+              </div>
+
+              {loadingAllStudents ? (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>⏳</div>
+                  <p>Loading students...</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '400px', overflowY: 'auto' }}>
+                  {(() => {
+                    // Filter students based on search term and exclude already enrolled students
+                    const enrolledIds = classStudents.map(s => s.id)
+                    const filteredStudents = allStudents
+                      .filter(student => !enrolledIds.includes(student.id))
+                      .filter(student => {
+                        const searchLower = studentSearchTerm.toLowerCase()
+                        const name = student.name?.toLowerCase() || ''
+                        const email = student.email?.toLowerCase() || ''
+                        return name.includes(searchLower) || email.includes(searchLower)
+                      })
+
+                    if (filteredStudents.length === 0) {
+                      return (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: '#718096' }}>
+                          {studentSearchTerm 
+                            ? 'No students found matching your search' 
+                            : 'All students are already enrolled in this class'}
+                        </div>
+                      )
+                    }
+
+                    return filteredStudents.map(student => (
+                      <div 
+                        key={student.id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '1rem',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '6px',
+                          background: '#fff'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, minWidth: 0 }}>
+                          <div style={{ 
+                            width: '40px', 
+                            height: '40px', 
+                            borderRadius: '50%', 
+                            background: '#e0e7ff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '1.25rem',
+                            flexShrink: 0
+                          }}>
+                            👤
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ 
+                              fontWeight: '600', 
+                              color: '#2d3748',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {student.name || student.email}
+                            </div>
+                            <div style={{ 
+                              fontSize: '0.875rem', 
+                              color: '#718096',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap'
+                            }}>
+                              {student.email}
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          className="btn-primary"
+                          style={{ marginLeft: '1rem', flexShrink: 0 }}
+                          disabled={enrollingStudentId === student.id}
+                          onClick={() => handleEnrollStudent(student.id)}
+                        >
+                          {enrollingStudentId === student.id ? '⏳ Adding...' : '+ Add'}
+                        </button>
+                      </div>
+                    ))
+                  })()}
+                </div>
+              )}
+            </div>
+
+            <div className="modal-actions">
+              <button className="btn-secondary" onClick={() => {
+                setShowAddStudentModal(false)
+                setStudentSearchTerm('')
+              }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

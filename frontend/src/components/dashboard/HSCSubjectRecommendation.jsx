@@ -11,9 +11,33 @@ function HSCSubjectRecommendation() {
   const [error, setError] = useState('')
   const [selectedSubjects, setSelectedSubjects] = useState([])
   const [loadingSubjects, setLoadingSubjects] = useState(true)
+  const [processingSubject, setProcessingSubject] = useState(null) // Track which subject is being processed
 
-  // Load selected subjects on component mount
+  // Load saved recommendations and selected subjects on component mount
   useEffect(() => {
+    // Load saved recommendations from localStorage
+    const savedRecommendations = localStorage.getItem('hsc_recommendations')
+    const savedInterests = localStorage.getItem('hsc_interests')
+    
+    if (savedRecommendations) {
+      try {
+        const parsed = JSON.parse(savedRecommendations)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setApiResults(parsed)
+          setGenerated(true)
+          if (savedInterests) {
+            setInterestInput(savedInterests)
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse saved recommendations:', e)
+        // Clear invalid data
+        localStorage.removeItem('hsc_recommendations')
+        localStorage.removeItem('hsc_interests')
+      }
+    }
+
+    // Load selected subjects from database
     const fetchSelectedSubjects = async () => {
       try {
         const response = await studentApi.getSelectedSubjects()
@@ -34,8 +58,16 @@ function HSCSubjectRecommendation() {
     try {
       const prompt = `Student interests: ${interestInput || 'general interests'}\nPlease recommend HSC subjects with brief reasoning in the specified JSON format.`
       const response = await generateCourseRecommendation({ prompt})
-      setApiResults(Array.isArray(response) ? response : [])
+      const results = Array.isArray(response) ? response : []
+      setApiResults(results)
       setGenerated(true)
+      
+      // Save recommendations and interests to localStorage
+      if (results.length > 0) {
+        localStorage.setItem('hsc_recommendations', JSON.stringify(results))
+        localStorage.setItem('hsc_interests', interestInput)
+      }
+      
       setNotification({ type: 'success', message: 'Recommendations generated based on your interests.' })
       setTimeout(() => setNotification(null), 3000)
     } catch (e) {
@@ -59,32 +91,58 @@ function HSCSubjectRecommendation() {
   const toggleSubjectSelection = async (subject) => {
     const subjectCode = subject.code
     const subjectName = subject.recommend_subject || subject.name
+    const subjectKey = `${subjectCode}-${subjectName}`
+    
+    // Prevent duplicate calls for the same subject
+    if (processingSubject === subjectKey) {
+      return
+    }
     
     // Check if already selected
     const existingSubject = selectedSubjects.find(
       s => s.subject_code === subjectCode && s.subject_name === subjectName
     )
     
+    setProcessingSubject(subjectKey)
+    
+    // Optimistic update: immediately update UI
+    const previousState = [...selectedSubjects]
+    let tempId = null
+    
     if (existingSubject) {
-      // Unselect: Delete from database
-      try {
-        await studentApi.deleteSelectedSubject(existingSubject.id)
-        setSelectedSubjects(selectedSubjects.filter(s => s.id !== existingSubject.id))
-        setNotification({ 
-          type: 'success', 
-          message: `Removed "${subjectName}" from your selections` 
-        })
-        setTimeout(() => setNotification(null), 3000)
-      } catch (e) {
-        setNotification({ 
-          type: 'error', 
-          message: 'Failed to remove subject. Please try again.' 
-        })
-        setTimeout(() => setNotification(null), 3000)
-      }
+      // Optimistically remove from UI immediately
+      setSelectedSubjects(selectedSubjects.filter(s => s.id !== existingSubject.id))
+      setNotification({ 
+        type: 'success', 
+        message: `Removed "${subjectName}" from your selections` 
+      })
+      setTimeout(() => setNotification(null), 3000)
     } else {
-      // Select: Add to database
-      try {
+      // Optimistically add to UI immediately with temporary ID
+      tempId = `temp-${Date.now()}-${Math.random()}`
+      const tempSubject = {
+        id: tempId,
+        subject_code: subjectCode,
+        subject_name: subjectName,
+        category: subject.category,
+        reasoning: subject.reasoning || subject.Reasoning
+      }
+      setSelectedSubjects([...selectedSubjects, tempSubject])
+      setNotification({ 
+        type: 'success', 
+        message: `Added "${subjectName}" to your selections ✓` 
+      })
+      setTimeout(() => setNotification(null), 3000)
+    }
+    
+    // Then update database in background
+    try {
+      if (existingSubject) {
+        // Unselect: Delete from database
+        await studentApi.deleteSelectedSubject(existingSubject.id)
+        // UI already updated, no need to update again
+      } else {
+        // Select: Add to database
         const response = await studentApi.addSelectedSubject({
           subject_code: subjectCode,
           subject_name: subjectName,
@@ -92,29 +150,45 @@ function HSCSubjectRecommendation() {
           reasoning: subject.reasoning || subject.Reasoning
         })
         
-        if (response.success) {
-          setSelectedSubjects([...selectedSubjects, response.data])
+        if (response.success && tempId) {
+          // Replace temporary subject with real one from database
+          setSelectedSubjects(prev => {
+            // Remove temp subject and add real one
+            const filtered = prev.filter(s => s.id !== tempId)
+            return [...filtered, response.data]
+          })
+        }
+      }
+    } catch (e) {
+      // Rollback on error
+      setSelectedSubjects(previousState)
+      setNotification(null) // Clear the optimistic success notification
+      
+      // Check if it's a duplicate error
+      if (e.message && e.message.includes('already selected') && !existingSubject) {
+        // Refresh the list to get the actual state
+        try {
+          const response = await studentApi.getSelectedSubjects()
+          const subjects = response.subjects || []
+          setSelectedSubjects(subjects)
+          // Don't show error since the subject is actually selected
+        } catch (refreshError) {
+          console.error('Failed to refresh selected subjects:', refreshError)
           setNotification({ 
-            type: 'success', 
-            message: `Added "${subjectName}" to your selections ✓` 
+            type: 'error', 
+            message: 'Failed to refresh selection. Please refresh the page.' 
           })
           setTimeout(() => setNotification(null), 3000)
         }
-      } catch (e) {
-        // Check if it's a duplicate error
-        if (e.message && e.message.includes('already selected')) {
-          setNotification({ 
-            type: 'error', 
-            message: `You have already selected "${subjectName}"` 
-          })
-        } else {
-          setNotification({ 
-            type: 'error', 
-            message: e.message || 'Failed to save selection. Please try again.' 
-          })
-        }
+      } else {
+        setNotification({ 
+          type: 'error', 
+          message: e.message || 'Failed to save selection. Please try again.' 
+        })
         setTimeout(() => setNotification(null), 3000)
       }
+    } finally {
+      setProcessingSubject(null)
     }
   }
 
@@ -265,7 +339,13 @@ function HSCSubjectRecommendation() {
                 boxShadow: isSubjectSelected(item) ? '0 4px 12px rgba(102, 126, 234, 0.2)' : '0 2px 4px rgba(0,0,0,0.05)',
                 transition: 'all 0.2s ease'
               }}
-              onClick={() => toggleSubjectSelection(item)}
+              onClick={(e) => {
+                // Don't trigger if clicking on checkbox or its container
+                if (e.target.type === 'checkbox' || e.target.closest('input[type="checkbox"]')) {
+                  return
+                }
+                toggleSubjectSelection(item)
+              }}
             >
               <div className="subject-header">
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.8rem' }}>
@@ -275,6 +355,9 @@ function HSCSubjectRecommendation() {
                     onChange={(e) => {
                       e.stopPropagation()
                       toggleSubjectSelection(item)
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation()
                     }}
                     style={{ 
                       width: '20px', 

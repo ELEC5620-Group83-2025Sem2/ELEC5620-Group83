@@ -16,7 +16,9 @@ export async function generateWeeklyReport({
   student_id, 
   report_week_start, 
   report_week_end, 
-  model = 'gpt-4.1-nano'
+  model = 'gpt-4.1-nano',
+  send_email,
+  email
 }) {
   try {
     // Use student endpoint if authenticated, otherwise use ai-agent endpoint
@@ -27,10 +29,12 @@ export async function generateWeeklyReport({
       {
         method: 'POST',
         body: JSON.stringify({
-          ...(student_id && { student_id }), // Only include if provided
+          ...(student_id && { student_id }),
           report_week_start,
           report_week_end,
-          model
+          model,
+          ...(typeof send_email !== 'undefined' ? { send_email } : {}),
+          ...(email ? { email } : {})
         })
       }
     );
@@ -43,6 +47,42 @@ export async function generateWeeklyReport({
   } catch (error) {
     console.error('Generate weekly report error:', error);
     throw new Error(error.message || 'Failed to generate weekly report');
+  }
+}
+
+/**
+ * Generate and email weekly report in one call
+ * Returns full API response including email status
+ */
+export async function emailWeeklyReport({ 
+  student_id, 
+  report_week_start, 
+  report_week_end, 
+  model = 'gpt-4.1-nano',
+  email
+}) {
+  try {
+    const endpoint = '/ai-agent/weekly-report';
+
+    const response = await authService.authenticatedRequest(
+      endpoint,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...(student_id && { student_id }),
+          report_week_start,
+          report_week_end,
+          model,
+          send_email: true,
+          ...(email ? { email } : {})
+        })
+      }
+    );
+
+    return response;
+  } catch (error) {
+    console.error('Email weekly report error:', error);
+    throw new Error(error.message || 'Failed to email weekly report');
   }
 }
 
@@ -209,6 +249,7 @@ export function transformWeeklyReport(apiReport) {
 
 export default {
   generateWeeklyReport,
-  transformWeeklyReport
+  transformWeeklyReport,
+  emailWeeklyReport
 };
 

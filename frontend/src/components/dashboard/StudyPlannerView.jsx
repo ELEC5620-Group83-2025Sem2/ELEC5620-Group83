@@ -224,7 +224,7 @@ function StudyPlannerView({ studyPlanSuggestions: initialSuggestions }) {
             </div>
 
             {/* Explainability Section */}
-            <div className="explainability-section">
+            <div className="explainability-section" style={{ marginBottom: '1rem' }}>
               <button 
                 className="btn-why-this"
                 onClick={() => toggleExplanation(suggestion.id)}
@@ -313,8 +313,8 @@ function StudyPlannerView({ studyPlanSuggestions: initialSuggestions }) {
         )}
       </div>
 
-      <section className="dashboard-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+      <section className="dashboard-section" style={{ width: '100%', maxWidth: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h3>Study Schedule ({schedule.length} {schedule.length === 1 ? 'item' : 'items'})</h3>
           <button 
             className="btn-primary-action"
@@ -326,114 +326,172 @@ function StudyPlannerView({ studyPlanSuggestions: initialSuggestions }) {
         </div>
 
         {schedule.length === 0 ? (
-        <div className="schedule-placeholder">
-          <div className="placeholder-icon">📅</div>
-            <p>Your study schedule is empty</p>
+        <div className="schedule-placeholder" style={{ 
+          textAlign: 'center', 
+          padding: '3rem 2rem',
+          background: '#f7fafc',
+          borderRadius: '12px',
+          border: '2px dashed #cbd5e0'
+        }}>
+          <div className="placeholder-icon" style={{ fontSize: '3rem', marginBottom: '1rem' }}>📅</div>
+            <p style={{ fontSize: '1.125rem', fontWeight: '600', color: '#2d3748', marginBottom: '0.5rem' }}>
+              Your study schedule is empty
+            </p>
             <p style={{ fontSize: '0.875rem', color: '#718096', marginTop: '0.5rem' }}>
               Add items from the study suggestions above by clicking "📅 Add to Schedule"
             </p>
           </div>
         ) : (
-          <div className="schedule-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="schedule-list" style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(500px, 100%), 1fr))',
+            gap: '1.5rem',
+            width: '100%'
+          }}>
             {schedule.map((item, index) => (
               <div 
                 key={item.id} 
                 className="schedule-item"
                 style={{
-                  padding: '2rem',
+                  padding: '1.75rem',
                   background: item.completed ? 'linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
                   border: item.completed ? '2px solid #cbd5e0' : '2px solid #e2e8f0',
                   borderRadius: '16px',
                   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
                   transition: 'all 0.3s ease',
                   position: 'relative',
-                  borderLeft: `5px solid ${item.priority === 'high' ? '#f56565' : item.priority === 'medium' ? '#ed8936' : '#48bb78'}`
+                  borderLeft: `5px solid ${item.priority === 'high' ? '#f56565' : item.priority === 'medium' ? '#ed8936' : '#48bb78'}`,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  width: '100%',
+                  height: '100%'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                      <span 
-                        className={`priority-indicator ${item.priority}`}
-                        style={{ width: '8px', height: '8px', borderRadius: '50%' }}
-                      ></span>
-                      <h4 style={{ 
-                        fontSize: '1.125rem', 
-                        fontWeight: '600', 
-                        textDecoration: item.completed ? 'line-through' : 'none',
-                        color: item.completed ? '#718096' : '#1a202c'
-                      }}>
-                        {item.subject}: {item.topic}
-                      </h4>
-                    </div>
-                    
-                    <p style={{ 
-                      fontSize: '0.875rem', 
-                      color: '#718096', 
-                      marginBottom: '0.75rem' 
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                    <span 
+                      className={`priority-indicator ${item.priority}`}
+                      style={{ width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0 }}
+                    ></span>
+                    <h4 style={{ 
+                      fontSize: '1.125rem', 
+                      fontWeight: '600', 
+                      textDecoration: item.completed ? 'line-through' : 'none',
+                      color: item.completed ? '#718096' : '#1a202c',
+                      margin: 0,
+                      wordBreak: 'break-word'
                     }}>
-                      💡 {item.reason}
-                    </p>
-                    
+                      {item.subject}: {item.topic}
+                    </h4>
+                  </div>
+                  
+                  <p style={{ 
+                    fontSize: '0.875rem', 
+                    color: '#718096', 
+                    marginBottom: '0.75rem',
+                    lineHeight: '1.5',
+                    wordBreak: 'break-word'
+                  }}>
+                    💡 {item.reason}
+                  </p>
+                  
+                  <div style={{ 
+                    display: 'flex', 
+                    flexWrap: 'wrap',
+                    gap: '1rem', 
+                    fontSize: '0.875rem',
+                    color: '#4a5568',
+                    marginBottom: '1rem'
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>⏱️ {item.duration}</span>
+                    <span className={`meta-badge ${item.priority}`}>
+                      {item.priority} priority
+                    </span>
+                  </div>
+
+                  {/* Study Activities */}
+                  {item.study_activities && item.study_activities.length > 0 && (
                     <div style={{ 
-                      display: 'flex', 
-                      gap: '1rem', 
-                      fontSize: '0.875rem',
-                      color: '#4a5568'
+                      padding: '1rem', 
+                      background: '#f7fafc', 
+                      borderRadius: '0.5rem',
+                      border: '1px solid #e2e8f0',
+                      marginBottom: '1rem'
                     }}>
-                      <span>⏱️ {item.duration}</span>
-                      <span className={`meta-badge ${item.priority}`}>
-                        {item.priority} priority
-                      </span>
+                      <h5 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem', color: '#2d3748' }}>
+                        📋 Study Activities:
+                      </h5>
+                      <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#4a5568', lineHeight: '1.6' }}>
+                        {item.study_activities.map((activity, idx) => (
+                          <li key={idx} style={{ marginBottom: '0.25rem', wordBreak: 'break-word' }}>{activity}</li>
+                        ))}
+                      </ul>
                     </div>
+                  )}
+                </div>
 
-                    {/* Study Activities */}
-                    {item.study_activities && item.study_activities.length > 0 && (
-                      <div style={{ marginTop: '1rem', padding: '1rem', background: '#f7fafc', borderRadius: '0.5rem' }}>
-                        <h5 style={{ fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>
-                          📋 Study Activities:
-                        </h5>
-                        <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#4a5568' }}>
-                          {item.study_activities.map((activity, idx) => (
-                            <li key={idx} style={{ marginBottom: '0.25rem' }}>{activity}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', minWidth: '120px' }}>
-                    <button
-                      onClick={() => handleToggleComplete(item.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '0.5rem',
-                        background: item.completed ? '#48bb78' : 'white',
-                        color: item.completed ? 'white' : '#4a5568',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        fontWeight: '500'
-                      }}
-                    >
-                      {item.completed ? '✅ Completed' : '⬜ Mark Complete'}
-                    </button>
-                    <button
-                      onClick={() => handleRemoveFromSchedule(item.id)}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        border: '1px solid #feb2b2',
-                        borderRadius: '0.5rem',
-                        background: 'white',
-                        color: '#c53030',
-                        fontSize: '0.875rem',
-                        cursor: 'pointer',
-                        fontWeight: '500'
-                      }}
-                    >
-                      🗑️ Remove
-                    </button>
-                  </div>
+                {/* Buttons at the bottom */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '0.75rem',
+                  marginTop: '1rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #e2e8f0'
+                }}>
+                  <button
+                    onClick={() => handleToggleComplete(item.id)}
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem 1rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '0.5rem',
+                      background: item.completed ? '#48bb78' : 'white',
+                      color: item.completed ? 'white' : '#4a5568',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!item.completed) {
+                        e.target.style.background = '#f7fafc'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!item.completed) {
+                        e.target.style.background = 'white'
+                      }
+                    }}
+                  >
+                    {item.completed ? '✅ Completed' : '⬜ Mark Complete'}
+                  </button>
+                  <button
+                    onClick={() => handleRemoveFromSchedule(item.id)}
+                    style={{
+                      flex: 1,
+                      padding: '0.75rem 1rem',
+                      border: '1px solid #feb2b2',
+                      borderRadius: '0.5rem',
+                      background: 'white',
+                      color: '#c53030',
+                      fontSize: '0.875rem',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = '#fed7d7'
+                      e.target.style.borderColor = '#fc8181'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = 'white'
+                      e.target.style.borderColor = '#feb2b2'
+                    }}
+                  >
+                    🗑️ Remove
+                  </button>
                 </div>
               </div>
             ))}
