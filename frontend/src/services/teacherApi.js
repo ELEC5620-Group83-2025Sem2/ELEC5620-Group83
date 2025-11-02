@@ -95,6 +95,11 @@ class TeacherAPI {
     return response
   }
 
+  async getClassStudents(classId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/classes/${classId}/students`)
+    return response
+  }
+
   async createClass(classData) {
     const response = await authService.authenticatedRequest(`${API_URL}/classes`, {
       method: 'POST',
@@ -183,6 +188,11 @@ class TeacherAPI {
   // Students
   async getStudents() {
     const response = await authService.authenticatedRequest(`${API_URL}/students`)
+    return response
+  }
+
+  async getAllStudents() {
+    const response = await authService.authenticatedRequest(`${API_URL}/students/all-students`)
     return response
   }
 

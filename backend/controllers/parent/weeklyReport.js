@@ -5,12 +5,13 @@ import { ErrorResponse } from '../../utils/errorResponse.js';
 /**
  * GET /api/parent/children/:student_id/weekly-report
  * Get weekly report for a specific child (with parent verification)
+ * Query params: report_week_start, report_week_end, model, email (optional), send_email (optional)
  */
 export const getChildWeeklyReport = async (req, res) => {
   try {
     const parentId = req.user.id;
     const { student_id } = req.params;
-    const { report_week_start, report_week_end, model } = req.query;
+    const { report_week_start, report_week_end, model, email, send_email } = req.query;
     
     // Verify parent has access to this student
     const supabase = getSupabaseClient();
@@ -31,7 +32,9 @@ export const getChildWeeklyReport = async (req, res) => {
       student_id: student_id,
       report_week_start: report_week_start,
       report_week_end: report_week_end,
-      model: model || 'gpt-5'
+      model: model || 'gpt-5',
+      email: email || null,
+      send_email: send_email === 'true' || send_email === true
     };
     
     // Call the existing createWeeklyReport function

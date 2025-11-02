@@ -121,8 +121,16 @@ Available variables:
 - `SUPABASE_URL` - Supabase project URL (e.g. https://xyzcompany.supabase.co)
 - `SUPABASE_ANON_KEY` - Supabase anon/public key
 - `OPENAI_API_KEY` - OpenAI API key for AI features
+- `AWS_REGION` - AWS region for SES (e.g. ap-southeast-2)
+- `AWS_ACCESS_KEY_ID` - AWS access key for SES
+- `AWS_SECRET_ACCESS_KEY` - AWS secret key for SES
+- `AWS_SES_FROM_EMAIL` - Verified sender email address
 
 **Note:** Port 5000 is often used by macOS AirPlay Receiver, so we use port 3000 by default.
+
+### Email Configuration (AWS SES)
+
+For weekly report emails, you need to configure Amazon SES. See [AMAZON_SES_EMAIL_SETUP.md](../AMAZON_SES_EMAIL_SETUP.md) for detailed setup instructions.
 
 ### CORS Configuration
 
@@ -221,6 +229,9 @@ router.get('/users', getUsers);
 - `dotenv` - Environment variables
 - `@supabase/supabase-js` - Supabase client SDK
 - `openai` - OpenAI API client
+- `@aws-sdk/client-ses` - Amazon SES client for email sending
+- `multer` - File upload middleware
+- `pdf-parse` - PDF parsing utility
 
 ### Development
 - `nodemon` - Auto-reload on file changes
