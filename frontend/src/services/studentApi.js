@@ -98,12 +98,11 @@ const studentApi = {
   // Assignments
   // Get all assignments for student's enrolled classes
   // JWT token is automatically passed in Authorization header
-  async getAssignments(upcoming = false) {
-    return authenticatedRequest('/student/assignments', {
-      method: 'GET',
-      params: {
-        upcoming: upcoming
-      }
+  async getAssignments(options = {}) {
+    const upcoming = typeof options === 'boolean' ? options : options.upcoming;
+    const qs = upcoming ? `?upcoming=${encodeURIComponent(upcoming)}` : '';
+    return authenticatedRequest(`/student/assignments${qs}`, {
+      method: 'GET'
     });
   }
 

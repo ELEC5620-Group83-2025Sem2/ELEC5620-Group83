@@ -125,6 +125,12 @@ function StudentDashboard() {
       fetchStudentAssignments()
     }
   }, [activeTab, fetchStudentAssignments])
+ 
+  // Prefetch classes and assignments on first load so Dashboard has data
+  useEffect(() => {
+    fetchStudentClasses()
+    fetchStudentAssignments()
+  }, [fetchStudentClasses, fetchStudentAssignments])
   
   // Sync activeTab with URL changes
   useEffect(() => {
