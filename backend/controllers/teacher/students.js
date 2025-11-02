@@ -239,6 +239,88 @@ export const getTeacherStudents = async (req, res) => {
 };
 
 /**
+ * GET /api/teacher/students/all-students
+ * Get all students in the system (for enrollment purposes)
+ */
+export const getAllStudents = async (req, res) => {
+  try {
+    const supabase = getSupabaseClient();
+
+    // Get all users with student role via profile_roles join (source of truth)
+    const { data: roleRows, error: rolesError } = await supabase
+      .from('profile_roles')
+      .select(`
+        profile_id,
+        profiles (
+          id,
+          first_name,
+          last_name,
+          name,
+          email,
+          avatar,
+          created_at
+        )
+      `)
+      .eq('role', 'student');
+
+    if (rolesError) {
+      console.error('Error fetching student roles:', rolesError);
+      return ErrorResponse.internalServerError('Failed to fetch students').send(res);
+    }
+
+    const students = (roleRows || [])
+      .map(r => r.profiles)
+      .filter(Boolean)
+      // de-duplicate in case of multiple role rows
+      .reduce((acc, p) => {
+        if (!acc.some(x => x.id === p.id)) acc.push(p);
+        return acc;
+      }, [])
+      // Sort by created_at desc
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    // Format the students data
+    const formattedStudents = students.map(student => {
+      // Extract first_name and last_name from name field if they're empty
+      let firstName = student.first_name;
+      let lastName = student.last_name;
+      
+      // If first_name and last_name are empty but name field has value, try to split it
+      if ((!firstName || firstName === '') && (!lastName || lastName === '') && student.name) {
+        const nameParts = student.name.trim().split(/\s+/);
+        if (nameParts.length >= 2) {
+          firstName = nameParts[0];
+          lastName = nameParts.slice(1).join(' ');
+        } else if (nameParts.length === 1) {
+          firstName = nameParts[0];
+          lastName = '';
+        }
+      }
+      
+      // Build display name: first_name + last_name, or name, or email
+      const displayName = (firstName || lastName) 
+        ? `${firstName || ''} ${lastName || ''}`.trim() 
+        : (student.name || student.email);
+
+      return {
+        id: student.id,
+        name: displayName,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        email: student.email,
+        avatar: student.avatar,
+        created_at: student.created_at
+      };
+    });
+
+    res.status(200).json({ students: formattedStudents });
+  } catch (err) {
+    console.error('Error in getAllStudents:', err);
+    return ErrorResponse.internalServerError('An error occurred while fetching students').send(res);
+  }
+};
+
+/**
  * GET /api/teacher/students/:id
  * Get detailed information about a specific student
  */
