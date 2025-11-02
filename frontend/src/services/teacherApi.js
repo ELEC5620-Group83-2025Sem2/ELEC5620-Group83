@@ -83,6 +83,13 @@ class TeacherAPI {
     return data
   }
 
+  async summarizeModuleItem(moduleId, itemId) {
+    const response = await authService.authenticatedRequest(`${API_URL}/modules/${moduleId}/items/${itemId}/summarize`, {
+      method: 'POST'
+    })
+    return response
+  }
+
   async getClassById(classId) {
     const response = await authService.authenticatedRequest(`${API_URL}/classes/${classId}`)
     return response

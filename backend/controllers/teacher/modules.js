@@ -1,5 +1,7 @@
 import { getSupabaseClient } from '../../clients/supabaseClient.js';
 import { ErrorResponse } from '../../utils/errorResponse.js';
+import { getOpenAIClient } from '../../clients/openaiClient.js';
+import pdfParse from 'pdf-parse';
 
 const MODULES_BUCKET = 'class-modules';
 
@@ -328,4 +330,96 @@ export const uploadModuleItemFile = async (req, res) => {
   }
 };
 
+
+export const summarizeModuleItemFile = async (req, res) => {
+  try {
+    const { moduleId, itemId } = req.params;
+    const supabase = getSupabaseClient();
+
+    // Fetch item and validate it is a file with a PDF
+    const { data: item, error: itemErr } = await supabase
+      .from('class_module_items')
+      .select('*')
+      .eq('id', itemId)
+      .eq('module_id', moduleId)
+      .single();
+    if (itemErr || !item) {
+      return ErrorResponse.badRequest('Invalid module item').send(res);
+    }
+
+    if (item.item_type !== 'file') {
+      return ErrorResponse.badRequest('Summarization is only available for file items').send(res);
+    }
+
+    if (!item.file_storage_path || !item.file_mime_type) {
+      return ErrorResponse.badRequest('No file uploaded for this item').send(res);
+    }
+
+    if (!/pdf/i.test(item.file_mime_type)) {
+      return ErrorResponse.badRequest('Summarization currently supports PDF files only').send(res);
+    }
+
+    // Download file from storage
+    const { data: fileBlob, error: dlErr } = await supabase
+      .storage
+      .from(MODULES_BUCKET)
+      .download(item.file_storage_path);
+    if (dlErr || !fileBlob) {
+      return ErrorResponse.internalServerError('Failed to download file for summarization').send(res);
+    }
+
+    // Convert to Buffer and extract text
+    const arrayBuffer = await fileBlob.arrayBuffer();
+    const pdfBuffer = Buffer.from(arrayBuffer);
+    const parsed = await pdfParse(pdfBuffer);
+    const pdfText = (parsed?.text || '').trim();
+    if (!pdfText) {
+      return ErrorResponse.internalServerError('Unable to extract text from PDF').send(res);
+    }
+
+    // Limit input length to avoid excessive token usage
+    const MAX_CHARS = 15000;
+    const inputText = pdfText.length > MAX_CHARS ? pdfText.slice(0, MAX_CHARS) : pdfText;
+
+    // Call OpenAI to summarize
+    let openai;
+    try {
+      openai = getOpenAIClient();
+    } catch (e) {
+      return ErrorResponse.internalServerError('OpenAI client not configured').send(res);
+    }
+
+    const model = req.body?.model || 'gpt-4o-mini';
+    const instructions = 'You are an assistant helping teachers quickly grasp class materials. Produce a concise summary of the provided PDF content: 1) a 2-3 sentence overview, and 2) 5-8 bullet points of key ideas. Keep it factual and clear for HSC students.';
+
+    let apiResponse;
+    try {
+      apiResponse = await openai.responses.create({
+        model,
+        instructions,
+        input: [
+          {
+            role: 'user',
+            content: inputText
+          }
+        ],
+        temperature: 0.3,
+        max_output_tokens: 800
+      });
+    } catch (apiError) {
+      const message = apiError?.message || 'OpenAI API request failed';
+      return ErrorResponse.internalServerError('Failed to generate summary', { details: message }).send(res);
+    }
+
+    const summary = apiResponse?.output_text || apiResponse?.output?.text || '';
+    if (!summary) {
+      return ErrorResponse.internalServerError('No summary returned from AI').send(res);
+    }
+
+    return res.status(200).json({ summary });
+  } catch (err) {
+    console.error('summarizeModuleItemFile error:', err);
+    return ErrorResponse.internalServerError('An error occurred while summarizing file').send(res);
+  }
+};
 

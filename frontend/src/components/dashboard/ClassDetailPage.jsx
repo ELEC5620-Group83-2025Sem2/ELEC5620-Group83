@@ -232,6 +232,9 @@ function ClassDetailPage({ classData, onBack }) {
                                 <div className="student-module-item-title">{it.title}</div>
                                 <span className={`student-module-item-type ${it.item_type}`}>{it.item_type}</span>
                               </div>
+                              {it.description && (
+                                <div className="student-module-item-description">{it.description}</div>
+                              )}
                               {it.item_type === 'link' && it.link_url && (
                                 <a href={it.link_url} target="_blank" rel="noreferrer" className="student-module-item-link">
                                   {it.link_url}
