@@ -129,7 +129,8 @@ function GradeAssignmentView({ assignmentId, onBack }) {
     setAiGrading(true)
     try {
       const response = await teacherApi.autoGradeSubmission(selectedSubmission.id, assignmentId)
-      const data = response?.data || {}
+      // authService.authenticatedRequest returns the data directly, not wrapped in { data: ... }
+      const data = response || {}
       setGradeData({
         grade: data.grade ?? '',
         feedback: data.feedback ?? ''

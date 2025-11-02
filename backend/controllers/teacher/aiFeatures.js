@@ -372,11 +372,23 @@ export const autoGradeSubmission = async (req, res) => {
       .eq('submission_id', submission_id);
 
     if (!OPENAI_API_KEY) {
+      // Check if there's any submission content
+      const hasContent = (submission.text_response && submission.text_response.trim().length > 0) || (answers && answers.length > 0);
+      
+      if (!hasContent) {
+        return res.json({
+          grade: null,
+          feedback: 'No submission content found. Please ensure the student has submitted their work.',
+          mock: true,
+          error: 'No submission content'
+        });
+      }
+      
       // Return mock grading
       const mockGrade = Math.floor(Math.random() * 20) + 80; // 80-100
       return res.json({
         grade: mockGrade,
-        feedback: 'Auto-grading not available (OpenAI API key not configured). This is a mock grade.',
+        feedback: 'Auto-grading not available (OpenAI API key not configured). This is a mock grade based on the submission content.',
         mock: true,
         answer_grades: answers?.map(a => ({
           answer_id: a.id,
@@ -387,6 +399,32 @@ export const autoGradeSubmission = async (req, res) => {
     }
 
     // Build prompt for AI grading
+    const hasTextResponse = submission.text_response && submission.text_response.trim().length > 0;
+    const hasAnswers = answers && answers.length > 0;
+
+    let submissionContent = '';
+    
+    if (hasTextResponse) {
+      submissionContent += `\nWritten Response:\n${submission.text_response}\n`;
+    }
+    
+    if (hasAnswers) {
+      submissionContent += `\nQuiz/Question Answers:\n${answers.map((a, idx) => `
+Question ${idx + 1}: ${a.questions.question_text}
+Student Answer: ${a.answer_text || 'No answer provided'}
+Points Available: ${a.questions.points}
+`).join('\n')}`;
+    }
+
+    if (!hasTextResponse && !hasAnswers) {
+      return res.json({
+        grade: null,
+        feedback: 'No submission was received. The answers field shows \'undefined\', indicating that no responses were provided for this assignment. Please submit your completed work to receive a grade and feedback.',
+        mock: true,
+        error: 'No submission content found'
+      });
+    }
+
     const prompt = `Grade the following student submission:
 
 Assignment: ${submission.assignments.title}
@@ -394,18 +432,13 @@ Description: ${submission.assignments.description || 'Not provided'}
 Total Points: ${submission.assignments.total_points}
 Type: ${submission.assignments.submission_type || 'General'}
 
-Student Answers:
-${answers?.map((a, idx) => `
-Question ${idx + 1}: ${a.questions.question_text}
-Student Answer: ${a.answer_text || 'No answer provided'}
-Points Available: ${a.questions.points}
-`).join('\n')}
+Student Submission:${submissionContent}
 
 Provide:
 1. Total grade (out of ${submission.assignments.total_points})
 2. Overall feedback (2-3 sentences)
-3. Individual grades for each question
-4. Brief feedback for each answer
+3. Individual grades for each question (if applicable)
+4. Brief feedback for each answer (if applicable)
 
 Format as JSON:
 {
