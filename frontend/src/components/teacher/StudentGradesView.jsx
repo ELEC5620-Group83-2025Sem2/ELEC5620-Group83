@@ -77,7 +77,7 @@ function StudentGradesView() {
         <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>❌</div>
         <p>Student not found</p>
         <button className="btn-secondary" onClick={() => navigate('/teacher/students')}>
-          返回学生列表
+          return student list
         </button>
       </div>
     )
