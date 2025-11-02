@@ -1,9 +1,18 @@
 import { getDaysUntilDue } from '../../utils/helpers'
 
-function DashboardOverview({ studentData, userProfile, enrolledClasses, upcomingAssignments, recentGrades, onTabChange }) {
+function DashboardOverview({ studentData, userProfile, enrolledClasses, upcomingAssignments, recentGrades, onTabChange, loading }) {
   const displayName = userProfile?.first_name && userProfile?.last_name 
     ? `${userProfile.first_name} ${userProfile.last_name}` 
     : userProfile?.name || ''
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <div className="loading-spinner"></div>
+        <p>Loading your dashboard...</p>
+      </div>
+    )
+  }
 
   return (
     <>
