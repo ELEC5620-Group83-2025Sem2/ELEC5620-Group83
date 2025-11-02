@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, Ziqi, dev, test_cicd ]
+    branches: [ main, develop, Ziqi, dev]
   pull_request:
-    branches: [ main, develop, dev, test_cicd ]
+    branches: [ main, develop ]
 
 jobs:
   # 后端测试
