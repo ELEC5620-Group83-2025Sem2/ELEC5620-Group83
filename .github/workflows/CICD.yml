@@ -2,12 +2,12 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, Ziqi ]
+    branches: [ main, develop, dev, test_cicd ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, develop, dev, test_cicd ]
 
 jobs:
-  # 后端测试
+  # backend tests
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
@@ -32,7 +32,7 @@ jobs:
       - name: Tests completed
         run: echo "Backend tests passed!"
   
-  # 前端测试
+  # frontend tests
   frontend-test:
     name: Frontend Tests
     runs-on: ubuntu-latest
@@ -57,7 +57,7 @@ jobs:
       - name: Tests completed
         run: echo "Frontend tests passed!"
   
-  # 前端构建
+  # frontend build
   frontend-build:
     name: Frontend Build
     runs-on: ubuntu-latest
@@ -90,7 +90,7 @@ jobs:
       - name: Build completed
         run: echo "Frontend build successful!"
   
-  # 代码质量检查
+  # code quality check
   code-quality:
     name: Code Quality
     runs-on: ubuntu-latest
@@ -112,7 +112,7 @@ jobs:
           echo "Frontend:"
           find frontend/src -name "*.jsx" -o -name "*.js" -not -path "*/node_modules/*" | xargs wc -l | tail -1 || echo "No JSX files"
   
-  # 安全审计
+  # security audit
   security:
     name: Security Audit
     runs-on: ubuntu-latest
