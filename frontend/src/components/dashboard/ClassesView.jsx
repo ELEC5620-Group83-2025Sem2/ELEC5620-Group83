@@ -1,4 +1,4 @@
-function ClassesView({ enrolledClasses, onClassClick }) {
+function ClassesView({ enrolledClasses, onClassClick, loading }) {
   // Calculate progress percentage based on completed assignments
   const calculateProgress = (course) => {
     const total = course.assignmentCount || 0;
@@ -6,8 +6,23 @@ function ClassesView({ enrolledClasses, onClassClick }) {
     return total > 0 ? Math.round((completed / total) * 100) : 0;
   };
 
+  if (loading) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <div className="loading-spinner"></div>
+        <p>Loading your classes...</p>
+      </div>
+    )
+  }
+
   return (
     <div className="classes-grid">
+      {enrolledClasses.length === 0 && (
+        <div style={{ padding: '40px', textAlign: 'center', width: '100%' }}>
+          <h3>No classes enrolled yet</h3>
+          <p style={{ color: '#666', marginTop: '0.5rem' }}>Contact your school administrator to get enrolled in classes.</p>
+        </div>
+      )}
       {enrolledClasses.map(course => {
         const progress = calculateProgress(course);
         return (
