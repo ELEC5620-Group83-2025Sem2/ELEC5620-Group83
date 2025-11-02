@@ -170,6 +170,13 @@ export const getAssignmentDetails = async (req, res) => {
       content: sub.content,
     })) || [];
 
+    // Get rubric items
+    const { data: rubricItems } = await supabase
+      .from('assignment_rubric_items')
+      .select('*')
+      .eq('assignment_id', assignmentId)
+      .order('created_at', { ascending: true });
+
     // Get due_date - try multiple possible field names
     const dueDate = assignment.due_date || assignment.dueDate || assignment.due || null;
 
@@ -189,6 +196,7 @@ export const getAssignmentDetails = async (req, res) => {
         created_at: assignment.created_at,
         createdAt: assignment.created_at,
         submissions: enrichedSubmissions,
+        rubric: rubricItems || [],
       }
     });
   } catch (err) {
