@@ -340,12 +340,14 @@ function StudyPlannerView({ studyPlanSuggestions: initialSuggestions }) {
                 key={item.id} 
                 className="schedule-item"
                 style={{
-                  padding: '1.5rem',
-                  background: item.completed ? '#f7fafc' : 'white',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '0.75rem',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  opacity: item.completed ? 0.7 : 1
+                  padding: '2rem',
+                  background: item.completed ? 'linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%)' : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+                  border: item.completed ? '2px solid #cbd5e0' : '2px solid #e2e8f0',
+                  borderRadius: '16px',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+                  transition: 'all 0.3s ease',
+                  position: 'relative',
+                  borderLeft: `5px solid ${item.priority === 'high' ? '#f56565' : item.priority === 'medium' ? '#ed8936' : '#48bb78'}`
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>

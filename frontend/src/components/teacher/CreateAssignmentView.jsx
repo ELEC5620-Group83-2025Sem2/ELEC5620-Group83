@@ -22,6 +22,9 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
   const [rubricError, setRubricError] = useState('')
   const [assignmentGenLoading, setAssignmentGenLoading] = useState(false)
   const [assignmentGenError, setAssignmentGenError] = useState('')
+  // Rubric preview modal state
+  const [showRubricModal, setShowRubricModal] = useState(false)
+  const [rubricPreview, setRubricPreview] = useState(null)
 
   useEffect(() => {
     const fetchClasses = async () => {
@@ -86,17 +89,64 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
         assignment_title: formData.title,
         assignment_description: formData.description,
         submission_type: formData.submission_type,
-        total_points: Number(formData.total_points) || 100
+        total_points: Number(formData.total_points) || 100,
+        force_mock: true
       }
       const res = await teacherApi.generateRubric(payload)
-      const rubric = res?.rubric || []
-      setFormData(prev => ({ ...prev, rubric }))
+      const rubric = Array.isArray(res?.rubric) ? res.rubric : []
+      if (res?.mock) console.warn('AI rubric unavailable, using fallback rubric')
+
+      // Show in modal first; apply to form after confirm
+      setRubricPreview(rubric)
+      setShowRubricModal(true)
     } catch (err) {
       console.error('Failed to generate rubric:', err)
       setRubricError('Failed to generate rubric. Please try again later.')
     } finally {
       setRubricLoading(false)
     }
+  }
+
+  const enrichRubricItems = (items) => {
+    const defaults = (criteria, pts) => ({
+      criteria: criteria || 'Criterion',
+      description: 'Clear expectations with measurable outcomes',
+      points: Number(pts) || 0,
+      levels: {
+        excellent: `${criteria || 'Performance'} is outstanding and exceeds expectations`,
+        good: `${criteria || 'Performance'} meets expectations with minor issues`,
+        fair: `${criteria || 'Performance'} partially meets expectations`,
+        poor: `${criteria || 'Performance'} does not meet expectations`
+      }
+    })
+
+    return (items || []).map(i => {
+      const base = defaults(i?.criteria, i?.points)
+      return {
+        ...base,
+        criteria: i?.criteria || base.criteria,
+        description: i?.description || base.description,
+        points: Number(i?.points) || base.points,
+        levels: {
+          excellent: i?.levels?.excellent || base.levels.excellent,
+          good: i?.levels?.good || base.levels.good,
+          fair: i?.levels?.fair || base.levels.fair,
+          poor: i?.levels?.poor || base.levels.poor
+        }
+      }
+    })
+  }
+
+  const handleApplyRubricPreview = () => {
+    const enriched = enrichRubricItems(rubricPreview || [])
+    setFormData(prev => ({ ...prev, rubric: enriched }))
+    setShowRubricModal(false)
+    setRubricPreview(null)
+  }
+
+  const handleCloseRubricModal = () => {
+    setShowRubricModal(false)
+    setRubricPreview(null)
   }
 
   const handleAddRubricItem = () => {
@@ -129,8 +179,8 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
 
   const handleAddQuestion = (type = 'multiple_choice') => {
     const base = type === 'multiple_choice'
-      ? { type: 'multiple_choice', question: '', points: 5, options: [''], answer: '' }
-      : { type: 'text', prompt: '', points: 10, expected_answer: '' }
+      ? { type: 'multiple_choice', question: '', points: 0, options: [''], answer: '' }
+      : { type: 'text', prompt: '', points: 0, expected_answer: '' }
     setFormData(prev => ({ ...prev, questions: [...(prev.questions || []), base] }))
   }
 
@@ -182,7 +232,8 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
         topic: formData.title,
         difficulty: 'medium',
         assignment_type: formData.assignment_type === 'quiz' ? 'quiz' : (formData.assignment_type === 'project' ? 'project' : 'problem_set'),
-        question_count: 6
+        question_count: 6,
+        total_points: Number(formData.total_points) || 100
       }
       const res = await teacherApi.generateAssignment(params)
       const a = res?.assignment
@@ -378,7 +429,15 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
                 {formData.rubric.map((item, idx) => (
                   <li key={idx} style={{ marginBottom: '0.5rem' }}>
                     <strong>{item.criteria}</strong> — {item.points} pts
-                    {item.description ? <div style={{ fontSize: '0.9rem' }}>{item.description}</div> : null}
+                    {item.description ? <div style={{ fontSize: '0.9rem', color: '#334155' }}>{item.description}</div> : null}
+                    {item.levels && (
+                      <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem' }}>
+                        <div>Excellent: {item.levels.excellent}</div>
+                        <div>Good: {item.levels.good}</div>
+                        <div>Fair: {item.levels.fair}</div>
+                        <div>Poor: {item.levels.poor}</div>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -502,6 +561,49 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
           </button>
         </div>
       </form>
+
+      {/* Rubric Preview Modal */}
+      {showRubricModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ background: 'white', width: 'min(800px, 92vw)', maxHeight: '80vh', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0 }}>Rubric Preview</h3>
+              <button className="btn-cancel" onClick={handleCloseRubricModal}>关闭</button>
+            </div>
+            <div style={{ padding: '1rem 1.25rem', overflowY: 'auto' }}>
+              {Array.isArray(rubricPreview) && rubricPreview.length > 0 ? (
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                  {rubricPreview.map((item, idx) => (
+                    <li key={idx} style={{ marginBottom: '0.9rem', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.75rem 1rem' }}>
+                      <div style={{ fontWeight: 700 }}>
+                        {item.criteria} — {Number(item.points) || 0} pts
+                      </div>
+                      {item.description && (
+                        <div style={{ fontSize: '0.95rem', color: '#475569', marginTop: '0.35rem' }}>{item.description}</div>
+                      )}
+                      {item.levels && (
+                        <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: '#64748b' }}>
+                          <div><strong>Excellent:</strong> {item.levels.excellent || '—'}</div>
+                          <div><strong>Good:</strong> {item.levels.good || '—'}</div>
+                          <div><strong>Fair:</strong> {item.levels.fair || '—'}</div>
+                          <div><strong>Poor:</strong> {item.levels.poor || '—'}</div>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div>Empty rubric</div>
+              )}
+              <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>Total: {(rubricPreview || []).reduce((s, c) => s + (Number(c.points) || 0), 0)} pts</div>
+            </div>
+            <div style={{ padding: '0.9rem 1.25rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button className="btn-cancel" onClick={handleCloseRubricModal}>取消</button>
+              <button className="btn-submit" onClick={handleApplyRubricPreview}>应用到 Rubric</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

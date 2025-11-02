@@ -52,7 +52,7 @@ const authenticatedRequest = async (endpoint, options = {}) => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('user');
-        window.location.href = '/login/student';
+        window.location.href = '/login/parent';
       }
       throw new Error(data.error || `Request failed with status ${response.status}`);
     }
@@ -68,66 +68,33 @@ const authenticatedRequest = async (endpoint, options = {}) => {
 };
 
 /**
- * Student API service
+ * Parent API service
  */
-const studentApi = {
-  // Announcements
-  async getAnnouncements() {
-    return authenticatedRequest('/student/announcements', {
+const parentApi = {
+  // Children
+  // Get all children associated with parent
+  async getChildren() {
+    return authenticatedRequest('/parent/children', {
       method: 'GET'
     });
   },
 
-  // Classes
-  // Get all classes the student is enrolled in from the backend API
-  // JWT token is automatically passed in Authorization header
-  async getClasses() {
-    return authenticatedRequest('/student/classes', {
-      method: 'GET'
-    });
-  },
-
-  // HSC Subjects
-  // Get all HSC subjects from the database
-  async getHSCSubjects() {
-    return authenticatedRequest('/student/hsc-subjects', {
-      method: 'GET'
+  // Weekly Reports
+  // Get child's weekly report
+  async getChildWeeklyReport(student_id, report_week_start, report_week_end, model = 'gpt-5') {
+    const params = new URLSearchParams();
+    params.append('report_week_start', report_week_start);
+    params.append('report_week_end', report_week_end);
+    if (model) params.append('model', model);
     
-    });
-  },
-  // Assignments
-  // Get all assignments for student's enrolled classes
-  // JWT token is automatically passed in Authorization header
-  async getAssignments(options = {}) {
-    const upcoming = typeof options === 'boolean' ? options : options.upcoming;
-    const qs = upcoming ? `?upcoming=${encodeURIComponent(upcoming)}` : '';
-    return authenticatedRequest(`/student/assignments${qs}`, {
-      method: 'GET'
-    });
-  },
-
-  // Grades
-  // Get all grades for student
-  // JWT token is automatically passed in Authorization header
-  async getGrades() {
-    return authenticatedRequest('/student/grades', {
+    const queryString = params.toString();
+    const endpoint = `/parent/children/${student_id}/weekly-report${queryString ? `?${queryString}` : ''}`;
+    
+    return authenticatedRequest(endpoint, {
       method: 'GET'
     });
   }
-
-  ,
-  // Modules
-  async getClassModules(classId) {
-    return authenticatedRequest(`/student/classes/${classId}/modules`, {
-      method: 'GET'
-    });
-  },
-  async getModule(moduleId) {
-    return authenticatedRequest(`/student/modules/${moduleId}`, {
-      method: 'GET'
-    });
-  }
-
 };
 
-export default studentApi;
+export default parentApi;
+

@@ -10,6 +10,7 @@ import { getStudentClasses } from '../controllers/student/classes.js';
 import { getHSCSubjects } from '../controllers/student/hscSubjects.js';
 import { getStudentAssignments } from '../controllers/student/assignments.js';
 import { getClassModulesForStudent, getModuleDetailForStudent } from '../controllers/student/modules.js';
+import { getStudentGrades } from '../controllers/student/grades.js';
 import { sendChatMessage } from '../controllers/student/chat.js';
 
 const router = express.Router();
@@ -57,11 +58,20 @@ router.get('/modules/:moduleId', getModuleDetailForStudent);
 
 // GET /api/student/hsc-subjects - Get all HSC subjects
 router.get('/hsc-subjects', getHSCSubjects);
+
+// ===================
 // Assignments Routes
 // ===================
 
 // GET /api/student/assignments - Get all assignments for student's enrolled classes
 router.get('/assignments', getStudentAssignments);
+
+// ===================
+// Grades Routes
+// ===================
+
+// GET /api/student/grades - Get all grades for student
+router.get('/grades', getStudentGrades);
 
 // ===================
 // Chat Routes

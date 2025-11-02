@@ -2,7 +2,10 @@ import { ErrorResponse } from '../../utils/errorResponse.js';
 
 // OpenAI configuration
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL 
+  || process.env.OPENAI_URL 
+  || process.env.VITE_OPENAI_BASE_URL 
+  || 'https://api.zmon.me/v1';
 
 /**
  * POST /api/student/chat

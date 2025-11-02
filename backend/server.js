@@ -7,6 +7,7 @@ import { aiRoutes } from './routes/aiAgent.js';
 import { teacherRoutes } from './routes/teacher.js';
 import { studentRoutes } from './routes/student.js';
 import { adminRoutes } from './routes/admin.js';
+import { parentRoutes } from './routes/parent.js';
 import { logger } from './middleware/logger.js';
 
 dotenv.config();
@@ -80,6 +81,7 @@ app.use('/api/ai-agent', aiRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/parent', parentRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

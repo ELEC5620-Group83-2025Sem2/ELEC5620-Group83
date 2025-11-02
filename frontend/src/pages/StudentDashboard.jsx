@@ -46,6 +46,10 @@ function StudentDashboard() {
   const [studyPlanSuggestions, setStudyPlanSuggestions] = useState([])
   const [careerRecommendations, setCareerRecommendations] = useState([])
   
+  // Loading states
+  const [loadingClasses, setLoadingClasses] = useState(false)
+  const [loadingAssignments, setLoadingAssignments] = useState(false)
+  
   // Get initial user data from localStorage
   const getInitialUserData = () => {
     const currentUser = authService.getCurrentUser()
@@ -86,6 +90,7 @@ function StudentDashboard() {
 
   // Function to fetch student classes - memoized with useCallback
   const fetchStudentClasses = useCallback(async () => {
+    setLoadingClasses(true)
     try {
       // Invoke backend API /api/student/classes
       // JWT token is automatically passed via authenticatedRequest in studentApi
@@ -95,6 +100,8 @@ function StudentDashboard() {
       console.error('Failed to fetch student classes:', error)
       // Keep empty array on error
       setEnrolledClasses([])
+    } finally {
+      setLoadingClasses(false)
     }
   }, [])
 
@@ -112,12 +119,19 @@ function StudentDashboard() {
     }
   }, [])
 
-  // Fetch classes when classes tab is clicked/activated
-  useEffect(() => {
-    if (activeTab === 'classes') {
-      fetchStudentClasses()
+  // Function to fetch student grades - memoized with useCallback
+  const fetchStudentGrades = useCallback(async () => {
+    try {
+      // Invoke backend API /api/student/grades
+      // JWT token is automatically passed via authenticatedRequest in studentApi
+      const response = await studentApi.getGrades()
+      setRecentGrades(response.grades || [])
+    } catch (error) {
+      console.error('Failed to fetch student grades:', error)
+      // Keep empty array on error
+      setRecentGrades([])
     }
-  }, [activeTab, fetchStudentClasses])
+  }, [])
 
   // Fetch assignments when assignments tab is clicked/activated
   useEffect(() => {
@@ -125,6 +139,12 @@ function StudentDashboard() {
       fetchStudentAssignments()
     }
   }, [activeTab, fetchStudentAssignments])
+ 
+  // Prefetch classes and assignments on first load so Dashboard has data
+  useEffect(() => {
+    fetchStudentClasses()
+    fetchStudentAssignments()
+  }, [fetchStudentClasses, fetchStudentAssignments])
   
   // Sync activeTab with URL changes
   useEffect(() => {
@@ -150,6 +170,9 @@ function StudentDashboard() {
   // Fetch notifications on component mount
   useEffect(() => {
     fetchNotifications()
+    fetchStudentAssignments()
+    fetchStudentClasses()
+    fetchStudentGrades()
   }, [])
 
   // Fetch notifications when popup opens
@@ -247,10 +270,11 @@ function StudentDashboard() {
             upcomingAssignments={upcomingAssignments}
             recentGrades={recentGrades}
             onTabChange={handleTabChange}
+            loading={loading || loadingClasses || loadingAssignments}
           />
         )
       case 'classes':
-        return <ClassesView enrolledClasses={enrolledClasses} onClassClick={handleClassClick} />
+        return <ClassesView enrolledClasses={enrolledClasses} onClassClick={handleClassClick} loading={loadingClasses} />
       case 'grades':
         return <GradesView enrolledClasses={enrolledClasses} recentGrades={recentGrades} />
       case 'assignments':
