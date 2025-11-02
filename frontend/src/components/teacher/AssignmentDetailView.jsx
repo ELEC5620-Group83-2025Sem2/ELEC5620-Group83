@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import teacherApi from '../../services/teacherApi'
 import './CreateAssignmentView.css'
 
-function AssignmentDetailView({ assignmentId, onBack }) {
+function AssignmentDetailView({ assignmentId, onBack, onEdit }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [assignment, setAssignment] = useState(null)
@@ -138,27 +138,32 @@ function AssignmentDetailView({ assignmentId, onBack }) {
               )}
             </div>
           </div>
-          {assignment.description && (
-            <div className="form-group" style={{ marginTop: '1.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span>📄</span> Description
-              </label>
-              <textarea 
-                value={assignment.description} 
-                readOnly 
-                rows="4" 
-                style={{ 
-                  background: '#f7fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  padding: '1rem',
-                  fontFamily: 'inherit',
-                  lineHeight: '1.6',
-                  resize: 'none'
-                }} 
-              />
-            </div>
-          )}
+        </div>
+
+        {/* Description Section */}
+        <div className="form-section">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.5rem', marginBottom: '1.5rem' }}>
+            <span>📄</span> Description
+          </h3>
+          <textarea 
+            value={assignment.description || ''} 
+            readOnly 
+            rows="4" 
+            placeholder={assignment.description ? '' : 'No description provided'}
+            style={{ 
+              background: assignment.description ? '#f7fafc' : '#f7fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px',
+              padding: '1rem',
+              fontFamily: 'inherit',
+              fontSize: '0.95rem',
+              lineHeight: '1.6',
+              resize: 'none',
+              color: assignment.description ? '#2d3748' : '#718096',
+              fontStyle: assignment.description ? 'normal' : 'italic',
+              width: '100%'
+            }} 
+          />
         </div>
 
         <div className="form-section">
@@ -248,6 +253,24 @@ function AssignmentDetailView({ assignmentId, onBack }) {
 
         <div className="form-actions">
           <button className="btn-cancel" onClick={onBack}>Back</button>
+          {onEdit && (
+            <button 
+              className="btn-primary" 
+              onClick={() => onEdit(assignmentId)}
+              style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '8px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                marginLeft: '1rem'
+              }}
+            >
+              ✏️ Edit Assignment
+            </button>
+          )}
         </div>
       </div>
     </div>

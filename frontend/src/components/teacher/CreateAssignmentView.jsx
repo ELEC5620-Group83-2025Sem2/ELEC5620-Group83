@@ -39,6 +39,46 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
     fetchClasses()
   }, [])
 
+  // Load assignment data if editing
+  useEffect(() => {
+    const loadAssignment = async () => {
+      if (!assignmentId) return
+
+      try {
+        setLoading(true)
+        const response = await teacherApi.getAssignmentById(assignmentId)
+        const assignment = response.assignment
+        
+        if (assignment) {
+          setFormData({
+            title: assignment.title || '',
+            description: assignment.description || '',
+            class_id: assignment.class_id || classId || '',
+            due_date: assignment.due_date 
+              ? (assignment.due_date.includes('T') 
+                  ? new Date(assignment.due_date).toISOString().slice(0, 16)
+                  : new Date(assignment.due_date + 'T00:00').toISOString().slice(0, 16))
+              : '',
+            total_points: assignment.total_points || assignment.totalPoints || 100,
+            assignment_type: assignment.assignment_type || assignment.submission_type || 'homework',
+            instructions: assignment.instructions || '',
+            requirements: assignment.requirements || '',
+            submission_type: assignment.submission_type || 'online',
+            rubric: assignment.rubric || [],
+            questions: assignment.questions || []
+          })
+        }
+      } catch (error) {
+        console.error('Failed to load assignment:', error)
+        alert('Failed to load assignment data')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadAssignment()
+  }, [assignmentId, classId])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -66,12 +106,20 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
         questions: formData.questions || [],
         resources: []
       }
-      await teacherApi.createAssignment(payload)
-      alert('Assignment created successfully!')
+
+      if (assignmentId) {
+        // Update existing assignment
+        await teacherApi.updateAssignment(assignmentId, payload)
+        alert('Assignment updated successfully!')
+      } else {
+        // Create new assignment
+        await teacherApi.createAssignment(payload)
+        alert('Assignment created successfully!')
+      }
       onBack()
     } catch (error) {
-      console.error('Failed to create assignment:', error)
-      alert('Failed to create assignment. Please try again.')
+      console.error(`Failed to ${assignmentId ? 'update' : 'create'} assignment:`, error)
+      alert(`Failed to ${assignmentId ? 'update' : 'create'} assignment. Please try again.`)
     } finally {
       setLoading(false)
     }
@@ -555,7 +603,7 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
           <div style={{ background: 'white', width: 'min(800px, 92vw)', maxHeight: '80vh', borderRadius: '12px', boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
             <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0 }}>Rubric Preview</h3>
-              <button className="btn-cancel" onClick={handleCloseRubricModal}>关闭</button>
+              <button className="btn-cancel" onClick={handleCloseRubricModal}>Close</button>
             </div>
             <div style={{ padding: '1rem 1.25rem', overflowY: 'auto' }}>
               {Array.isArray(rubricPreview) && rubricPreview.length > 0 ? (
@@ -585,8 +633,8 @@ function CreateAssignmentView({ assignmentId, classId, onBack }) {
               <div style={{ fontWeight: 600, marginTop: '0.25rem' }}>Total: {(rubricPreview || []).reduce((s, c) => s + (Number(c.points) || 0), 0)} pts</div>
             </div>
             <div style={{ padding: '0.9rem 1.25rem', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-              <button className="btn-cancel" onClick={handleCloseRubricModal}>取消</button>
-              <button className="btn-submit" onClick={handleApplyRubricPreview}>应用到 Rubric</button>
+              <button className="btn-cancel" onClick={handleCloseRubricModal}>Cancel</button>
+              <button className="btn-submit" onClick={handleApplyRubricPreview}>Apply to Rubric</button>
             </div>
           </div>
         </div>

@@ -14,12 +14,14 @@ const formatAssignmentType = (value) => {
     .join(' ')
 }
 
-function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignment }) {
+function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignment, onEditAssignment, onDeleteAssignment }) {
   const [assignments, setAssignments] = useState([])
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterClass, setFilterClass] = useState('all')
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState(null)
+  const [updatingStatusId, setUpdatingStatusId] = useState(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -54,6 +56,51 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
     const matchesClass = filterClass === 'all' || String(a.class_id) === String(filterClass)
     return matchesStatus && matchesClass
   })
+
+  const handleDelete = async (assignmentId, assignmentTitle) => {
+    if (!window.confirm(`Are you sure you want to delete "${assignmentTitle}"? This action cannot be undone.`)) {
+      return
+    }
+
+    setDeletingId(assignmentId)
+    try {
+      await teacherApi.deleteAssignment(assignmentId)
+      // Remove from local state
+      setAssignments(prev => prev.filter(a => a.id !== assignmentId))
+      // Call parent handler if provided
+      if (onDeleteAssignment) {
+        onDeleteAssignment(assignmentId)
+      }
+    } catch (error) {
+      console.error('Failed to delete assignment:', error)
+      alert('Failed to delete assignment. Please try again.')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const handleStatusChange = async (assignmentId, newStatus) => {
+    setUpdatingStatusId(assignmentId)
+    try {
+      await teacherApi.updateAssignment(assignmentId, { status: newStatus })
+      // Update local state
+      setAssignments(prev => prev.map(a => 
+        a.id === assignmentId ? { ...a, status: newStatus } : a
+      ))
+    } catch (error) {
+      console.error('Failed to update assignment status:', error)
+      alert('Failed to update status. Please try again.')
+      // Re-fetch assignments on error to ensure sync
+      try {
+        const response = await teacherApi.getAssignments()
+        setAssignments(response.assignments || [])
+      } catch (fetchError) {
+        console.error('Failed to refresh assignments:', fetchError)
+      }
+    } finally {
+      setUpdatingStatusId(null)
+    }
+  }
 
   if (loading) {
     return (
@@ -162,9 +209,47 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
 
                 {/* Status */}
                 <div className="status-col">
-                  <span className={`status-badge ${getStatusBadgeClass(assignment.status)}`}>
-                    {assignment.status || 'draft'}
-                  </span>
+                  <select
+                    value={assignment.status || 'draft'}
+                    onChange={(e) => handleStatusChange(assignment.id, e.target.value)}
+                    disabled={updatingStatusId === assignment.id}
+                    className={`status-select ${getStatusBadgeClass(assignment.status)}`}
+                    style={{
+                      padding: '0.375rem 0.75rem',
+                      borderRadius: '0.375rem',
+                      border: '1px solid transparent',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      cursor: updatingStatusId === assignment.id ? 'wait' : 'pointer',
+                      textTransform: 'capitalize',
+                      minWidth: '100px',
+                      backgroundColor: assignment.status === 'published' ? '#c6f6d5' :
+                                      assignment.status === 'draft' ? '#fed7d7' :
+                                      assignment.status === 'grading' ? '#feebc8' :
+                                      assignment.status === 'graded' ? '#bee3f8' : '#e2e8f0',
+                      color: assignment.status === 'published' ? '#276749' :
+                             assignment.status === 'draft' ? '#c53030' :
+                             assignment.status === 'grading' ? '#c05621' :
+                             assignment.status === 'graded' ? '#2c5282' : '#4a5568',
+                      opacity: updatingStatusId === assignment.id ? 0.6 : 1,
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (updatingStatusId !== assignment.id) {
+                        e.target.style.borderColor = '#cbd5e0'
+                        e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.borderColor = 'transparent'
+                      e.target.style.boxShadow = 'none'
+                    }}
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                    <option value="grading">Grading</option>
+                    <option value="graded">Graded</option>
+                  </select>
                 </div>
 
                 {/* Due (short) */}
@@ -190,6 +275,21 @@ function AssignmentsView({ onAssignmentClick, onCreateAssignment, onGradeAssignm
                     title="Grade"
                   >
                     Grade
+                  </button>
+                  <button
+                    className="btn-assignment-action btn-delete"
+                    onClick={() => handleDelete(assignment.id, assignment.title)}
+                    aria-label="Delete assignment"
+                    title="Delete"
+                    disabled={deletingId === assignment.id}
+                    style={{
+                      background: deletingId === assignment.id ? '#cbd5e0' : '#fed7d7',
+                      color: deletingId === assignment.id ? '#718096' : '#c53030',
+                      border: '1px solid #feb2b2',
+                      cursor: deletingId === assignment.id ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    {deletingId === assignment.id ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>
