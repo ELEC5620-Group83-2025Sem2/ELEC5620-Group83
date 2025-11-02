@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, dev, test_cicd ]
   pull_request:
-    types: [opened]
+    types: [closed]
     branches: [ test_cicd ]
   workflow_dispatch:
 
